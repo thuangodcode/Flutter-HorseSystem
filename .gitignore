@@ -16,3 +16,6 @@ desktop.ini
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Refact AI
+.refact/
