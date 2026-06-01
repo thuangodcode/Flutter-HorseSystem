@@ -81,8 +81,12 @@ export type Invite = {
   _id?: string
   horseId: any
   horseName?: string // Legacy alias
+  horseBreed?: string
+  horseWeight?: number
   jockeyId?: any
   raceId?: any
+  raceName?: string
+  raceDistance?: number
   ownerId?: any
   message?: string
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'DECLINED'

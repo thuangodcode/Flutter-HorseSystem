@@ -1,4 +1,4 @@
-import { useEffect, useState, startTransition } from 'react'
+import { useEffect, useState } from 'react'
 import type { Invite } from '../types'
 import { getInvites, acceptInvitation, rejectInvitation } from '@/api'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
@@ -7,7 +7,7 @@ import { Magnetic } from '@/components/ui/magnetic'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
-import { Mail, CalendarRange, Ruler, Weight, Check, X, Inbox, ChevronRight } from 'lucide-react'
+import { Mail, CalendarRange, Ruler, Weight, X, Inbox, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 export function InvitesPage() {
@@ -150,12 +150,9 @@ export function InvitesPage() {
                         <Magnetic intensity={0.2}>
                           <div className="flex-1">
                             <LiquidMetalButton 
+                              label={loadingAction === inv.id ? 'Đang xử lý...' : '✓ Đồng Ý'}
                               onClick={() => handleAction(inv.id, 'accept')}
-                              disabled={loadingAction === inv.id}
-                              style={{ width: '100%', height: '40px' }}
-                            >
-                              {loadingAction === inv.id ? 'Đang xử lý...' : <span className="flex items-center justify-center gap-2"><Check className="w-4 h-4" /> Đồng Ý</span>}
-                            </LiquidMetalButton>
+                            />
                           </div>
                         </Magnetic>
                       </>

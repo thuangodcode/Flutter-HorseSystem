@@ -16,14 +16,14 @@ import {
   getHorseResults
 } from '@/api'
 import { Pagination } from '@/components/ui/Pagination'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ScrollReveal } from '@/components/ui/scroll-text'
 import { Magnetic } from '@/components/ui/magnetic'
 import { useAnimatedToast } from '@/components/ui/animated-toast'
-import { CalendarRange, Search, Filter, Trophy, Star, Activity, FileCheck, Check, X, Users, History, TrendingUp, AlertTriangle } from 'lucide-react'
+import { CalendarRange, Search, Trophy, Star, Activity, FileCheck, Check, X, Users, History, TrendingUp, AlertTriangle } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Tab = 'my-horses' | 'race-registration' | 'hire-jockey' | 'invitations' | 'my-registrations'
