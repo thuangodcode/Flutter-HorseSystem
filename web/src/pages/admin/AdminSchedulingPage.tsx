@@ -96,6 +96,7 @@ export function AdminSchedulingPage() {
     prizeFirst: 0,
     prizeSecond: 0,
     prizeThird: 0,
+    refereeId: '',
   })
 
   // Schedule linking
@@ -165,7 +166,9 @@ export function AdminSchedulingPage() {
     try {
       if (activeTab === 'tournaments') {
         const list = await getTournaments()
+        const refList = await getAdminUsers({ role: 'REFEREE' })
         setTournaments(list)
+        setReferees(refList)
       } else if (activeTab === 'registrations') {
         const list = await getRaceRegistrations()
         setRegistrations(list)
@@ -281,6 +284,7 @@ export function AdminSchedulingPage() {
         prizeFirst: race.prizeFirst,
         prizeSecond: race.prizeSecond,
         prizeThird: race.prizeThird,
+        refereeId: typeof race.refereeId === 'object' ? race.refereeId?._id : race.refereeId || '',
       })
     } else {
       setRaceForm({
@@ -292,6 +296,7 @@ export function AdminSchedulingPage() {
         prizeFirst: 0,
         prizeSecond: 0,
         prizeThird: 0,
+        refereeId: '',
       })
     }
     setShowRaceModal(true)
@@ -1035,7 +1040,7 @@ export function AdminSchedulingPage() {
 
       {/* 1. Tournament Modal */}
       {showTournModal && (
-        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowTournModal(false) }}>
+        <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
               <h3>🏆 {selectedTourn ? 'Chỉnh sửa Giải đấu' : 'Thêm Giải đấu mới'}</h3>
@@ -1097,7 +1102,7 @@ export function AdminSchedulingPage() {
 
       {/* 2. Race Modal */}
       {showRaceModal && (
-        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowRaceModal(false) }}>
+        <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
               <h3>🏁 {selectedRace ? 'Chỉnh sửa Cuộc đua' : 'Thêm Cuộc đua mới'}</h3>
@@ -1122,6 +1127,17 @@ export function AdminSchedulingPage() {
                 <div className="form-group">
                   <label>Ngày giờ bắt đầu</label>
                   <input type="datetime-local" required value={raceForm.scheduledAt} onChange={(e) => setRaceForm({ ...raceForm, scheduledAt: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>Trọng tài điều hành (Tùy chọn)</label>
+                  <select value={raceForm.refereeId || ''} onChange={(e) => setRaceForm({ ...raceForm, refereeId: e.target.value })}>
+                    <option value="">-- Chưa phân công --</option>
+                    {referees.map((ref) => (
+                      <option key={ref.id} value={ref.id}>
+                        {ref.name} ({ref.email})
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <h4 style={{ margin: '14px 0 8px', fontSize: '14px', borderBottom: '1px solid var(--border)', paddingBottom: '4px' }}>Cơ cấu giải thưởng (VND)</h4>
                 <div className="grid-3">
@@ -1150,7 +1166,7 @@ export function AdminSchedulingPage() {
 
       {/* 3. Schedule Link Modal */}
       {showSchedModal && (
-        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowSchedModal(false) }}>
+        <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
               <h3>📅 Lập Lịch Cuộc Đua</h3>
@@ -1431,12 +1447,25 @@ function RaceList({
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    loadRaces()
+  }, [tournamentId])
+
+  const loadRaces = () => {
     setLoading(true)
     getRaces(tournamentId)
       .then(setRaces)
       .catch(() => setRaces([]))
       .finally(() => setLoading(false))
-  }, [tournamentId])
+  }
+
+  const handleQuickStatusChange = async (id: string, newStatus: string) => {
+    try {
+      await updateRace(id, { status: newStatus } as any)
+      loadRaces()
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Không thể đổi trạng thái cuộc đua')
+    }
+  }
 
   if (loading) return <p className="muted" style={{ fontSize: '13px' }}>Đang tải danh sách cuộc đua...</p>
   if (races.length === 0) return <p className="muted" style={{ fontSize: '13px', fontStyle: 'italic' }}>Chưa có cuộc đua nào được thiết lập cho giải đấu này.</p>
@@ -1466,9 +1495,36 @@ function RaceList({
                 🥇 {r.prizeFirst?.toLocaleString('vi-VN')} | 🥈 {r.prizeSecond?.toLocaleString('vi-VN')} | 🥉 {r.prizeThird?.toLocaleString('vi-VN')}
               </td>
               <td>
-                <span className={`badge ${r.status === 'COMPLETED' ? 'badge-approved' : r.status === 'ONGOING' ? 'badge-ongoing' : r.status === 'CANCELLED' ? 'badge-rejected' : 'badge-scheduled'}`}>
-                  {r.status}
-                </span>
+                <select
+                  value={r.status || 'SCHEDULED'}
+                  onChange={(e) => handleQuickStatusChange(r.id, e.target.value)}
+                  style={{
+                    width: 'auto',
+                    padding: '2px 24px 2px 6px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    borderRadius: '999px',
+                    border: '1px solid',
+                    cursor: 'pointer',
+                    background:
+                      r.status === 'ONGOING' ? 'rgba(16,185,129,0.12)' :
+                      r.status === 'COMPLETED' ? 'rgba(16,185,129,0.08)' :
+                      r.status === 'CANCELLED' ? 'rgba(239,68,68,0.10)' : 'rgba(59,130,246,0.10)',
+                    borderColor:
+                      r.status === 'ONGOING' ? '#10b981' :
+                      r.status === 'COMPLETED' ? '#059669' :
+                      r.status === 'CANCELLED' ? '#ef4444' : '#3b82f6',
+                    color:
+                      r.status === 'ONGOING' ? '#059669' :
+                      r.status === 'COMPLETED' ? '#047857' :
+                      r.status === 'CANCELLED' ? '#dc2626' : '#2563eb',
+                  }}
+                >
+                  <option value="SCHEDULED">⏰ Đã lên lịch</option>
+                  <option value="ONGOING">🏁 Đang diễn ra</option>
+                  <option value="COMPLETED">✅ Hoàn thành</option>
+                  <option value="CANCELLED">❌ Đã hủy</option>
+                </select>
               </td>
               <td style={{ textAlign: 'right' }}>
                 <div style={{ display: 'inline-flex', gap: 4 }}>

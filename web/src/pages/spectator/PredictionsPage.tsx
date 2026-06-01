@@ -355,6 +355,10 @@ export function PredictionsPage() {
                 <label className="text-sm font-bold text-(--text)">Chọn ngựa dự đoán thắng</label>
                 {horsesLoading ? (
                   <p className="text-sm text-muted font-bold">Đang tải danh sách ngựa...</p>
+                ) : horses.length === 0 ? (
+                  <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-800 dark:text-red-100 font-bold">
+                    ⚠️ Cuộc đua này chưa có chú ngựa nào hoàn tất thủ tục đăng ký (Chờ duyệt & Xác nhận). Vui lòng quay lại sau!
+                  </div>
                 ) : (
                   <Select value={selectedHorse} onValueChange={(value) => setSelectedHorse(value ?? '')}>
                     <SelectTrigger className="h-11 w-full border-border bg-(--bg2) text-(--text) font-bold">
