@@ -7,6 +7,10 @@ export type RootStackParamList = {
   Horses: undefined
   Invites: undefined
   Predictions: undefined
+  PlacePrediction: undefined
+  RaceResults: undefined
+  Notifications: undefined
+  Leaderboard: undefined
   AdminUsers: undefined
   AdminScheduling: undefined
   RefereeRaces: undefined

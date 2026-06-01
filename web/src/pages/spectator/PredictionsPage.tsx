@@ -372,7 +372,9 @@ export function PredictionsPage() {
                 {horsesLoading ? (
                   <p className="txt-form-helper text-sm">Đang tải danh sách ngựa...</p>
                 ) : horses.length === 0 ? (
-                  <p className="txt-form-helper text-sm">Không có ngựa nào cho cuộc đua này</p>
+                  <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-800 dark:text-red-100 font-bold">
+                    ⚠️ Cuộc đua này chưa có chú ngựa nào hoàn tất thủ tục đăng ký (Chờ duyệt & Xác nhận). Vui lòng quay lại sau!
+                  </div>
                 ) : (
                   <Select value={selectedHorse} onValueChange={(value) => setSelectedHorse(value ?? '')}>
                     <SelectTrigger className="h-11 w-full border-border bg-(--bg2) text-(--text) font-bold">

@@ -13,7 +13,7 @@ function roleButtons(role: Role): Array<keyof RootStackParamList> {
   const common: Array<keyof RootStackParamList> = ['Tournaments', 'Races']
   if (role === 'OWNER') return [...common, 'Horses']
   if (role === 'JOCKEY') return [...common, 'Invites']
-  if (role === 'SPECTATOR') return [...common, 'Predictions']
+  if (role === 'SPECTATOR') return [...common, 'Predictions', 'PlacePrediction', 'RaceResults', 'Leaderboard', 'Notifications']
   if (role === 'REFEREE') return [...common, 'RefereeRaces', 'RefereeReport']
   if (role === 'ADMIN') return [...common, 'AdminUsers', 'AdminScheduling']
   return common
