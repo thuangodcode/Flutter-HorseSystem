@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { createBrowserRouter, Navigate, RouterProvider, useParams } from 'react-router-dom'
+import { AnimatedToastProvider } from './components/ui/animated-toast'
 import { SessionProvider, useSession } from './auth/SessionContext'
 import { AppLayout } from './components/AppLayout'
 import { LandingPage } from './pages/LandingPage'
@@ -113,7 +114,9 @@ const router = createBrowserRouter([
 export function App() {
   return (
     <SessionProvider>
-      <RouterProvider router={router} />
+      <AnimatedToastProvider position="bottom-right">
+        <RouterProvider router={router} />
+      </AnimatedToastProvider>
     </SessionProvider>
   )
 }
