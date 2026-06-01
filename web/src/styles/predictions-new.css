@@ -1,0 +1,517 @@
+/* Predictions Page - Modern Shadcn Styling (Consistent Theme) */
+
+/* ============ Container & Layout ============ */
+.pred-page-container {
+  width: 100%;
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* ============ Text Visibility Classes ============ */
+.txt-hint-box {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  background-color: rgba(245, 158, 11, 0.12);
+  padding: 1rem;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: #fcd34d;
+  font-weight: 700;
+}
+
+.txt-hint-title {
+  margin-bottom: 0.5rem;
+  font-weight: 900;
+  color: #fef3c7;
+  font-size: 0.85rem;
+}
+
+.txt-hint-body {
+  color: #fcd34d;
+  font-weight: 600;
+  line-height: 1.7;
+}
+
+.txt-status-label {
+  font-weight: 700;
+  color: #e5e7eb;
+}
+
+.txt-status-value {
+  font-weight: 900;
+  color: #f9fafb;
+}
+
+.txt-form-label {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #f3f4f6;
+  display: block;
+}
+
+.txt-form-helper {
+  margin-top: 0.25rem;
+  color: #d1d5db;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.txt-desc-light {
+  color: #d1d5db;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* ============ Cards & Surfaces ============ */
+.pred-card-main,
+.pred-card-form,
+.pred-card-history {
+  background-color: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+/* ============ Header Styling ============ */
+.pred-heading-main {
+  color: var(--text);
+  font-weight: 900;
+}
+
+.pred-heading-desc {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.pred-icon-trophy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============ Stats Badges ============ */
+.pred-stats-badges {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pred-badge-total,
+.pred-badge-won,
+.pred-badge-bet,
+.pred-badge-payout {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+/* ============ Action Buttons ============ */
+.pred-action-buttons {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.pred-btn-history,
+.pred-btn-refresh {
+  background-color: var(--surface-2);
+  border-color: var(--border);
+  color: var(--text);
+  transition: all 0.2s ease;
+}
+
+.pred-btn-history:hover,
+.pred-btn-refresh:hover {
+  background-color: var(--surface-3);
+  border-color: var(--border-2);
+}
+
+/* ============ Form Styling ============ */
+.pred-form-title {
+  color: var(--text);
+  font-weight: 900;
+}
+
+.pred-form-desc {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.pred-form-content {
+  background-color: var(--surface);
+  color: var(--text);
+}
+
+.pred-form-inputs {
+  gap: 1.25rem;
+}
+
+.pred-form-group {
+  gap: 0.625rem;
+}
+
+.pred-label {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text);
+  display: block;
+}
+
+.pred-text-muted {
+  color: var(--muted);
+}
+
+/* ============ Form Controls ============ */
+.pred-select-trigger {
+  height: 2.75rem;
+  width: 100%;
+  border: 1px solid var(--border);
+  background-color: rgba(13, 22, 38, 0.4);
+  color: var(--text);
+  font-weight: 700;
+  border-radius: 0.375rem;
+  transition: all 0.2s ease;
+}
+
+.pred-select-trigger:hover {
+  background-color: rgba(13, 22, 38, 0.6);
+  border-color: var(--border-2);
+}
+
+.pred-select-content {
+  background-color: var(--popover);
+  color: var(--text);
+}
+
+.pred-select-item {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.pred-input-field {
+  border-radius: 0.375rem;
+  font-weight: 700;
+  background-color: rgba(13, 22, 38, 0.4);
+  border-color: var(--border);
+  color: var(--text);
+  transition: all 0.2s ease;
+}
+
+.pred-input-field:focus {
+  border-color: var(--primary);
+  outline: none;
+  background-color: rgba(13, 22, 38, 0.6);
+}
+
+.pred-input-field::placeholder {
+  color: var(--muted);
+}
+
+.pred-input-hint {
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+/* ============ Quick Amount Buttons ============ */
+.pred-quick-amounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.pred-quick-btn {
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+  background-color: rgba(245, 158, 11, 0.08);
+  font-weight: 700;
+  font-size: 0.75rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.pred-quick-btn:hover {
+  background-color: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.5);
+  transform: scale(1.05);
+}
+
+.pred-quick-btn:active {
+  transform: scale(0.95);
+}
+
+/* ============ Message Alerts ============ */
+.pred-message {
+  transition: all 0.3s ease;
+}
+
+.pred-message-success {
+  border-color: rgba(16, 185, 129, 0.3);
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #a7f3d0;
+}
+
+.pred-message-error {
+  border-color: rgba(239, 68, 68, 0.3);
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #fca5a5;
+}
+
+/* ============ Warning Box ============ */
+.pred-warning {
+  border-color: rgba(245, 158, 11, 0.3);
+  background-color: rgba(245, 158, 11, 0.08);
+  color: #fbbf24;
+  transition: color 0.2s ease;
+}
+
+/* ============ Status Panel ============ */
+.pred-panel-status {
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background-color: var(--surface-2);
+  padding: 1.5rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.pred-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 900;
+  color: var(--text);
+  margin-bottom: 1.25rem;
+}
+
+.pred-panel-items {
+  gap: 0.75rem;
+}
+
+.pred-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 0.75rem;
+  background-color: rgba(13, 22, 38, 0.4);
+  padding: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  border: 1px solid var(--border);
+  transition: all 0.2s ease;
+}
+
+.pred-status-row:hover {
+  background-color: rgba(13, 22, 38, 0.6);
+  border-color: var(--border-2);
+}
+
+.pred-tip-box {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  background-color: rgba(245, 158, 11, 0.08);
+  padding: 1rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+/* ============ Submit Button ============ */
+.pred-submit-btn {
+  transition: all 0.3s ease;
+  background-color: var(--primary);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.pred-submit-btn:hover {
+  background-color: var(--primary-dark);
+}
+
+.pred-submit-btn:active {
+  transform: scale(0.95);
+}
+
+.pred-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============ History Section ============ */
+.pred-history-section {
+  padding-top: 2rem;
+}
+
+.pred-history-header {
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.pred-history-title {
+  color: var(--text);
+  font-weight: 900;
+}
+
+.pred-history-desc {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.pred-history-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pred-search-input {
+  border-radius: 0.375rem;
+  border: 1px solid var(--border);
+  background-color: rgba(13, 22, 38, 0.4);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.pred-search-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background-color: rgba(13, 22, 38, 0.6);
+}
+
+.pred-search-input::placeholder {
+  color: var(--muted);
+}
+
+.pred-filter-trigger {
+  border-radius: 0.375rem;
+  border: 1px solid var(--border);
+  background-color: rgba(13, 22, 38, 0.4);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.pred-filter-trigger:hover {
+  background-color: rgba(13, 22, 38, 0.6);
+  border-color: var(--border-2);
+}
+
+.pred-filter-content {
+  background-color: var(--popover);
+  color: var(--text);
+}
+
+.pred-filter-item {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.pred-history-content {
+  padding-top: 1.5rem;
+}
+
+/* ============ Table Styling ============ */
+.pred-table-cell {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.pred-table-cell-payout {
+  font-weight: 900;
+  color: #a7f3d0;
+}
+
+.pred-table-cell-muted {
+  color: var(--muted);
+}
+
+.pred-table-cell-date {
+  color: var(--muted);
+}
+
+/* ============ Empty State ============ */
+.pred-empty-state {
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background-color: var(--surface-2);
+  padding: 2rem 1.5rem;
+  text-align: center;
+}
+
+.pred-empty-icon {
+  display: flex;
+  height: 3.5rem;
+  width: 3.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  background-color: var(--primary-light);
+  font-size: 1.875rem;
+  margin: 0 auto 1rem;
+}
+
+.pred-empty-title {
+  font-size: 1.125rem;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.pred-empty-desc {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* ============ Responsive Design ============ */
+@media (max-width: 768px) {
+  .pred-history-controls {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .pred-search-input,
+  .pred-filter-trigger {
+    width: 100%;
+  }
+
+  .pred-stats-badges {
+    flex-wrap: wrap;
+  }
+
+  .pred-action-buttons {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}
+
+.pred-icon-trophy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============ Stats Badges ============ */
+.pred-stats-badges {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

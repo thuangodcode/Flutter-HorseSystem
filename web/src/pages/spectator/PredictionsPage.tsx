@@ -14,6 +14,7 @@ import { NumberCounter } from '@/components/ui/number-counter'
 import { ScrollReveal } from '@/components/ui/scroll-text'
 import { Magnetic } from '@/components/ui/magnetic'
 import { BadgeDollarSign, RefreshCw, Sparkles, Trophy } from 'lucide-react'
+import '@/styles/predictions-new.css'
 
 function statusBadge(s: string) {
   return (
@@ -70,6 +71,21 @@ function isWithinWindow(dateValue: string, window: string) {
     '90d': 90 * 24 * 60 * 60 * 1000,
   }
   return now - createdAt <= windows[window]
+}
+
+function normalizeHorse(horse: any) {
+  if (!horse) return null
+  if (horse.horse) return horse.horse
+  if (horse.horseId) return horse.horseId
+  return horse
+}
+
+function findHorseById(horses: any[], horseId: string) {
+  for (const horse of horses) {
+    const item = normalizeHorse(horse)
+    if (item?._id === horseId) return item
+  }
+  return null
 }
 
 export function PredictionsPage() {
@@ -211,7 +227,7 @@ export function PredictionsPage() {
         return (
           <span className="font-bold text-(--text)">
             {prediction.raceId?.name || (typeof prediction.raceId === 'string' ? (
-              <Link to={`/races/${prediction.raceId}`} className="text-amber-600 dark:text-amber-300 hover:underline">Xem cuộc đua</Link>
+              <Link to={`/races/${prediction.raceId}`} className="text-amber-600 dark:text-amber-300 hover:underline font-bold">Xem cuộc đua</Link>
             ) : '—')}
           </span>
         )
@@ -268,7 +284,7 @@ export function PredictionsPage() {
   return (
     <div className="space-y-6">
       <ScrollReveal direction="up" distance={60} duration={0.8} delay={0.1}>
-        <Card className="border-border bg-(--surface) shadow-2xl card-hover">
+        <Card className="border-border bg-(--surface) shadow-2xl">
           <CardHeader className="gap-4 md:flex-row md:items-end md:justify-between">
             <div className="space-y-3">
               <div className="flex items-start gap-4">
@@ -312,13 +328,13 @@ export function PredictionsPage() {
       </ScrollReveal>
 
       <Magnetic intensity={0.3} range={150}>
-        <Card className="border-border bg-(--surface) shadow-lg card-hover">
+        <Card className="border-border bg-(--surface) shadow-lg">
           <CardHeader className="border-b border-border">
             <CardTitle className="flex items-center gap-2 text-xl text-(--text) font-black">
               <Sparkles className="h-5 w-5 text-amber-300" />
               Tạo dự đoán mới
             </CardTitle>
-            <CardDescription className="text-muted font-bold">Chỉ các cuộc đua sắp diễn ra có thể đặt dự đoán.</CardDescription>
+            <CardDescription className="txt-desc-light">Chỉ các cuộc đua sắp diễn ra có thể đặt dự đoán.</CardDescription>
           </CardHeader>
         <CardContent className="grid gap-6 pt-6 lg:grid-cols-[1.15fr_0.85fr]">
           <div className="space-y-4">
@@ -329,9 +345,9 @@ export function PredictionsPage() {
             )}
 
             <div className="space-y-2">
-              <label className="text-sm font-bold text-(--text)">Chọn cuộc đua</label>
+              <label className="txt-form-label">Chọn cuộc đua</label>
               {racesLoading ? (
-                <p className="text-sm text-muted font-bold">Đang tải...</p>
+                <p className="txt-form-helper text-sm">Đang tải...</p>
               ) : (
                 <Select value={selectedRace} onValueChange={(value) => { setSelectedRace(value ?? ''); setSelectedHorse('') }}>
                   <SelectTrigger className="h-11 w-full border-border bg-(--bg2) text-(--text) font-bold">
@@ -352,18 +368,28 @@ export function PredictionsPage() {
 
             {selectedRace && (
               <div className="space-y-2">
-                <label className="text-sm font-bold text-(--text)">Chọn ngựa dự đoán thắng</label>
+                <label className="txt-form-label">Chọn ngựa dự đoán thắng</label>
                 {horsesLoading ? (
-                  <p className="text-sm text-muted font-bold">Đang tải danh sách ngựa...</p>
+                  <p className="txt-form-helper text-sm">Đang tải danh sách ngựa...</p>
+                ) : horses.length === 0 ? (
+                  <p className="txt-form-helper text-sm">Không có ngựa nào cho cuộc đua này</p>
                 ) : (
                   <Select value={selectedHorse} onValueChange={(value) => setSelectedHorse(value ?? '')}>
                     <SelectTrigger className="h-11 w-full border-border bg-(--bg2) text-(--text) font-bold">
-                      {selectedHorse ? (horses.find((horse: any) => (horse.horse || horse.horseId || horse)._id === selectedHorse)?.name || '— Chọn ngựa —') : '— Chọn ngựa —'}
+                      {selectedHorse ? (
+                        findHorseById(horses, selectedHorse)?.name || '— Chọn ngựa —'
+                      ) : (
+                        '— Chọn ngựa —'
+                      )}
                     </SelectTrigger>
                     <SelectContent>
                       {horses.map((horse: any) => {
-                        const item = horse.horse || horse.horseId || horse
-                        return <SelectItem key={item._id} value={item._id} className="font-bold">{item.name}</SelectItem>
+                        const item = normalizeHorse(horse)
+                        return (
+                          <SelectItem key={item._id} value={item._id} className="font-bold">
+                            {item.name}
+                          </SelectItem>
+                        )
                       })}
                     </SelectContent>
                   </Select>
@@ -373,7 +399,7 @@ export function PredictionsPage() {
 
             {selectedRace && (
               <div className="space-y-2">
-                <label className="text-sm font-bold text-(--text)">Số tiền đặt cược</label>
+                <label className="txt-form-label">Số tiền đặt cược</label>
                 <Input
                   type="text"
                   inputMode="numeric"
@@ -397,7 +423,7 @@ export function PredictionsPage() {
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-muted font-bold">Giới hạn từ 100,000 đến 10,000,000 VND.</p>
+                <p className="txt-form-helper">Giới hạn từ 100,000 đến 10,000,000 VND.</p>
               </div>
             )}
 
@@ -413,22 +439,22 @@ export function PredictionsPage() {
               <BadgeDollarSign className="h-4 w-4 text-emerald-300" />
               Trạng thái phiên đặt cược
             </div>
-            <div className="space-y-3 text-sm text-muted">
-              <div className="flex items-center justify-between rounded-xl bg-(--surface-strong)/30 px-3 py-2 font-bold">
-                <span className="font-bold">Cuộc đua mở dự đoán</span>
-                <span className={isPredOpen ? 'text-emerald-600 dark:text-emerald-500 font-black' : 'text-amber-600 dark:text-amber-300 font-black'}>{isPredOpen ? 'Đang mở' : 'Chưa mở'}</span>
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between rounded-xl bg-(--surface-strong)/30 px-3 py-2">
+                <span className="txt-status-label">Cuộc đua mở dự đoán</span>
+                <span className={isPredOpen ? 'text-emerald-400 font-black' : 'text-amber-400 font-black'}>{isPredOpen ? 'Đang mở' : 'Chưa mở'}</span>
               </div>
-              <div className="flex items-center justify-between rounded-xl bg-(--surface-strong)/30 px-3 py-2 font-bold">
-                <span className="font-bold">Số ngựa khả dụng</span>
-                <span className="text-(--text) font-black">{horses.length}</span>
+              <div className="flex items-center justify-between rounded-xl bg-(--surface-strong)/30 px-3 py-2">
+                <span className="txt-status-label">Số ngựa khả dụng</span>
+                <span className="txt-status-value">{horses.length}</span>
               </div>
-              <div className="flex items-center justify-between rounded-xl bg-(--surface-strong)/30 px-3 py-2 font-bold">
-                <span className="font-bold">Tiền thưởng hiện tại</span>
-                <span className="text-(--text) font-black">{formatMoney(totalPayout)}</span>
+              <div className="flex items-center justify-between rounded-xl bg-(--surface-strong)/30 px-3 py-2">
+                <span className="txt-status-label">Tiền thưởng hiện tại</span>
+                <span className="txt-status-value">{formatMoney(totalPayout)}</span>
               </div>
-              <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs leading-6 text-amber-800 dark:text-amber-100 font-bold">
-                <div className="mb-1 font-black">Gợi ý</div>
-                Hãy chọn một cuộc đua có trạng thái <span className="font-black underline">Đã lên lịch</span>, sau đó chọn ngựa và nhập số tiền trước khi xác nhận.
+              <div className="txt-hint-box">
+                <div className="txt-hint-title">💡 Gợi ý</div>
+                <div className="txt-hint-body">Hãy chọn một cuộc đua có trạng thái <span className="font-black underline">Đã lên lịch</span>, sau đó chọn ngựa và nhập số tiền trước khi xác nhận.</div>
               </div>
             </div>
           </div>
@@ -438,11 +464,11 @@ export function PredictionsPage() {
 
       <div id="history-section" className="pt-6">
         <ScrollReveal direction="up" distance={60} duration={0.8} delay={0.1}>
-          <Card className="border-border bg-(--surface) shadow-2xl card-hover">
+          <Card className="border-border bg-(--surface) shadow-2xl">
             <CardHeader className="border-b border-border gap-4 md:flex-row md:items-center md:justify-between pb-4">
               <div className="space-y-1">
                 <CardTitle className="text-2xl text-(--text) font-black">📋 Lịch sử dự đoán</CardTitle>
-                <CardDescription className="text-muted font-bold">Xem và lọc lịch sử dự đoán đặt cược của bạn.</CardDescription>
+                <CardDescription className="txt-desc-light">Xem và lọc lịch sử dự đoán đặt cược của bạn.</CardDescription>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
