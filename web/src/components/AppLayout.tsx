@@ -13,6 +13,10 @@ const roleNavItems: Record<string, { to: string; label: string }[]> = {
     { to: '/app/tournaments', label: 'Giải đấu' },
     { to: '/app/races', label: 'Cuộc đua' },
     { to: '/app/invites', label: 'Lời mời' },
+    { to: '/app/jockey/races', label: 'Cuộc đua của tôi' },
+    { to: '/app/jockey/schedule', label: 'Lịch thi đấu' },
+    { to: '/app/jockey/results', label: 'Kết quả' },
+    { to: '/app/jockey/profile', label: 'Profile' },
   ],
   SPECTATOR: [
     { to: '/app/dashboard', label: 'Dashboard' },

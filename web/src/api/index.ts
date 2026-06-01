@@ -597,3 +597,51 @@ export async function getRaceReport(raceId: string): Promise<RaceReport> {
     createdAt: rep.createdAt,
   }
 }
+
+// ============================================================================
+// 5. JOCKEY-SPECIFIC APIs
+// ============================================================================
+
+export async function acceptInvite(invId: string): Promise<void> {
+  await http.patch(`${BE_BASE_URL}/jockeys/me/invitations/${invId}/accept`)
+}
+
+export async function rejectInvite(invId: string): Promise<void> {
+  await http.patch(`${BE_BASE_URL}/jockeys/me/invitations/${invId}/reject`)
+}
+
+export async function getJockeyProfile(): Promise<any> {
+  const res = await http.get(`${BE_BASE_URL}/jockeys/me`)
+  return res.data
+}
+
+export async function updateJockeyProfile(data: {
+  age?: number
+  experience?: number
+  bio?: string
+  image?: string
+  specialties?: string[]
+}): Promise<any> {
+  const res = await http.put(`${BE_BASE_URL}/jockeys/me`, data)
+  return res.data
+}
+
+export async function getJockeyRaces(): Promise<any> {
+  const res = await http.get(`${BE_BASE_URL}/jockeys/me/races`)
+  return res.data
+}
+
+export async function getJockeyRaceDetail(raceId: string): Promise<any> {
+  const res = await http.get(`${BE_BASE_URL}/jockeys/me/races/${raceId}`)
+  return res.data
+}
+
+export async function getJockeySchedule(): Promise<any> {
+  const res = await http.get(`${BE_BASE_URL}/me/schedule`)
+  return res.data
+}
+
+export async function getJockeyResults(): Promise<any> {
+  const res = await http.get(`${BE_BASE_URL}/jockeys/me/results`)
+  return res.data
+}

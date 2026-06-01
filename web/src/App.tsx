@@ -19,6 +19,11 @@ import { RefereeRacesPage } from './pages/race_referee/RefereeRacesPage.tsx'
 import { RefereeRaceDetailPage } from './pages/race_referee/RefereeRaceDetailPage.tsx'
 import { RefereeReportPage } from './pages/race_referee/RefereeReportPage.tsx'
 import { NotFoundPage } from './pages/NotFoundPage.tsx'
+import { JockeyRacesPage } from './pages/jockey/JockeyRacesPage'
+import { JockeyRaceDetailPage } from './pages/jockey/JockeyRaceDetailPage'
+import { JockeySchedulePage } from './pages/jockey/JockeySchedulePage'
+import { JockeyResultsPage } from './pages/jockey/JockeyResultsPage'
+import { JockeyProfilePage } from './pages/jockey/JockeyProfilePage'
 
 function RequireAuth(props: { children: ReactNode }) {
   const { session } = useSession()
@@ -74,6 +79,11 @@ const router = createBrowserRouter([
       { path: 'races/:id', element: <RaceDetailPage /> },
       { path: 'horses', element: <HorsesPage /> },
       { path: 'invites', element: <InvitesPage /> },
+      { path: 'jockey/races', element: <JockeyRacesPage /> },
+      { path: 'jockey/races/:raceId', element: <JockeyRaceDetailPage /> },
+      { path: 'jockey/schedule', element: <JockeySchedulePage /> },
+      { path: 'jockey/results', element: <JockeyResultsPage /> },
+      { path: 'jockey/profile', element: <JockeyProfilePage /> },
       { path: 'predictions', element: <PredictionsPage /> },
       { path: 'admin/users', element: <AdminUsersPage /> },
       { path: 'admin/scheduling', element: <AdminSchedulingPage /> },
