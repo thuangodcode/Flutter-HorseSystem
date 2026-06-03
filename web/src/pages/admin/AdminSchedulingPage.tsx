@@ -22,7 +22,6 @@ import {
   getAdminPredictions,
   closePredictions,
   settlePredictions,
-  getPredictionStats,
 } from '@/api'
 import { http } from '../../api/http'
 
@@ -43,8 +42,14 @@ function useToast() {
 }
 const toastIcon: Record<ToastType, string> = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' }
 
-export function AdminSchedulingPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('tournaments')
+export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
+  const [activeTab, setActiveTab] = useState<Tab>(tab || 'tournaments')
+
+  useEffect(() => {
+    if (tab) {
+      setActiveTab(tab)
+    }
+  }, [tab])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -58,6 +63,11 @@ export function AdminSchedulingPage() {
   const [jockeys, setJockeys] = useState<Jockey[]>([])
   const [referees, setReferees] = useState<User[]>([])
   const [predictions, setPredictions] = useState<Prediction[]>([])
+  
+  // Filters for Predictions Tab
+  const [filterPredStatus, setFilterPredStatus] = useState<string>('ALL')
+  const [filterPredRace, setFilterPredRace] = useState<string>('ALL')
+  const [filterPredSearch, setFilterPredSearch] = useState<string>('')
   
   // Dashboard Stats
   const [adminStats, setAdminStats] = useState({
@@ -138,8 +148,10 @@ export function AdminSchedulingPage() {
   }, [activeTab])
 
   useEffect(() => {
-    loadDashboardStats()
-  }, [])
+    if (!tab) {
+      loadDashboardStats()
+    }
+  }, [tab])
 
   const loadDashboardStats = async () => {
     try {
@@ -165,26 +177,38 @@ export function AdminSchedulingPage() {
     setError(null)
     try {
       if (activeTab === 'tournaments') {
-        const list = await getTournaments()
-        const refList = await getAdminUsers({ role: 'REFEREE' })
+        const [list, refList, allRaces] = await Promise.all([
+          getTournaments(),
+          getAdminUsers({ role: 'REFEREE' }),
+          getRaces()
+        ])
         setTournaments(list)
         setReferees(refList)
+        setRaces(allRaces)
       } else if (activeTab === 'registrations') {
         const list = await getRaceRegistrations()
         setRegistrations(list)
       } else if (activeTab === 'horses-jockeys') {
-        const hList = await getAdminHorses()
-        const jList = await getAdminJockeys()
+        const [hList, jList] = await Promise.all([
+          getAdminHorses(),
+          getAdminJockeys()
+        ])
         setHorses(hList)
         setJockeys(jList)
       } else if (activeTab === 'referee-results') {
-        const rList = await getRaces()
-        const refList = await getAdminUsers({ role: 'REFEREE' })
+        const [rList, refList] = await Promise.all([
+          getRaces(),
+          getAdminUsers({ role: 'REFEREE' })
+        ])
         setRaces(rList)
         setReferees(refList)
       } else if (activeTab === 'predictions') {
-        const pList = await getAdminPredictions()
+        const [pList, rList] = await Promise.all([
+          getAdminPredictions(),
+          getRaces()
+        ])
         setPredictions(pList)
+        setRaces(rList)
       }
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Lỗi khi tải dữ liệu từ máy chủ')
@@ -430,7 +454,7 @@ export function AdminSchedulingPage() {
     setResultNotes('')
     try {
       // Get horses registered for this race
-      const res = await http.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/races/${race.id}/horses`)
+      const res = await http.get(`${import.meta.env.VITE_API_BASE_URL || 'https://managerhourse-be.onrender.com/api-docs'}/races/${race.id}/horses`)
       const horsesList = res.data.horses || []
       setRaceHorses(horsesList)
 
@@ -499,15 +523,71 @@ export function AdminSchedulingPage() {
   const handleViewPredictionStats = async (raceId: string) => {
     setPredStats(null)
     try {
-      const stats = await getPredictionStats(raceId)
-      setPredStats(stats)
+      const list = await getAdminPredictions({ raceId })
+      const totalPredictions = list.length
+      const totalPool = list.reduce((sum, p) => sum + (p.betAmount || 0), 0)
+      
+      const groups: Record<string, { horseName: string; count: number; amount: number }> = {}
+      list.forEach((p) => {
+        const hId = typeof p.horseId === 'object' ? p.horseId?._id || p.horseId?.id || '' : p.horseId || ''
+        const hName = typeof p.horseId === 'object' ? p.horseId?.name || 'Chưa rõ' : 'Chưa rõ'
+        
+        if (!groups[hId]) {
+          groups[hId] = { horseName: hName, count: 0, amount: 0 }
+        }
+        groups[hId].count += 1
+        groups[hId].amount += p.betAmount || 0
+      })
+      
+      const breakdown = Object.entries(groups).map(([horseId, data]) => ({
+        horseId,
+        horseName: data.horseName,
+        count: data.count,
+        amount: data.amount,
+        percentage: totalPool > 0 ? Math.round((data.amount / totalPool) * 100) : 0
+      }))
+      
+      setPredStats({
+        totalPredictions,
+        totalPool,
+        breakdown
+      })
       setShowPredStatsModal(true)
     } catch (err: any) {
       showToast('Không thể lấy thống kê dự đoán: ' + (err.response?.data?.message || err.message), 'error')
     }
   }
 
+  // Filter predictions list
+  const filteredPredictions = predictions.filter((p) => {
+    if (filterPredStatus !== 'ALL' && p.status !== filterPredStatus) return false
+    
+    if (filterPredRace !== 'ALL') {
+      const rId = typeof p.raceId === 'object' ? p.raceId?._id || p.raceId?.id : p.raceId
+      if (rId !== filterPredRace) return false
+    }
+    
+    if (filterPredSearch.trim() !== '') {
+      const specName = p.spectatorId?.fullName || p.spectatorId?.name || ''
+      const specEmail = p.spectatorId?.email || ''
+      const query = filterPredSearch.toLowerCase()
+      if (!specName.toLowerCase().includes(query) && !specEmail.toLowerCase().includes(query)) return false
+    }
+    
+    return true
+  })
+
   const { toasts, show: showToast } = useToast()
+
+  const tabHeaders = {
+    tournaments: { title: '🏆 Giải Đấu & Lịch Trình', desc: 'Quản lý thông tin giải đấu và xếp lịch các chặng đua.' },
+    registrations: { title: '📋 Duyệt Đăng Ký Đua', desc: 'Duyệt hoặc từ chối đơn đăng ký tham gia thi đấu của ngựa.' },
+    'horses-jockeys': { title: '🐎 Ngựa & Jockeys', desc: 'Xét duyệt hồ sơ ngựa chiến mới và danh sách nài ngựa.' },
+    'referee-results': { title: '⚖️ Trọng Tài & Kết Quả', desc: 'Chỉ định trọng tài điều khiển và công bố kết quả cuộc đua.' },
+    predictions: { title: '🔮 Dự Đoán (Bets)', desc: 'Theo dõi các hoạt động đặt cược và thanh quyết toán kết quả.' }
+  }
+
+  const currentHeader = tabHeaders[activeTab] || { title: '⚙️ Quản lý Hệ thống', desc: 'Giải đấu, lịch trình, duyệt đăng ký và công bố kết quả' }
 
   return (
     <>
@@ -525,75 +605,88 @@ export function AdminSchedulingPage() {
       {/* Page header */}
       <div className="flex-between">
         <div>
-          <h1>⚙️ Quản lý Hệ thống</h1>
-          <p className="muted text-sm">Giải đấu, lịch trình, duyệt đăng ký và công bố kết quả</p>
+          <h1>{tab ? currentHeader.title : '⚙️ Quản lý Hệ thống'}</h1>
+          <p className="muted text-sm">{tab ? currentHeader.desc : 'Giải đấu, lịch trình, duyệt đăng ký và công bố kết quả'}</p>
         </div>
       </div>
       
-      {/* Real Stats Panel */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
-        <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16, background: 'linear-gradient(135deg, rgba(59,130,246,0.1), rgba(37,99,235,0.05))', border: '1px solid rgba(59,130,246,0.2)' }}>
-          <div style={{ fontSize: 32 }}>🏆</div>
-          <div>
-            <div style={{ fontSize: 13, color: '#3b82f6', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng giải đấu</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>{adminStats.tournaments}</div>
+      {/* Real Stats Panel (Only show if not accessed via dropdown sub-route) */}
+      {!tab && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+          <div className="spotlight-card-outer animate-border-custom">
+            <div className="card bg-transparent border-transparent" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ fontSize: 32 }}>🏆</div>
+              <div>
+                <div style={{ fontSize: 13, color: '#3b82f6', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng giải đấu</div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>{adminStats.tournaments}</div>
+              </div>
+            </div>
+          </div>
+          <div className="spotlight-card-outer animate-border-custom">
+            <div className="card bg-transparent border-transparent" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ fontSize: 32 }}>🏁</div>
+              <div>
+                <div style={{ fontSize: 13, color: '#10b981', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cuộc đua đang mở</div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>{adminStats.activeRaces}</div>
+              </div>
+            </div>
+          </div>
+          <div className="spotlight-card-outer animate-border-custom">
+            <div className="card bg-transparent border-transparent" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ fontSize: 32 }}>📋</div>
+              <div>
+                <div style={{ fontSize: 13, color: '#d97706', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đăng ký đua chờ duyệt</div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>{adminStats.pendingRegs}</div>
+              </div>
+            </div>
+          </div>
+          <div className="spotlight-card-outer animate-border-custom">
+            <div className="card bg-transparent border-transparent" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ fontSize: 32 }}>🐎</div>
+              <div>
+                <div style={{ fontSize: 13, color: '#8b5cf6', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Ngựa chờ duyệt</div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>{adminStats.pendingHorses}</div>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16, background: 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(5,150,105,0.05))', border: '1px solid rgba(16,185,129,0.2)' }}>
-          <div style={{ fontSize: 32 }}>🏁</div>
-          <div>
-            <div style={{ fontSize: 13, color: '#10b981', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cuộc đua đang mở</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>{adminStats.activeRaces}</div>
-          </div>
+      )}
+
+      {/* Tab Navigation (Only show if not accessed via dropdown sub-route) */}
+      {!tab && (
+        <div className="tabs">
+          <button
+            className={`tab-link ${activeTab === 'tournaments' ? 'active' : ''}`}
+            onClick={() => startTransition(() => setActiveTab('tournaments'))}
+          >
+            🏆 Giải Đấu & Lịch Trình
+          </button>
+          <button
+            className={`tab-link ${activeTab === 'registrations' ? 'active' : ''}`}
+            onClick={() => startTransition(() => setActiveTab('registrations'))}
+          >
+            📋 Duyệt Đăng Ký Đua
+          </button>
+          <button
+            className={`tab-link ${activeTab === 'horses-jockeys' ? 'active' : ''}`}
+            onClick={() => startTransition(() => setActiveTab('horses-jockeys'))}
+          >
+            🐎 Ngựa & Jockeys
+          </button>
+          <button
+            className={`tab-link ${activeTab === 'referee-results' ? 'active' : ''}`}
+            onClick={() => startTransition(() => setActiveTab('referee-results'))}
+          >
+            ⚖️ Trọng Tài & Kết Quả
+          </button>
+          <button
+            className={`tab-link ${activeTab === 'predictions' ? 'active' : ''}`}
+            onClick={() => startTransition(() => setActiveTab('predictions'))}
+          >
+            🔮 Dự Đoán (Bets)
+          </button>
         </div>
-        <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16, background: 'linear-gradient(135deg, rgba(245,158,11,0.1), rgba(217,119,6,0.05))', border: '1px solid rgba(245,158,11,0.2)' }}>
-          <div style={{ fontSize: 32 }}>📋</div>
-          <div>
-            <div style={{ fontSize: 13, color: '#d97706', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đăng ký đua chờ duyệt</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>{adminStats.pendingRegs}</div>
-          </div>
-        </div>
-        <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16, background: 'linear-gradient(135deg, rgba(139,92,246,0.1), rgba(109,40,217,0.05))', border: '1px solid rgba(139,92,246,0.2)' }}>
-          <div style={{ fontSize: 32 }}>🐎</div>
-          <div>
-            <div style={{ fontSize: 13, color: '#8b5cf6', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Ngựa chờ duyệt</div>
-            <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>{adminStats.pendingHorses}</div>
-          </div>
-        </div>
-      </div>
-      {/* Tab Navigation */}
-      <div className="tabs">
-        <button
-          className={`tab-link ${activeTab === 'tournaments' ? 'active' : ''}`}
-          onClick={() => startTransition(() => setActiveTab('tournaments'))}
-        >
-          🏆 Giải Đấu & Lịch Trình
-        </button>
-        <button
-          className={`tab-link ${activeTab === 'registrations' ? 'active' : ''}`}
-          onClick={() => startTransition(() => setActiveTab('registrations'))}
-        >
-          📋 Duyệt Đăng Ký Đua
-        </button>
-        <button
-          className={`tab-link ${activeTab === 'horses-jockeys' ? 'active' : ''}`}
-          onClick={() => startTransition(() => setActiveTab('horses-jockeys'))}
-        >
-          🐎 Ngựa & Jockeys
-        </button>
-        <button
-          className={`tab-link ${activeTab === 'referee-results' ? 'active' : ''}`}
-          onClick={() => startTransition(() => setActiveTab('referee-results'))}
-        >
-          ⚖️ Trọng Tài & Kết Quả
-        </button>
-        <button
-          className={`tab-link ${activeTab === 'predictions' ? 'active' : ''}`}
-          onClick={() => startTransition(() => setActiveTab('predictions'))}
-        >
-          🔮 Dự Đoán (Bets)
-        </button>
-      </div>
+      )}
 
       {error && (
         <div className="card" style={{ background: 'var(--danger-light)', border: '1px solid #fca5a5', color: '#991b1b', padding: '12px 16px' }}>
@@ -623,7 +716,7 @@ export function AdminSchedulingPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {tournaments.map((t) => (
-                <div key={t.id} className="card card-light" style={{ background: '#fff', border: '1px solid var(--border)' }}>
+                <div key={t.id} className="card" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
                   <div className="flex-between">
                     <div style={{ flex: 1 }}>
                       {/* Quick Status Changer */}
@@ -678,9 +771,14 @@ export function AdminSchedulingPage() {
                   </div>
 
                   {/* Nested Races Section */}
-                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #f1f5f9' }}>
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
                     <h4 style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: 700 }}>Các cuộc đua / vòng đấu thuộc giải:</h4>
-                    <RaceList tournamentId={t.id} onEditRace={(race) => openRaceModal(race)} onSchedule={openSchedModal} />
+                    <RaceList
+                      races={races.filter(r => (typeof r.tournamentId === 'object' ? r.tournamentId?._id || r.tournamentId?.id : r.tournamentId) === t.id)}
+                      onEditRace={(race) => openRaceModal(race)}
+                      onSchedule={openSchedModal}
+                      onRefresh={loadTabData}
+                    />
                   </div>
                 </div>
               ))}
@@ -987,10 +1085,51 @@ export function AdminSchedulingPage() {
 
           <div style={{ marginTop: 24 }}>
             <h3 style={{ fontSize: '16px', marginBottom: 12 }}>Các giao dịch dự đoán gần đây:</h3>
+            
+            {/* Filter Bar */}
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+              <div className="form-group" style={{ margin: 0, minWidth: '220px', flex: 1.5 }}>
+                <input
+                  type="text"
+                  placeholder="🔍 Tìm khán giả (tên hoặc email)..."
+                  value={filterPredSearch}
+                  onChange={(e) => setFilterPredSearch(e.target.value)}
+                  style={{ padding: '8px 12px', fontSize: '13px' }}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0, minWidth: '160px' }}>
+                <select
+                  value={filterPredStatus}
+                  onChange={(e) => setFilterPredStatus(e.target.value)}
+                  style={{ padding: '8px 12px', fontSize: '13px' }}
+                >
+                  <option value="ALL">Tất cả trạng thái</option>
+                  <option value="PENDING">⏳ Chờ xử lý</option>
+                  <option value="CLOSED">🔒 Đã đóng cổng</option>
+                  <option value="WON">🏆 Thắng cược</option>
+                  <option value="LOST">❌ Thua cược</option>
+                </select>
+              </div>
+              <div className="form-group" style={{ margin: 0, minWidth: '220px', flex: 1.5 }}>
+                <select
+                  value={filterPredRace}
+                  onChange={(e) => setFilterPredRace(e.target.value)}
+                  style={{ padding: '8px 12px', fontSize: '13px' }}
+                >
+                  <option value="ALL">Tất cả cuộc đua</option>
+                  {races.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      🏁 {r.name} ({typeof r.tournamentId === 'object' ? r.tournamentId?.name : 'Giải đấu'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             {loading ? (
               <p className="muted">Đang tải...</p>
-            ) : predictions.length === 0 ? (
-              <p className="muted">Chưa có lượt dự đoán nào.</p>
+            ) : filteredPredictions.length === 0 ? (
+              <p className="muted">Không tìm thấy lượt dự đoán nào phù hợp.</p>
             ) : (
               <div className="admin-table-wrapper">
                 <table className="admin-table">
@@ -998,15 +1137,15 @@ export function AdminSchedulingPage() {
                     <tr>
                       <th>Khán giả</th>
                       <th>Cuộc đua</th>
-                      <th>Ngựa chọn</th>
-                      <th>Số tiền cược (VND)</th>
+                      <th>Ngựa lựa chọn</th>
+                      <th>Số tiền đặt cược (VND)</th>
                       <th>Tiền thưởng có thể nhận</th>
                       <th>Trạng thái</th>
                       <th>Ngày đặt</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {predictions.map((p) => (
+                    {filteredPredictions.map((p) => (
                       <tr key={p.id}>
                         <td>
                           <div style={{ fontWeight: 600 }}>{p.spectatorId?.fullName || p.spectatorId?.name || 'Khán giả'}</div>
@@ -1435,39 +1574,25 @@ export function AdminSchedulingPage() {
 // INNER COMPONENT: RACELIST FOR TOURNAMENT
 // ---------------------------------------------------------
 function RaceList({
-  tournamentId,
+  races,
   onEditRace,
   onSchedule,
+  onRefresh,
 }: {
-  tournamentId: string
+  races: Race[]
   onEditRace: (race: Race) => void
   onSchedule: (race: Race) => void
+  onRefresh: () => void
 }) {
-  const [races, setRaces] = useState<Race[]>([])
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    loadRaces()
-  }, [tournamentId])
-
-  const loadRaces = () => {
-    setLoading(true)
-    getRaces(tournamentId)
-      .then(setRaces)
-      .catch(() => setRaces([]))
-      .finally(() => setLoading(false))
-  }
-
   const handleQuickStatusChange = async (id: string, newStatus: string) => {
     try {
       await updateRace(id, { status: newStatus } as any)
-      loadRaces()
+      onRefresh()
     } catch (err: any) {
       alert(err.response?.data?.message || 'Không thể đổi trạng thái cuộc đua')
     }
   }
 
-  if (loading) return <p className="muted" style={{ fontSize: '13px' }}>Đang tải danh sách cuộc đua...</p>
   if (races.length === 0) return <p className="muted" style={{ fontSize: '13px', fontStyle: 'italic' }}>Chưa có cuộc đua nào được thiết lập cho giải đấu này.</p>
 
   return (

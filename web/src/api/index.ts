@@ -2,7 +2,7 @@ import { http } from './http'
 import type { Invite, Prediction, Race, Role, Session, Tournament, Horse, User, RaceRegistration, Jockey, LeaderboardEntry, RaceHorseRegistration, Violation, NotificationItem, RaceReport } from '../types'
 
 // Khai báo Base URL cho Backend Node.js thực tế
-const BE_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+const BE_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://managerhourse-be.onrender.com'
 
 // ============================================================================
 // 1. CHỨC NĂNG AUTHENTICATION & PROFILE

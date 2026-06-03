@@ -4,7 +4,7 @@ import { getPublicRaces } from '@/api'
 import { Badge } from '@/components/ui/badge'
 import type { DateRange } from '@/components/ui/calendar'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import SpotlightCard from '@/components/ui/spotlight-card'
 import { DropdownMenu, DropdownMenuItem } from '@/components/ui/dropdown'
 import { Input } from '@/components/ui/input'
@@ -12,7 +12,7 @@ import { getStatusClassName, getStatusLabel, RACE_STATUS_OPTIONS } from '@/lib/s
 import { NumberCounter } from '@/components/ui/number-counter'
 import { ScrollReveal } from '@/components/ui/scroll-text'
 import { Magnetic } from '@/components/ui/magnetic'
-import { Clock3, Filter, RefreshCw, Route } from 'lucide-react'
+import { Clock3, Filter, RefreshCw } from 'lucide-react'
 const TIME_OPTIONS = [
   { value: 'all', label: 'Tất cả thời gian' },
   { value: 'upcoming', label: 'Sắp diễn ra' },
@@ -121,17 +121,16 @@ export function RacesPage() {
   return (
     <div className="space-y-6">
       <ScrollReveal direction="up" distance={60} duration={0.8} delay={0.1}>
-        <SpotlightCard className="card-hover">
-          <CardHeader className="gap-5 md:flex-row md:items-end md:justify-between">
+        <SpotlightCard>
+          <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between p-1">
             <div className="space-y-3">
               <div className="flex items-start gap-4">
                 <div className="rounded-2xl bg-amber-500/10 p-3 ring-1 ring-amber-500/20">
-                  <Route className="h-7 w-7 text-amber-500" />
+                  <img src="/race.gif" className="h-7 w-7 object-contain" alt="Cuộc đua" />
                 </div>
                 <div className="space-y-1">
-                  <CardTitle className="text-3xl text-[var(--text)]">Cuộc đua</CardTitle>
-                  <CardDescription className="max-w-2xl text-[var(--muted)]">
-                  </CardDescription>
+                  <div className="text-3xl font-black text-[var(--text)]">Cuộc đua</div>
+                  <div className="max-w-2xl text-sm font-semibold text-[var(--muted)]">Theo dõi các cuộc đua theo trạng thái và thời gian diễn ra.</div>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -233,7 +232,7 @@ export function RacesPage() {
                 Làm mới
               </Button>
             </div>
-          </CardHeader>
+          </div>
         </SpotlightCard>
       </ScrollReveal>
 
@@ -259,40 +258,38 @@ export function RacesPage() {
             <ScrollReveal key={race._id} direction="up" distance={60} duration={0.7} delay={index * 0.1}>
               <Link to={`/races/${race._id}`} className="group block">
                 <Magnetic intensity={0.3} range={120}>
-                  <SpotlightCard className="card-hover">
-                    <Card className="h-full border-[var(--border)] bg-[var(--surface)] transition-all duration-300 group-hover:-translate-y-1 group-hover:border-amber-500/40 group-hover:shadow-xl group-hover:shadow-amber-500/10 cursor-pointer">
-                      <CardHeader className="space-y-3 border-b border-[var(--border)] pb-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <CardTitle className="text-xl text-[var(--text)] group-hover:text-amber-500">{race.name}</CardTitle>
-                      <CardDescription className="text-[var(--muted)]">
-                        {race.tournamentId?.name || 'Giải đấu độc lập'}
-                      </CardDescription>
+                  <SpotlightCard className="group-hover:-translate-y-1 transition-all duration-300">
+                    <div className="space-y-3 border-b border-[var(--border)] pb-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="text-xl font-black text-[var(--text)] group-hover:text-amber-500 transition-colors">{race.name}</div>
+                          <div className="text-sm text-[var(--muted)] font-semibold">
+                            {race.tournamentId?.name || 'Giải đấu độc lập'}
+                          </div>
+                        </div>
+                        {statusBadge(race.status)}
+                      </div>
                     </div>
-                    {statusBadge(race.status)}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-4">
-                  <div className="grid gap-2 text-sm text-[var(--muted)] sm:grid-cols-2">
-                    <div className="flex items-center gap-2 rounded-lg bg-[var(--bg2)] px-3 py-2">
-                      <Clock3 className="h-4 w-4 text-amber-500" />
-                      <span>{formatDateTime(race.scheduledAt)}</span>
+                    <div className="pt-4">
+                      <div className="grid gap-2 text-sm text-[var(--muted)] sm:grid-cols-2">
+                        <div className="flex items-center gap-2 rounded-lg bg-[var(--bg2)] px-3 py-2">
+                          <Clock3 className="h-4 w-4 text-amber-500" />
+                          <span>{formatDateTime(race.scheduledAt)}</span>
+                        </div>
+                        <div className="flex items-center gap-2 rounded-lg bg-[var(--bg2)] px-3 py-2">
+                          <Filter className="h-4 w-4 text-blue-500" />
+                          <span>{race.distance ? `${race.distance}m` : 'Chưa có cự ly'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 rounded-lg bg-[var(--bg2)] px-3 py-2">
+                          <span className="text-amber-500">🏆</span>
+                          <span>{race.tournamentId?.name || 'Không thuộc giải đấu'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 rounded-lg bg-[var(--bg2)] px-3 py-2">
+                          <span className="text-emerald-500">🐴</span>
+                          <span>{race.maxHorses ? `Tối đa ${race.maxHorses} ngựa` : 'Chưa giới hạn'}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 rounded-lg bg-[var(--bg2)] px-3 py-2">
-                      <Filter className="h-4 w-4 text-blue-500" />
-                      <span>{race.distance ? `${race.distance}m` : 'Chưa có cự ly'}</span>
-                    </div>
-                    <div className="flex items-center gap-2 rounded-lg bg-[var(--bg2)] px-3 py-2">
-                      <span className="text-amber-500">🏆</span>
-                      <span>{race.tournamentId?.name || 'Không thuộc giải đấu'}</span>
-                    </div>
-                    <div className="flex items-center gap-2 rounded-lg bg-[var(--bg2)] px-3 py-2">
-                      <span className="text-emerald-500">🐴</span>
-                      <span>{race.maxHorses ? `Tối đa ${race.maxHorses} ngựa` : 'Chưa giới hạn'}</span>
-                    </div>
-                  </div>
-                </CardContent>
-                      </Card>
                   </SpotlightCard>
                 </Magnetic>
               </Link>

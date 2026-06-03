@@ -3,7 +3,7 @@ import type { NotificationItem } from '../../types'
 import { getMyNotifications } from '@/api'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { getNotificationTypeLabel } from '@/lib/status'
@@ -96,104 +96,106 @@ export function NotificationsPage() {
   return (
     <div className="space-y-6">
       <ScrollReveal direction="up" distance={60} duration={0.8} delay={0.1}>
-        <Card className="border-border bg-(--surface) shadow-2xl">
-          <CardHeader className="gap-4 md:flex-row md:items-end md:justify-between">
-            <div className="space-y-3">
-              <div className="flex items-start gap-4">
-                <div className="rounded-2xl bg-blue-500/10 p-3 ring-1 ring-blue-500/20">
-                   <BellRing className="h-7 w-7 text-blue-300" />
+        <div className="spotlight-card-outer animate-border-custom w-full">
+          <div className="p-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div className="space-y-3">
+                <div className="flex items-start gap-4">
+                  <div className="rounded-2xl bg-blue-500/10 p-3 ring-1 ring-blue-500/20">
+                     <BellRing className="h-7 w-7 text-blue-300" />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-3xl text-[var(--text)] font-black">Thông báo</div>
+                    <div className="max-w-2xl text-[var(--muted)] font-semibold text-sm">
+                      Lọc theo trạng thái đọc, thời gian và thứ tự để cập nhật thông báo nhanh hơn.
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <CardTitle className="text-3xl text-(--text) font-black">Thông báo</CardTitle>
-                  <CardDescription className="max-w-2xl text-muted font-bold">
-                    Lọc theo trạng thái đọc, thời gian và thứ tự để cập nhật thông báo nhanh hơn.
-                  </CardDescription>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="font-black border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-200">Tổng <NumberCounter value={items.length} duration={1.2} easing="easeOut" /></Badge>
+                  <Badge variant="outline" className="font-black border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-200"><NumberCounter value={unreadCount} duration={1.2} delay={0.1} easing="easeOut" /> chưa đọc</Badge>
+                  <Badge variant="outline" className="font-black border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-200">Đã đọc <NumberCounter value={items.length - unreadCount} duration={1.2} delay={0.2} easing="easeOut" /></Badge>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="font-black border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-200">Tổng <NumberCounter value={items.length} duration={1.2} easing="easeOut" /></Badge>
-                <Badge variant="outline" className="font-black border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-200"><NumberCounter value={unreadCount} duration={1.2} delay={0.1} easing="easeOut" /> chưa đọc</Badge>
-                <Badge variant="outline" className="font-black border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-200">Đã đọc <NumberCounter value={items.length - unreadCount} duration={1.2} delay={0.2} easing="easeOut" /></Badge>
+
+              <div className="flex items-center w-full flex-wrap gap-3 md:justify-end">
+                <Input
+                  type="text"
+                  placeholder="Tìm kiếm thông báo..."
+                  value={searchQuery}
+                  onChange={(e: any) => setSearchQuery(e.target.value)}
+                  className="h-11 w-56 border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] font-bold placeholder:text-[var(--muted)]/50 focus:border-blue-500/50"
+                />
+                <Button
+                  variant={filter === 'all' ? 'default' : 'outline'}
+                  className={`h-11 min-w-30 whitespace-nowrap font-bold ${filter === 'all' ? 'bg-amber-500 text-slate-950 hover:bg-amber-400' : 'border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] hover:bg-[var(--surface-3)]'}`}
+                  onClick={() => setFilter('all')}
+                >
+                  Tất cả
+                </Button>
+                <Button
+                  variant={filter === 'unread' ? 'default' : 'outline'}
+                  className={`h-11 min-w-30 whitespace-nowrap font-bold ${filter === 'unread' ? 'bg-amber-500 text-slate-950 hover:bg-amber-400' : 'border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] hover:bg-[var(--surface-3)]'}`}
+                  onClick={() => setFilter('unread')}
+                >
+                  Chưa đọc
+                </Button>
+                <Button
+                  variant={filter === 'read' ? 'default' : 'outline'}
+                  className={`h-11 min-w-30 whitespace-nowrap font-bold ${filter === 'read' ? 'bg-amber-500 text-slate-950 hover:bg-amber-400' : 'border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] hover:bg-[var(--surface-3)]'}`}
+                  onClick={() => setFilter('read')}
+                >
+                  Đã đọc
+                </Button>
+
+                <Select value={timeFilter} onValueChange={(value: any) => setTimeFilter(value ?? 'all')}>
+                  <SelectTrigger className="h-11 w-45 shrink-0 border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] font-bold">
+                    {getOptionLabel(TIME_OPTIONS, timeFilter)}
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIME_OPTIONS.map((option: any) => (
+                      <SelectItem key={option.value} value={option.value} className="font-bold">{option.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value ?? 'newest')}>
+                  <SelectTrigger className="h-11 w-45 shrink-0 border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] font-bold">
+                    {getOptionLabel(SORT_OPTIONS, sortOrder)}
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SORT_OPTIONS.map((option: any) => (
+                      <SelectItem key={option.value} value={option.value} className="font-bold">{option.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Button
+                  variant="outline"
+                  className="h-11 min-w-30 whitespace-nowrap font-bold border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] hover:bg-[var(--surface-3)]"
+                  onClick={() => setReloadKey(reloadKey + 1)}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Làm mới
+                </Button>
               </div>
             </div>
-
-            <div className="flex w-full flex-wrap items-center gap-3 md:justify-end">
-              <Input
-                type="text"
-                placeholder="Tìm kiếm thông báo..."
-                value={searchQuery}
-                onChange={(e: any) => setSearchQuery(e.target.value)}
-                className="h-11 w-56 border-border bg-(--bg2) text-(--text) font-bold placeholder:text-(--muted)/50 focus:border-blue-500/50"
-              />
-              <Button
-                variant={filter === 'all' ? 'default' : 'outline'}
-                className={`h-11 min-w-30 whitespace-nowrap font-bold ${filter === 'all' ? 'bg-amber-500 text-slate-950 hover:bg-amber-400' : 'border-border bg-(--bg2) text-(--text) hover:bg-(--surface-strong)/50'}`}
-                onClick={() => setFilter('all')}
-              >
-                Tất cả
-              </Button>
-              <Button
-                variant={filter === 'unread' ? 'default' : 'outline'}
-              className={`h-11 min-w-30 whitespace-nowrap font-bold ${filter === 'unread' ? 'bg-amber-500 text-slate-950 hover:bg-amber-400' : 'border-border bg-(--bg2) text-(--text) hover:bg-(--surface-strong)/50'}`}
-              onClick={() => setFilter('unread')}
-            >
-              Chưa đọc
-            </Button>
-            <Button
-              variant={filter === 'read' ? 'default' : 'outline'}
-              className={`h-11 min-w-30 whitespace-nowrap font-bold ${filter === 'read' ? 'bg-amber-500 text-slate-950 hover:bg-amber-400' : 'border-border bg-(--bg2) text-(--text) hover:bg-(--surface-strong)/50'}`}
-              onClick={() => setFilter('read')}
-            >
-              Đã đọc
-            </Button>
-
-            <Select value={timeFilter} onValueChange={(value: any) => setTimeFilter(value ?? 'all')}>
-              <SelectTrigger className="h-11 w-45 shrink-0 border-border bg-(--bg2) text-(--text) font-bold">
-                {getOptionLabel(TIME_OPTIONS, timeFilter)}
-              </SelectTrigger>
-              <SelectContent>
-                {TIME_OPTIONS.map((option: any) => (
-                  <SelectItem key={option.value} value={option.value} className="font-bold">{option.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value ?? 'newest')}>
-              <SelectTrigger className="h-11 w-45 shrink-0 border-border bg-(--bg2) text-(--text) font-bold">
-                {getOptionLabel(SORT_OPTIONS, sortOrder)}
-              </SelectTrigger>
-              <SelectContent>
-                {SORT_OPTIONS.map((option: any) => (
-                  <SelectItem key={option.value} value={option.value} className="font-bold">{option.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Button
-              variant="outline"
-              className="h-11 min-w-30 whitespace-nowrap font-bold border-border bg-(--bg2) text-(--text) hover:bg-(--surface-strong)/50"
-              onClick={() => setReloadKey(reloadKey + 1)}
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Làm mới
-            </Button>
           </div>
-        </CardHeader>
-      </Card>
+        </div>
       </ScrollReveal>
 
       {loading ? (
         <div className="loading"><div className="spinner" /></div>
       ) : filteredItems.length === 0 ? (
-        <Card className="border-border bg-(--surface)">
-          <CardContent className="py-14 text-center">
+        <div className="spotlight-card-outer animate-border-custom w-full">
+          <div className="p-6 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/10 text-3xl">🔔</div>
-            <div className="text-lg font-black text-(--text)">
+            <div className="text-lg font-black text-[var(--text)]">
               {filter === 'unread' ? 'Không có thông báo chưa đọc' : filter === 'read' ? 'Không có thông báo đã đọc' : 'Chưa có thông báo nào'}
             </div>
-            <p className="mt-2 text-sm text-muted font-bold">Hãy thay đổi bộ lọc hoặc kiểm tra lại sau.</p>
-          </CardContent>
-        </Card>
+            <p className="mt-2 text-sm text-[var(--muted)] font-semibold">Hãy thay đổi bộ lọc hoặc kiểm tra lại sau.</p>
+          </div>
+        </div>
       ) : (
         <div className="space-y-3">
           {filteredItems.map((notification, index) => (

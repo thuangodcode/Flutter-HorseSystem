@@ -1,19 +1,19 @@
-import { Link, Navigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useSession } from '../auth/SessionContext'
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { ScrollReveal } from '@/components/ui/scroll-text'
 import { Magnetic } from '@/components/ui/magnetic'
 import { ShutterText } from '@/components/ui/shutter-text'
+import { AdminDashboard } from './admin/AdminDashboard'
 
 export function DashboardPage() {
   const { session } = useSession()
+  const role = session?.user.role
 
-  // Admin does not have a dashboard, redirect to scheduling page
-  if (session?.user.role === 'ADMIN') {
-    return <Navigate to="/app/admin/scheduling" replace />
+  if (role === 'ADMIN') {
+    return <AdminDashboard />
   }
 
-  const role = session?.user.role
   const useShutter = role === 'SPECTATOR' || role === 'REFEREE'
 
   return (
@@ -49,21 +49,25 @@ export function DashboardPage() {
         <ScrollReveal direction="up" duration={0.8} delay={0.1}>
           <Magnetic intensity={0.2} range={100}>
             <Link to="/app/tournaments" style={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}>
-              <Card className="card card-hover border-border hover:border-emerald-500/40 transition-all duration-300 shadow-lg" style={{ cursor: 'pointer', height: '100%', padding: '32px 28px' }}>
-                <CardHeader style={{ padding: 0 }}>
-                  <div style={{ fontSize: '44px', marginBottom: 16 }}>🏆</div>
-                  <CardTitle className="text-2xl font-black text-(--text)">
-                    {useShutter ? (
-                      <ShutterText text="Xem Giải Đấu" trigger="auto" />
-                    ) : (
-                      "Xem Giải Đấu"
-                    )}
-                  </CardTitle>
-                  <CardDescription className="text-muted font-semibold mt-3" style={{ fontSize: '14.5px', lineHeight: '1.6' }}>
-                    Khám phá các giải đấu đua ngựa hấp dẫn đang diễn ra, xem chi tiết lịch thi đấu và bảng xếp hạng thành tích.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
+              <div className={role === 'SPECTATOR' ? 'spotlight-card-outer animate-border-custom h-full' : 'h-full'}>
+                <Card className={`card card-hover border-border hover:border-emerald-500/40 transition-all duration-300 shadow-lg h-full ${role === 'SPECTATOR' ? 'bg-transparent border-transparent' : ''}`} style={{ cursor: 'pointer', padding: '32px 28px' }}>
+                  <CardHeader style={{ padding: 0 }}>
+                    <div style={{ marginBottom: 16 }}>
+                      <img src="/trophy.gif" style={{ width: '48px', height: '48px', objectFit: 'contain' }} alt="Trophy" />
+                    </div>
+                    <CardTitle className="text-2xl font-black text-(--text)">
+                      {useShutter ? (
+                        <ShutterText text="Xem Giải Đấu" trigger="auto" />
+                      ) : (
+                        "Xem Giải Đấu"
+                      )}
+                    </CardTitle>
+                    <CardDescription className="text-muted font-semibold mt-3" style={{ fontSize: '14.5px', lineHeight: '1.6' }}>
+                      Khám phá các giải đấu đua ngựa hấp dẫn đang diễn ra, xem chi tiết lịch thi đấu và bảng xếp hạng thành tích.
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </div>
             </Link>
           </Magnetic>
         </ScrollReveal>
@@ -71,21 +75,25 @@ export function DashboardPage() {
         <ScrollReveal direction="up" duration={0.8} delay={0.2}>
           <Magnetic intensity={0.2} range={100}>
             <Link to="/app/races" style={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}>
-              <Card className="card card-hover border-border hover:border-emerald-500/40 transition-all duration-300 shadow-lg" style={{ cursor: 'pointer', height: '100%', padding: '32px 28px' }}>
-                <CardHeader style={{ padding: 0 }}>
-                  <div style={{ fontSize: '44px', marginBottom: 16 }}>🏁</div>
-                  <CardTitle className="text-2xl font-black text-(--text)">
-                    {useShutter ? (
-                      <ShutterText text="Xem Cuộc Đua" trigger="auto" />
-                    ) : (
-                      "Xem Cuộc Đua"
-                    )}
-                  </CardTitle>
-                  <CardDescription className="text-muted font-semibold mt-3" style={{ fontSize: '14.5px', lineHeight: '1.6' }}>
-                    Cập nhật danh sách các cuộc đua, thông tin cự ly, thời gian xuất phát và theo dõi diễn biến kết quả thi đấu.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
+              <div className={role === 'SPECTATOR' ? 'spotlight-card-outer animate-border-custom h-full' : 'h-full'}>
+                <Card className={`card card-hover border-border hover:border-emerald-500/40 transition-all duration-300 shadow-lg h-full ${role === 'SPECTATOR' ? 'bg-transparent border-transparent' : ''}`} style={{ cursor: 'pointer', padding: '32px 28px' }}>
+                  <CardHeader style={{ padding: 0 }}>
+                    <div style={{ marginBottom: 16 }}>
+                      <img src="/race.gif" style={{ width: '48px', height: '48px', objectFit: 'contain' }} alt="Race" />
+                    </div>
+                    <CardTitle className="text-2xl font-black text-(--text)">
+                      {useShutter ? (
+                        <ShutterText text="Xem Cuộc Đua" trigger="auto" />
+                      ) : (
+                        "Xem Cuộc Đua"
+                      )}
+                    </CardTitle>
+                    <CardDescription className="text-muted font-semibold mt-3" style={{ fontSize: '14.5px', lineHeight: '1.6' }}>
+                      Cập nhật danh sách các cuộc đua, thông tin cự ly, thời gian xuất phát và theo dõi diễn biến kết quả thi đấu.
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </div>
             </Link>
           </Magnetic>
         </ScrollReveal>
@@ -130,17 +138,21 @@ export function DashboardPage() {
           <ScrollReveal direction="up" duration={0.8} delay={0.3}>
             <Magnetic intensity={0.2} range={100}>
               <Link to="/app/predictions" style={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}>
-                <Card className="card card-hover border-border hover:border-emerald-500/40 transition-all duration-300 shadow-lg" style={{ cursor: 'pointer', height: '100%', padding: '32px 28px' }}>
-                  <CardHeader style={{ padding: 0 }}>
-                    <div style={{ fontSize: '44px', marginBottom: 16 }}>🔮</div>
-                    <CardTitle className="text-2xl font-black text-(--text)">
-                      <ShutterText text="Dự Đoán Kết Quả" trigger="auto" />
-                    </CardTitle>
-                    <CardDescription className="text-muted font-semibold mt-3" style={{ fontSize: '14.5px', lineHeight: '1.6' }}>
-                      Sử dụng điểm thưởng ảo để tham gia dự đoán kết quả những chú ngựa chiến thắng và nhận phần quà hấp dẫn.
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
+                <div className="spotlight-card-outer animate-border-custom h-full">
+                  <Card className="card card-hover border-transparent hover:border-emerald-500/40 bg-transparent transition-all duration-300 shadow-lg h-full" style={{ cursor: 'pointer', padding: '32px 28px' }}>
+                    <CardHeader style={{ padding: 0 }}>
+                    <div style={{ marginBottom: 16 }}>
+                      <img src="/prediction.gif" style={{ width: '48px', height: '48px', objectFit: 'contain' }} alt="Prediction" />
+                    </div>
+                      <CardTitle className="text-2xl font-black text-(--text)">
+                        <ShutterText text="Dự Đoán Kết Quả" trigger="auto" />
+                      </CardTitle>
+                      <CardDescription className="text-muted font-semibold mt-3" style={{ fontSize: '14.5px', lineHeight: '1.6' }}>
+                        Sử dụng điểm thưởng ảo để tham gia dự đoán kết quả những chú ngựa chiến thắng và nhận phần quà hấp dẫn.
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                </div>
               </Link>
             </Magnetic>
           </ScrollReveal>

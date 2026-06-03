@@ -11,7 +11,7 @@ import { getStatusClassName, getStatusLabel, TOURNAMENT_STATUS_OPTIONS } from '@
 import { NumberCounter } from '@/components/ui/number-counter'
 import { ScrollReveal } from '@/components/ui/scroll-text'
 import { Magnetic } from '@/components/ui/magnetic'
-import { CalendarRange, Filter, RefreshCw, Trophy } from 'lucide-react'
+import { CalendarRange, Filter, RefreshCw } from 'lucide-react'
 
 const TIME_OPTIONS = [
   { value: 'all', label: 'Tất cả thời gian' },
@@ -113,18 +113,19 @@ export function TournamentsPage() {
   return (
     <div className="space-y-6">
       <ScrollReveal direction="up" distance={60} duration={0.8} delay={0.1}>
-        <Card className="border-[var(--border)] bg-[var(--surface)] shadow-2xl" style={{ padding: '32px 28px' }}>
-          <CardHeader className="gap-5 md:flex-row md:items-end md:justify-between" style={{ padding: 0 }}>
+        <div className="spotlight-card-outer animate-border-custom w-full">
+          <div className="p-7">
+            <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div className="space-y-3">
               <div className="flex items-start gap-4">
                 <div className="rounded-2xl bg-[var(--primary-light)] p-4 ring-1 ring-[var(--primary-ring)]">
-                  <Trophy className="h-9 w-9 text-[var(--primary)]" />
+                  <img src="/trophy.gif" className="h-9 w-9 object-contain" alt="Trophy" />
                 </div>
                 <div className="space-y-1">
-                  <CardTitle className="text-4xl font-black text-[var(--text)]">Giải đấu</CardTitle>
-                  <CardDescription className="max-w-2xl text-[var(--muted)] font-semibold" style={{ fontSize: '14.5px', lineHeight: '1.6' }}>
+                  <div className="text-4xl font-black text-[var(--text)]">Giải đấu</div>
+                  <div className="max-w-2xl text-[var(--muted)] font-semibold" style={{ fontSize: '14.5px', lineHeight: '1.6' }}>
                     Theo dõi giải đấu theo trạng thái, thời gian diễn ra và sắp xếp danh sách theo nhu cầu.
-                  </CardDescription>
+                  </div>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -221,8 +222,9 @@ export function TournamentsPage() {
                 Làm mới
               </Button>
             </div>
-          </CardHeader>
-        </Card>
+            </div>
+          </div>
+        </div>
       </ScrollReveal>
 
       {error && <div className="alert alert-error">⚠️ {error}</div>}
