@@ -195,7 +195,7 @@ const TablePagination = ({
   const canGoNext = page < totalPages;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 border-[var(--border)] border-t bg-[var(--surface)] px-4 py-3">
+    <div className="flex flex-wrap items-center justify-between gap-4 border-[var(--border)] border-t bg-[var(--surface)] px-6 py-4">
       <div className="flex items-center gap-2 text-[var(--muted)] text-sm">
         <span>Hiển thị:</span>
         <select
@@ -424,7 +424,7 @@ const ExpandedRow = ({ children, colSpan }: { children: React.ReactNode; colSpan
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.15, delay: 0.05 }}
-        className="px-4 py-3"
+        className="px-6 py-4"
       >
         {children}
       </motion.div>
@@ -473,7 +473,7 @@ const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
       <th
         ref={ref}
         className={cn(
-          "h-12 px-4 font-bold text-[var(--muted)] text-xs tracking-wider uppercase",
+          "h-14 px-6 font-bold text-[var(--muted)] text-xs tracking-wider uppercase",
           alignClass,
           sortable && "cursor-pointer select-none hover:text-[var(--text)]",
           className,
@@ -526,7 +526,7 @@ const TableCell = React.forwardRef<HTMLTableCellElement, TableCellProps>(
     return (
       <td
         ref={ref}
-        className={cn("p-4 align-middle text-[var(--text-2)] text-sm", alignClass, className)}
+        className={cn("px-6 py-5 align-middle text-[var(--text-2)] text-sm leading-relaxed", alignClass, className)}
         {...props}
       />
     );
@@ -590,7 +590,7 @@ const SkeletonRow = ({ columns, index }: { columns: number; index: number }) => 
     transition={{ delay: index * 0.05 }}
     className="border-[var(--border)] border-b"
   >
-    <td colSpan={columns} className="p-4">
+    <td colSpan={columns} className="px-6 py-5">
       <div className="flex items-center gap-4">
         <div className="h-4 w-4 animate-pulse rounded bg-[var(--surface-3)]/60" />
         <div className="flex-1 space-y-2">
@@ -720,7 +720,7 @@ export function AnimatedTable<T extends { id: string | number }>({
     <AnimatedTableRoot className={className}>
       {/* Toolbar */}
       {showToolbar && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-[var(--border)] border-b bg-[var(--surface-2)]/30 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-[var(--border)] border-b bg-[var(--surface-2)]/30 px-6 py-4">
           {searchable && (
             <div className="w-full sm:w-64">
               <TableSearch

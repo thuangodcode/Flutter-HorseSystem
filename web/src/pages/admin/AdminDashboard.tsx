@@ -22,7 +22,10 @@ import {
   Crown,
   Coins,
   TrendingUp,
-  Award
+  Award,
+  Settings,
+  Users,
+  BarChart3
 } from 'lucide-react'
 import { NumberCounter } from '@/components/ui/number-counter'
 
@@ -356,7 +359,7 @@ export function AdminDashboard() {
               {loading && <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />}
             </div>
             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-[var(--text)]">
-              👋 Xin chào, <span className="bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">{session?.user.name}</span>
+              Xin chào, <span className="bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">{session?.user.name}</span>
             </h1>
             <p className="text-sm font-semibold text-[var(--muted)]">
               Tổng quan kinh tế, báo cáo vận hành và phê duyệt hoạt động toàn hệ thống.
@@ -536,38 +539,41 @@ export function AdminDashboard() {
       <div className="flex border-b border-[var(--border)] gap-2 pb-px relative z-10">
         <button
           onClick={() => setActiveTab('financial')}
-          className={`px-5 py-3 rounded-t-xl font-bold text-sm transition-all duration-300 border-t border-x cursor-pointer ${
+          className={`flex items-center gap-2 px-5 py-3 rounded-t-xl font-bold text-sm transition-all duration-300 border-t border-x cursor-pointer ${
             activeTab === 'financial'
               ? 'bg-[var(--surface)] text-emerald-500 border-[var(--border)] border-b-transparent shadow-[0_2px_0_var(--surface)]'
               : 'bg-transparent text-[var(--muted)] hover:text-[var(--text)] border-transparent border-b-transparent'
           }`}
         >
-          📊 Kinh tế & Cá cược
+          <BarChart3 className="w-4 h-4 shrink-0" />
+          <span>Kinh tế & Cá cược</span>
         </button>
         <button
           onClick={() => setActiveTab('operations')}
-          className={`px-5 py-3 rounded-t-xl font-bold text-sm transition-all duration-300 border-t border-x cursor-pointer ${
+          className={`flex items-center gap-2 px-5 py-3 rounded-t-xl font-bold text-sm transition-all duration-300 border-t border-x cursor-pointer ${
             activeTab === 'operations'
               ? 'bg-[var(--surface)] text-emerald-500 border-[var(--border)] border-b-transparent shadow-[0_2px_0_var(--surface)]'
               : 'bg-transparent text-[var(--muted)] hover:text-[var(--text)] border-transparent border-b-transparent'
           }`}
         >
-          ⚙️ Vận hành & Phê duyệt
+          <Settings className="w-4 h-4 shrink-0" />
+          <span>Vận hành & Phê duyệt</span>
           {pendingRegs.length > 0 && (
-            <span className="ml-2 px-1.5 py-0.5 text-2xs font-extrabold rounded-full bg-amber-500 text-white animate-pulse">
+            <span className="ml-1 px-1.5 py-0.5 text-2xs font-extrabold rounded-full bg-amber-500 text-white animate-pulse">
               {pendingRegs.length}
             </span>
           )}
         </button>
         <button
           onClick={() => setActiveTab('members')}
-          className={`px-5 py-3 rounded-t-xl font-bold text-sm transition-all duration-300 border-t border-x cursor-pointer ${
+          className={`flex items-center gap-2 px-5 py-3 rounded-t-xl font-bold text-sm transition-all duration-300 border-t border-x cursor-pointer ${
             activeTab === 'members'
               ? 'bg-[var(--surface)] text-emerald-500 border-[var(--border)] border-b-transparent shadow-[0_2px_0_var(--surface)]'
               : 'bg-transparent text-[var(--muted)] hover:text-[var(--text)] border-transparent border-b-transparent'
           }`}
         >
-          👥 Thành viên & Nhân sự
+          <Users className="w-4 h-4 shrink-0" />
+          <span>Thành viên & Nhân sự</span>
         </button>
       </div>
 

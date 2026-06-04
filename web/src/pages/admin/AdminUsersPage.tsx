@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, startTransition, useMemo } from 'react'
 import type { Role, User } from '../../types'
 import { getAdminUsers, updateUserRole, toggleUserStatus, deleteUser } from '@/api'
 import { AnimatedTable, type ColumnDef, type SortDirection } from '@/components/ui/animated-table'
+import { Users, CheckCircle, Lock, Search, Key, Trash2, Unlock, MoreHorizontal, AlertTriangle } from 'lucide-react'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -95,32 +96,44 @@ function ActionMenu({
   return (
     <div className="dropdown-wrapper" ref={ref}>
       <button
-        className="btn btn-sm btn-ghost btn-icon"
+        className="btn btn-sm btn-ghost btn-icon flex items-center justify-center p-0"
         onClick={() => setOpen((o) => !o)}
         title="Tác vụ"
       >
-        ⋯
+        <MoreHorizontal className="w-4 h-4" />
       </button>
       {open && (
         <div className="dropdown-menu">
           <button
-            className="dropdown-item"
+            className="dropdown-item flex items-center gap-2"
             onClick={() => { setOpen(false); onEditRole() }}
           >
-            🔑 Phân quyền
+            <Key className="w-3.5 h-3.5 text-blue-400" />
+            <span>Phân quyền</span>
           </button>
           <button
-            className="dropdown-item"
+            className="dropdown-item flex items-center gap-2"
             onClick={() => { setOpen(false); onToggle() }}
           >
-            {user.status === 'ACTIVE' ? '🔒 Khóa tài khoản' : '🔓 Mở khóa'}
+            {user.status === 'ACTIVE' ? (
+              <>
+                <Lock className="w-3.5 h-3.5 text-amber-500" />
+                <span>Khóa tài khoản</span>
+              </>
+            ) : (
+              <>
+                <Unlock className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Mở khóa</span>
+              </>
+            )}
           </button>
           <div className="dropdown-divider" />
           <button
-            className="dropdown-item dropdown-item-danger"
+            className="dropdown-item dropdown-item-danger flex items-center gap-2"
             onClick={() => { setOpen(false); onDelete() }}
           >
-            🗑️ Xóa tài khoản
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Xóa tài khoản</span>
           </button>
         </div>
       )}
@@ -345,7 +358,7 @@ export function AdminUsersPage() {
         ))}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
         {/* Header */}
         <div className="flex-between">
           <div>
@@ -356,26 +369,37 @@ export function AdminUsersPage() {
 
         {/* Stat Cards */}
         <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-          <div className="stat-card stat-card-primary">
-            <div className="stat-icon">👥</div>
-            <div className="stat-value">{loading ? '—' : total}</div>
-            <div className="stat-label">Tổng tài khoản</div>
+          <div className="stat-card flex items-center gap-4">
+            <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
+              <Users className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="stat-value" style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>{loading ? '—' : total}</div>
+              <div className="stat-label" style={{ fontSize: 11, fontWeight: 700 }}>Tổng tài khoản</div>
+            </div>
           </div>
-          <div className="stat-card stat-card-info">
-            <div className="stat-icon">✅</div>
-            <div className="stat-value">{loading ? '—' : activeCount}</div>
-            <div className="stat-label">Đang hoạt động</div>
+          <div className="stat-card flex items-center gap-4">
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+              <CheckCircle className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="stat-value" style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>{loading ? '—' : activeCount}</div>
+              <div className="stat-label" style={{ fontSize: 11, fontWeight: 700 }}>Đang hoạt động</div>
+            </div>
           </div>
-          <div className="stat-card stat-card-danger">
-            <div className="stat-icon">🔒</div>
-            <div className="stat-value">{loading ? '—' : inactiveCount}</div>
-            <div className="stat-label">Đã khóa</div>
+          <div className="stat-card flex items-center gap-4">
+            <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+              <Lock className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="stat-value" style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>{loading ? '—' : inactiveCount}</div>
+              <div className="stat-label" style={{ fontSize: 11, fontWeight: 700 }}>Đã khóa</div>
+            </div>
           </div>
         </div>
 
-        {/* Filter bar */}
-        <div className="card w-full" style={{ padding: '14px 18px' }}>
-          <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <div className="card w-full" style={{ padding: '20px 24px' }}>
+          <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div style={{ flex: '2 1 260px' }}>
               <label style={{ marginBottom: 4 }}>Tìm kiếm</label>
               <input
@@ -404,8 +428,9 @@ export function AdminUsersPage() {
                 <option value="INACTIVE">Đã khóa</option>
               </select>
             </div>
-            <button type="submit" className="btn btnPrimary" style={{ height: 40, alignSelf: 'flex-end' }}>
-              🔍 Tìm kiếm
+            <button type="submit" className="btn btnPrimary flex items-center gap-1.5" style={{ height: 40, alignSelf: 'flex-end' }}>
+              <Search className="w-4 h-4" />
+              <span>Tìm kiếm</span>
             </button>
           </form>
         </div>
@@ -477,16 +502,17 @@ export function AdminUsersPage() {
               <div className="form-group">
                 <label>Chọn vai trò mới</label>
                 <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value as Role)}>
-                  <option value="SPECTATOR">👁️ Spectator — Xem & Dự đoán</option>
-                  <option value="OWNER">🐎 Horse Owner — Quản lý ngựa</option>
-                  <option value="JOCKEY">🏇 Jockey — Kỵ sĩ thi đấu</option>
-                  <option value="REFEREE">⚖️ Referee — Trọng tài</option>
+                  <option value="SPECTATOR">Spectator (Khán giả) — Xem & Dự đoán</option>
+                  <option value="OWNER">Horse Owner (Chủ ngựa) — Quản lý ngựa</option>
+                  <option value="JOCKEY">Jockey (Nài ngựa) — Kỵ sĩ thi đấu</option>
+                  <option value="REFEREE">Referee (Trọng tài) — Trọng tài</option>
                 </select>
               </div>
 
               {selectedRole && selectedRole !== editingUser.role && (
-                <div style={{ padding: '10px 14px', background: 'var(--warning-light)', borderRadius: 'var(--radius)', fontSize: 13, color: '#92400e' }}>
-                  ⚠️ Đang thay đổi từ <strong>{roleLabel(editingUser.role)}</strong> → <strong>{roleLabel(selectedRole)}</strong>
+                <div className="flex items-center gap-2" style={{ padding: '10px 14px', background: 'var(--warning-light)', borderRadius: 'var(--radius)', fontSize: 13, color: '#92400e' }}>
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Đang thay đổi từ <strong>{roleLabel(editingUser.role)}</strong> → <strong>{roleLabel(selectedRole)}</strong></span>
                 </div>
               )}
             </div>

@@ -17,7 +17,8 @@ import {
   User as UserIcon,
   Menu,
   X,
-  ChevronDown
+  ChevronDown,
+  ClipboardList
 } from 'lucide-react'
 
 const SunIcon = () => (
@@ -57,7 +58,7 @@ interface NavItem {
   to: string
   label: string
   icon: any
-  children?: { to: string; label: string }[]
+  children?: { to: string; label: string; icon?: any }[]
 }
 
 // Define nav items per role with their icons
@@ -99,14 +100,14 @@ function getRoleNav(role: string): NavItem[] {
       { to: '/app/admin/users', label: 'Tài khoản', icon: Users },
       { 
         to: '/app/admin/scheduling', 
-        label: 'Lập lịch', 
+        label: 'Quản lý', 
         icon: Calendar,
         children: [
-          { to: '/app/admin/scheduling/tournaments', label: '🏆 Giải Đấu & Lịch Trình' },
-          { to: '/app/admin/scheduling/registrations', label: '📋 Duyệt Đăng Ký Đua' },
-          { to: '/app/admin/scheduling/horses-jockeys', label: '🐎 Ngựa & Jockeys' },
-          { to: '/app/admin/scheduling/referee-results', label: '⚖️ Trọng Tài & Kết Quả' },
-          { to: '/app/admin/scheduling/predictions', label: '🔮 Thống kê dự đoán' }
+          { to: '/app/admin/scheduling/tournaments', label: 'Giải Đấu & Lịch Trình', icon: Trophy },
+          { to: '/app/admin/scheduling/registrations', label: 'Duyệt Đăng Ký Đua', icon: ClipboardList },
+          { to: '/app/admin/scheduling/horses-jockeys', label: 'Ngựa & Jockeys', icon: Sparkles },
+          { to: '/app/admin/scheduling/referee-results', label: 'Trọng Tài & Kết Quả', icon: Scale },
+          { to: '/app/admin/scheduling/predictions', label: 'Thống kê dự đoán', icon: Target }
         ]
       },
     ]
@@ -201,7 +202,7 @@ export function AppLayout() {
   useEffect(() => {
     const path = location.pathname
 
-    const isPredictionPath = /(^|\/)predictions(\/|$)/.test(path) || path.startsWith('/app/predictions')
+    const isPredictionPath = path === '/app/predictions' || path.startsWith('/app/predictions/')
     const isRefereePath = path.startsWith('/app/referee')
 
     // Predictions (bet) pages are spectator-only
@@ -284,15 +285,15 @@ export function AppLayout() {
               to="/app/dashboard" 
               className="flex items-center gap-2.5 group transition-transform duration-200 active:scale-95 whitespace-nowrap"
             >
-              <div className="w-8 h-8 rounded-lg bg-linear-to-tr from-amber-600 to-amber-500 flex items-center justify-center shadow-md shadow-amber-500/10 group-hover:scale-105 transition-all duration-300">
-                <span className="text-base font-bold text-slate-950">🏇</span>
+              <div className="w-8 h-8 rounded-lg bg-linear-to-tr from-sky-600 to-sky-400 flex items-center justify-center shadow-md shadow-sky-500/10 group-hover:scale-105 transition-all duration-300">
+                <span className="material-symbols-outlined text-white text-lg" data-icon="stadium">stadium</span>
               </div>
               <div className="hidden sm:flex items-center gap-2">
-                <span className="text-sm font-black tracking-wide text-(--text) group-hover:text-amber-500 transition-colors duration-300 uppercase">
-                  Horse Racing
+                <span className="text-sm font-black tracking-wide text-(--text) group-hover:text-sky-500 transition-colors duration-300 uppercase">
+                  Equestrian
                 </span>
-                <span className="text-[8px] tracking-wider text-muted uppercase font-bold bg-(--bg2) px-1.5 py-0.5 rounded border border-border">
-                  Pro
+                <span className="text-[8px] tracking-wider text-sky-600 uppercase font-bold bg-(--bg2) px-1.5 py-0.5 rounded border border-sky-500/20">
+                  Elite
                 </span>
               </div>
             </Link>
@@ -569,7 +570,7 @@ export function AppLayout() {
                               className="w-5 h-5 object-contain" 
                               alt={item.label} 
                             />
-                          ) : item.label === 'Cuộc đua' || item.label === 'Cuộc đua của tôi' || item.label === 'Quản lý đua' ? (
+                          ) : item.label === 'Cuộc đua' || item.label === 'Cuộc đua của tôi' ? (
                             <img 
                               src="/race.gif" 
                               className="w-5 h-5 object-contain" 
@@ -641,12 +642,13 @@ export function AppLayout() {
                         >
                           {item.children.map((child) => {
                             const isChildActive = location.pathname === child.to
+                            const ChildIcon = child.icon
                             return (
                               <NavLink
                                 key={child.to}
                                 to={child.to}
                                 className={`
-                                  block py-2 px-3 rounded-lg text-[12px] font-semibold transition-all duration-200
+                                  flex items-center gap-2 py-2 px-3 rounded-lg text-[12px] font-semibold transition-all duration-200
                                   ${isChildActive
                                     ? 'text-amber-500 font-bold bg-amber-500/8'
                                     : 'text-(--muted) hover:text-(--text) hover:bg-amber-500/4'
@@ -654,7 +656,8 @@ export function AppLayout() {
                                 `}
                                 style={{ textDecoration: 'none' }}
                               >
-                                {child.label}
+                                {ChildIcon && <ChildIcon className="w-3.5 h-3.5 shrink-0" />}
+                                <span>{child.label}</span>
                               </NavLink>
                             )
                           })}
@@ -770,7 +773,7 @@ export function AppLayout() {
               )}
             </AnimatePresence>
 
-            <div className="max-w-7xl mx-auto px-6 py-6">
+            <div className="w-full mx-auto px-6 py-6">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={location.pathname}
@@ -787,8 +790,10 @@ export function AppLayout() {
 
           {/* Luxury Footer */}
           <footer className="border-t border-border bg-(--surface)/20 py-2.5 text-center text-[11px] text-slate-400 mt-auto shrink-0">
-            <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <p>© 2026 Horse Racing Pro Betting Club. All rights reserved.</p>
+            <div className="w-full mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="text-xs text-muted font-medium flex items-center gap-1.5">
+                <span>© 2026 Equestrian Admin Elite. All rights reserved.</span>
+              </div>
               <div className="flex gap-6">
                 <a href="#" className="hover:text-(--text) transition-colors">Điều khoản</a>
                 <a href="#" className="hover:text-(--text) transition-colors">Bảo mật</a>

@@ -33,11 +33,9 @@ function RequireAuth(props: { children: ReactNode }) {
   return <>{props.children}</>
 }
 
-/** After login, redirect admin to /admin/scheduling, everyone else to /tournaments */
+/** After login, redirect all users to dashboard first */
 function DefaultRedirect() {
-  const { session } = useSession()
-  if (session?.user.role === 'ADMIN') return <Navigate to="dashboard" replace />
-  return <Navigate to="/tournaments" replace />
+  return <Navigate to="dashboard" replace />
 }
 
 // Redirect helpers for absolute paths used in subpages

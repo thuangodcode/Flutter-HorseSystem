@@ -347,14 +347,29 @@ export async function getRaceRegistrations(status?: string, raceId?: string): Pr
   const res = await http.get(`${BE_BASE_URL}/admin/races/registrations`, {
     params: { status, raceId },
   })
-  const data = Array.isArray(res.data) ? res.data : (res.data.registrations || [])
+  const data = Array.isArray(res.data) ? res.data : (res.data.registrations || res.data.data || [])
   return data.map((r: any) => ({
-    id: r._id || r.id,
-    horseId: r.horseId,
-    raceId: r.raceId,
+    id: r.regId || r._id || r.id,
+    horseId: (r.horse && typeof r.horse === 'object') ? r.horse : 
+             (r.horseId && typeof r.horseId === 'object') ? r.horseId : 
+             { 
+               id: r.horseId, 
+               name: r.horseName, 
+               breed: r.horseBreed || r.breed,
+               age: r.horseAge || r.age,
+               ownerId: { fullName: r.ownerName || r.ownerFullName || r.owner, phone: r.ownerPhone || r.phone }
+             },
+    raceId: (r.race && typeof r.race === 'object') ? r.race : 
+            (r.raceId && typeof r.raceId === 'object') ? r.raceId : 
+            { 
+              id: r.raceId, 
+              name: r.raceName,
+              scheduledAt: r.raceScheduledAt || r.scheduledAt || r.raceDate
+            },
     status: r.status,
     confirmedByOwner: r.confirmedByOwner,
     createdAt: r.createdAt,
+    rejectionReason: r.rejectionReason,
   }))
 }
 

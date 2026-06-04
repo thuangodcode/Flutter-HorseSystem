@@ -5,13 +5,15 @@ import { getRefereeRaces } from '@/api'
 import { AnimatedTable, type ColumnDef } from '@/components/ui/animated-table'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { getStatusClassName, getStatusLabel } from '@/lib/status'
+import { Scale, ClipboardList, Activity, Calendar, CheckCircle2 } from 'lucide-react'
 
 function statusBadge(s?: string) {
   if (!s) return null
   return (
-    <Badge variant="outline" className="font-bold">
+    <Badge variant="outline" className={getStatusClassName(s, 'race') + ' font-bold'}>
       {s === 'ONGOING' && <span className="live-dot mr-2" />}
-      {s}
+      {getStatusLabel(s, 'race')}
     </Badge>
   )
 }
@@ -87,9 +89,12 @@ export function RefereeRacesPage() {
   ]
 
   return (
-    <div>
+    <div className="space-y-6">
       <div className="page-header">
-        <h1>⚖️ Quản lý cuộc đua — Trọng tài</h1>
+        <h1 className="text-3xl font-black text-[var(--text)] tracking-tight flex items-center gap-2.5">
+          <Scale className="h-8 w-8 text-emerald-500 shrink-0" />
+          <span>Quản lý cuộc đua — Trọng tài</span>
+        </h1>
       </div>
 
       {error && <div className="alert alert-error">⚠️ {error}</div>}
@@ -100,26 +105,49 @@ export function RefereeRacesPage() {
           <CardDescription>Thông tin nhanh về công việc trọng tài hiện tại</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="stat-grid">
-            <div className="stat-card">
-              <div className="stat-icon">📋</div>
-              <div className="stat-label">Tổng phân công</div>
-              <div className="stat-value">{items.length}</div>
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-4">
+            {/* Thẻ 1: Tổng phân công */}
+            <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] border border-white/[0.04] p-3.5 transition-all hover:bg-white/[0.04]">
+              <div className="h-9 w-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+                <ClipboardList className="h-4.5 w-4.5 text-blue-400" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[10px] uppercase font-extrabold tracking-wider text-[var(--muted)]/40 leading-none mb-1">Tổng phân công</span>
+                <span className="text-xs font-bold text-[var(--text)] truncate">{items.length}</span>
+              </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-icon">🔴</div>
-              <div className="stat-label">Đang diễn ra</div>
-              <div className="stat-value" style={{ color: 'var(--warning)' }}>{items.filter(r => r.status === 'ONGOING').length}</div>
+
+            {/* Thẻ 2: Đang diễn ra */}
+            <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] border border-white/[0.04] p-3.5 transition-all hover:bg-white/[0.04]">
+              <div className="h-9 w-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                <Activity className="h-4.5 w-4.5 text-amber-400" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[10px] uppercase font-extrabold tracking-wider text-[var(--muted)]/40 leading-none mb-1">Đang diễn ra</span>
+                <span className="text-xs font-bold text-amber-400 truncate">{items.filter(r => r.status === 'ONGOING').length}</span>
+              </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-icon">📅</div>
-              <div className="stat-label">Sắp tới</div>
-              <div className="stat-value" style={{ color: 'var(--info)' }}>{items.filter(r => r.status === 'SCHEDULED').length}</div>
+
+            {/* Thẻ 3: Sắp tới */}
+            <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] border border-white/[0.04] p-3.5 transition-all hover:bg-white/[0.04]">
+              <div className="h-9 w-9 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
+                <Calendar className="h-4.5 w-4.5 text-purple-400" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[10px] uppercase font-extrabold tracking-wider text-[var(--muted)]/40 leading-none mb-1">Sắp tới</span>
+                <span className="text-xs font-bold text-purple-400 truncate">{items.filter(r => r.status === 'SCHEDULED').length}</span>
+              </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-icon">✅</div>
-              <div className="stat-label">Hoàn thành</div>
-              <div className="stat-value" style={{ color: 'var(--success)' }}>{items.filter(r => r.status === 'COMPLETED' || r.status === 'RESULT_CONFIRMED').length}</div>
+
+            {/* Thẻ 4: Hoàn thành */}
+            <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] border border-white/[0.04] p-3.5 transition-all hover:bg-white/[0.04]">
+              <div className="h-9 w-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="h-4.5 w-4.5 text-emerald-400" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[10px] uppercase font-extrabold tracking-wider text-[var(--muted)]/40 leading-none mb-1">Hoàn thành</span>
+                <span className="text-xs font-bold text-emerald-400 truncate">{items.filter(r => r.status === 'COMPLETED' || r.status === 'RESULT_CONFIRMED').length}</span>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -139,9 +167,12 @@ export function RefereeRacesPage() {
               columns={columns}
               onRowClick={(r: any) => navigate(`/referee/races/${r._id ?? r.id}`)}
               emptyMessage={
-                <div className="empty-state py-8">
-                  <div className="empty-state-icon">⚖️</div>
-                  <div className="empty-state-text">Chưa được phân công cuộc đua nào</div>
+                <div className="empty-state py-12 text-center">
+                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
+                    <Scale className="h-6 w-6" />
+                  </div>
+                  <div className="text-base font-bold text-[var(--text)]">Chưa được phân công cuộc đua nào</div>
+                  <p className="text-sm text-[var(--muted)] mt-1">Khi ban tổ chức phân công giám sát cuộc đua, danh sách sẽ hiển thị ở đây.</p>
                 </div>
               }
             />

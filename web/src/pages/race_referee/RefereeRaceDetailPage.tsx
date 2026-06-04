@@ -6,16 +6,20 @@ import {
   createViolation, resolveViolation, confirmRaceResult, getRaceResults,
 } from '@/api'
 import { AnimatedTable } from '../../components/ui/animated-table'
+import { FileText, Clock3, Ruler, Users, AlertTriangle, ClipboardCheck, Eye, ShieldAlert, Trophy, ChevronLeft, Plus, Scale } from 'lucide-react'
+import { getStatusClassName, getStatusLabel } from '@/lib/status'
 
-const VIOLATION_TYPES = ['FALSE_START', 'INTERFERENCE', 'OVERWEIGHT', 'DOPING', 'OTHER']
-const PENALTY_TYPES = ['WARNING', 'DISQUALIFY', 'FINE']
 
-function statusBadge(s?: string) {
+function statusBadge(s?: string, type: string = 'race') {
   if (!s) return null
-  return <span className={`badge badge-${s.toLowerCase()}`}>
-    {s === 'ONGOING' && <span className="live-dot" />}
-    {s}
-  </span>
+  const className = getStatusClassName(s, type)
+  const label = getStatusLabel(s, type)
+  return (
+    <span className={`badge ${className} font-bold inline-flex items-center gap-1.5`}>
+      {s === 'ONGOING' && <span className="live-dot" />}
+      {label}
+    </span>
+  )
 }
 
 function formatDateTime(d: string) {
@@ -253,7 +257,7 @@ export function RefereeRaceDetailPage() {
     {
       id: 'status',
       header: 'Trạng thái ĐK',
-      cell: (h: RaceHorseRegistration) => statusBadge(h.registrationStatus || 'PENDING'),
+      cell: (h: RaceHorseRegistration) => statusBadge(h.registrationStatus || 'PENDING', 'registration'),
     },
   ]
 
@@ -282,7 +286,7 @@ export function RefereeRaceDetailPage() {
     {
       id: 'status',
       header: 'Trạng thái',
-      cell: (h: RaceHorseRegistration) => statusBadge(h.registrationStatus || 'PENDING'),
+      cell: (h: RaceHorseRegistration) => statusBadge(h.registrationStatus || 'PENDING', 'registration'),
     },
   ]
 
@@ -314,7 +318,7 @@ export function RefereeRaceDetailPage() {
     {
       id: 'status',
       header: 'Trạng thái',
-      cell: (r: RaceResult) => statusBadge(r.status || ''),
+      cell: (r: RaceResult) => statusBadge(r.status || '', 'registration'),
     },
   ]
 
@@ -322,11 +326,22 @@ export function RefereeRaceDetailPage() {
     {
       id: 'type',
       header: 'Loại',
-      cell: (v: Violation) => (
-        <span className={`badge badge-${v.type === 'DOPING' || v.type === 'INTERFERENCE' ? 'disqualify' : 'warning'}`}>
-          {v.type}
-        </span>
-      ),
+      cell: (v: Violation) => {
+        const typeMap: Record<string, string> = {
+          'FALSE_START': 'Xuất phát lỗi',
+          'INTERFERENCE': 'Cản trở',
+          'OVERWEIGHT': 'Quá cân',
+          'DOPING': 'Doping',
+          'OTHER': 'Khác'
+        }
+        const label = typeMap[v.type.toUpperCase()] || v.type
+        const isCritical = v.type === 'DOPING' || v.type === 'INTERFERENCE'
+        return (
+          <span className={`badge ${isCritical ? 'badge-rejected' : 'badge-pending'}`}>
+            {label}
+          </span>
+        )
+      },
     },
     {
       id: 'description',
@@ -336,7 +351,18 @@ export function RefereeRaceDetailPage() {
     {
       id: 'penalty',
       header: 'Hình phạt',
-      cell: (v: Violation) => <span className={`badge badge-${v.penalty.toLowerCase()}`}>{v.penalty}</span>,
+      cell: (v: Violation) => {
+        const penaltyMap: Record<string, string> = {
+          'WARNING': 'Cảnh cáo',
+          'DISQUALIFY': 'Truất quyền',
+          'FINE': 'Phạt tiền'
+        }
+        const label = penaltyMap[v.penalty.toUpperCase()] || v.penalty
+        const isDisqualify = v.penalty === 'DISQUALIFY'
+        const isFine = v.penalty === 'FINE'
+        const badgeClass = isDisqualify ? 'badge-rejected' : isFine ? 'badge-ongoing' : 'badge-pending'
+        return <span className={`badge ${badgeClass}`}>{label}</span>
+      },
     },
     {
       id: 'fine',
@@ -346,7 +372,7 @@ export function RefereeRaceDetailPage() {
     {
       id: 'status',
       header: 'Trạng thái',
-      cell: (v: Violation) => statusBadge(v.status),
+      cell: (v: Violation) => statusBadge(v.status, 'violation'),
     },
     {
       id: 'action',
@@ -399,8 +425,11 @@ export function RefereeRaceDetailPage() {
 
   if (loading) return <div className="loading"><div className="spinner" /></div>
   if (error) return (
-    <div className="card">
-      <Link to="/referee/races" className="back-link">← Quay lại</Link>
+    <div className="card max-w-2xl mx-auto mt-8">
+      <Link to="/referee/races" className="back-link flex items-center gap-1.5 hover:text-[var(--primary)] transition-colors mb-4">
+        <ChevronLeft className="h-4 w-4" />
+        <span>Quay lại</span>
+      </Link>
       <div className="alert alert-error">⚠️ {error}</div>
     </div>
   )
@@ -409,43 +438,84 @@ export function RefereeRaceDetailPage() {
   const openViolations = violations.filter(v => v.status === 'OPEN').length
 
   return (
-    <div>
-      <Link to="/referee/races" className="back-link">← Quay lại danh sách</Link>
+    <div className="space-y-6">
+      <Link to="/referee/races" className="back-link inline-flex items-center gap-1.5 hover:text-[var(--primary)] transition-colors text-sm font-bold">
+        <ChevronLeft className="h-4 w-4" />
+        <span>Quay lại danh sách</span>
+      </Link>
 
       {/* Race Header */}
-      <div className="card" style={{ marginBottom: 20 }}>
-        <div className="flex justify-between items-center flex-wrap gap-8">
-          <div>
-            <h1 style={{ margin: 0 }}>⚖️ {race.name}</h1>
-            {race.tournamentId?.name && <p className="muted mt-8">🏆 {race.tournamentId.name}</p>}
+      <div className="card">
+        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="rounded-2xl bg-emerald-500/10 p-3 flex items-center justify-center ring-1 ring-emerald-500/20 shrink-0">
+              <Scale className="h-6 w-6 text-emerald-500" />
+            </div>
+            <div className="space-y-1.5 min-w-0 flex-1">
+              <h1 className="text-2xl font-black text-[var(--text)] tracking-tight m-0">{race.name}</h1>
+              {race.tournamentId?.name && (
+                <div className="text-xs text-[var(--muted)]/60 font-bold flex items-center gap-1.5">
+                  <Trophy className="h-3.5 w-3.5 text-amber-500/80 shrink-0" />
+                  <span className="truncate">{race.tournamentId.name}</span>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-8">
-            {statusBadge(race.status)}
-            <Link to={`/referee/report/${raceId}`} className="btn btnPrimary">
-              📝 Biên bản
+          <div className="flex items-center gap-3">
+            {statusBadge(race.status, 'race')}
+            <Link to={`/referee/report/${raceId}`} className="btn btnPrimary h-10 px-4 rounded-xl flex items-center gap-2 font-bold cursor-pointer transition-all">
+              <FileText className="h-4 w-4" />
+              <span>Biên bản</span>
             </Link>
           </div>
         </div>
 
-        <div className="stat-grid mt-16">
-          <div className="stat-card">
-            <div className="stat-label">Thời gian</div>
-            <div className="stat-value" style={{ fontSize: 14 }}>{formatDateTime(race.scheduledAt)}</div>
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-4 mt-6">
+          {/* Widget 1: Thời gian */}
+          <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] border border-white/[0.04] p-3.5 transition-all hover:bg-white/[0.04]">
+            <div className="h-9 w-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+              <Clock3 className="h-4.5 w-4.5 text-amber-400" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-[10px] uppercase font-extrabold tracking-wider text-[var(--muted)]/40 leading-none mb-1">Thời gian</span>
+              <span className="text-xs font-bold text-[var(--text)] truncate">{formatDateTime(race.scheduledAt)}</span>
+            </div>
           </div>
+
+          {/* Widget 2: Cự ly */}
           {race.distance && (
-            <div className="stat-card">
-              <div className="stat-label">Khoảng cách</div>
-              <div className="stat-value">{race.distance}m</div>
+            <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] border border-white/[0.04] p-3.5 transition-all hover:bg-white/[0.04]">
+              <div className="h-9 w-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+                <Ruler className="h-4.5 w-4.5 text-blue-400" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[10px] uppercase font-extrabold tracking-wider text-[var(--muted)]/40 leading-none mb-1">Cự ly</span>
+                <span className="text-xs font-bold text-[var(--text)] truncate">{race.distance}m</span>
+              </div>
             </div>
           )}
-          <div className="stat-card">
-            <div className="stat-label">Ngựa tham gia</div>
-            <div className="stat-value">{horses.length}</div>
+
+          {/* Widget 3: Ngựa tham gia */}
+          <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] border border-white/[0.04] p-3.5 transition-all hover:bg-white/[0.04]">
+            <div className="h-9 w-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+              <Users className="h-4.5 w-4.5 text-emerald-400" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-[10px] uppercase font-extrabold tracking-wider text-[var(--muted)]/40 leading-none mb-1">Ngựa tham gia</span>
+              <span className="text-xs font-bold text-[var(--text)] truncate">{horses.length}</span>
+            </div>
           </div>
-          <div className="stat-card">
-            <div className="stat-label">Vi phạm mở</div>
-            <div className="stat-value" style={{ color: openViolations > 0 ? 'var(--danger)' : 'var(--success)' }}>
-              {openViolations}
+
+          {/* Widget 4: Vi phạm mở */}
+          <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] border border-white/[0.04] p-3.5 transition-all hover:bg-white/[0.04]">
+            <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${openViolations > 0 ? 'bg-red-500/10 border border-red-500/20' : 'bg-emerald-500/10 border border-emerald-500/20'}`}>
+              <AlertTriangle className={`h-4.5 w-4.5 ${openViolations > 0 ? 'text-red-400' : 'text-emerald-400'}`} />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-[10px] uppercase font-extrabold tracking-wider text-[var(--muted)]/40 leading-none mb-1">Vi phạm mở</span>
+              <span className={`text-xs font-bold truncate ${openViolations > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                {openViolations}
+              </span>
             </div>
           </div>
         </div>
@@ -454,17 +524,21 @@ export function RefereeRaceDetailPage() {
       {/* Tabs */}
       <div className="card">
         <div className="tabs">
-          <button className={`tab-btn ${activeTab === 'horses' ? 'active' : ''}`} onClick={() => changeTab('horses')}>
-            🐴 Kiểm tra ngựa
+          <button className={`tab-link ${activeTab === 'horses' ? 'active' : ''}`} onClick={() => changeTab('horses')}>
+            <ClipboardCheck className="h-4 w-4 text-emerald-500 shrink-0" />
+            <span>Kiểm tra ngựa</span>
           </button>
-          <button className={`tab-btn ${activeTab === 'monitor' ? 'active' : ''}`} onClick={() => changeTab('monitor')}>
-            👁️ Theo dõi đua
+          <button className={`tab-link ${activeTab === 'monitor' ? 'active' : ''}`} onClick={() => changeTab('monitor')}>
+            <Eye className="h-4 w-4 text-blue-500 shrink-0" />
+            <span>Theo dõi đua</span>
           </button>
-          <button className={`tab-btn ${activeTab === 'violations' ? 'active' : ''}`} onClick={() => changeTab('violations')}>
-            ⚠️ Vi phạm {openViolations > 0 && `(${openViolations})`}
+          <button className={`tab-link ${activeTab === 'violations' ? 'active' : ''}`} onClick={() => changeTab('violations')}>
+            <ShieldAlert className="h-4 w-4 text-red-500 shrink-0" />
+            <span>Vi phạm {openViolations > 0 && `(${openViolations})`}</span>
           </button>
-          <button className={`tab-btn ${activeTab === 'results' ? 'active' : ''}`} onClick={() => changeTab('results')}>
-            🏅 Xác nhận kết quả
+          <button className={`tab-link ${activeTab === 'results' ? 'active' : ''}`} onClick={() => changeTab('results')}>
+            <Trophy className="h-4 w-4 text-amber-500 shrink-0" />
+            <span>Xác nhận kết quả</span>
           </button>
         </div>
 
@@ -475,9 +549,12 @@ export function RefereeRaceDetailPage() {
             columns={horseInspectionColumns}
             loading={horsesLoading}
             emptyMessage={
-              <div className="empty-state">
-                <div className="empty-state-icon">🐴</div>
-                <div className="empty-state-text">Chưa có ngựa đăng ký</div>
+              <div className="empty-state py-12 text-center">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
+                  <ClipboardCheck className="h-6 w-6" />
+                </div>
+                <div className="text-base font-bold text-[var(--text)]">Chưa có ngựa đăng ký</div>
+                <p className="text-sm text-[var(--muted)] mt-1">Danh sách ngựa đăng ký tham gia sẽ hiển thị ở đây.</p>
               </div>
             }
           />
@@ -485,54 +562,56 @@ export function RefereeRaceDetailPage() {
 
         {/* ===== TAB 2: Race Monitor ===== */}
         {activeTab === 'monitor' && (
-          <div>
+          <div className="space-y-6">
             {race.status === 'ONGOING' && (
-              <div className="alert alert-warning">
-                <span className="live-dot" /> Cuộc đua đang diễn ra
+              <div className="flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/20 p-4 text-amber-600 dark:text-amber-300 font-bold text-sm">
+                <span className="h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" />
+                <span>Cuộc đua đang diễn ra</span>
               </div>
             )}
 
             {race.status === 'SCHEDULED' && (
-              <div className="alert alert-info">
-                📅 Cuộc đua chưa bắt đầu — dự kiến {formatDateTime(race.scheduledAt)}
+              <div className="flex items-center gap-2 rounded-xl bg-blue-500/10 border border-blue-500/20 p-4 text-blue-600 dark:text-blue-300 font-bold text-sm">
+                <span>📅 Cuộc đua chưa bắt đầu — dự kiến {formatDateTime(race.scheduledAt)}</span>
               </div>
             )}
 
-            <div className="section-title mt-16 mb-4">🐴 Ngựa tham gia ({horses.length})</div>
-            {horses.length > 0 && (
-              <div className="mb-6">
+            <div>
+              <div className="text-lg font-black text-[var(--text)] mb-3">Ngựa tham gia ({horses.length})</div>
+              {horses.length > 0 && (
                 <AnimatedTable
                   data={horsesWithId}
                   columns={monitorHorsesColumns}
                   emptyMessage="Chưa có ngựa tham gia"
                 />
-              </div>
-            )}
+              )}
+            </div>
 
             {results.length > 0 && (
-              <>
-                <div className="section-title mb-4">🏅 Kết quả hiện tại</div>
+              <div>
+                <div className="text-lg font-black text-[var(--text)] mb-3">Kết quả hiện tại</div>
                 <AnimatedTable
                   data={resultsWithId}
                   columns={monitorResultsColumns}
                   emptyMessage="Chưa có kết quả"
                 />
-              </>
+              </div>
             )}
           </div>
         )}
 
         {/* ===== TAB 3: Violations ===== */}
         {activeTab === 'violations' && (
-          <div>
-            {vMsg && <div className={`alert ${vMsg.type === 'success' ? 'alert-success' : 'alert-error'} mb-16`}>{vMsg.text}</div>}
+          <div className="space-y-4">
+            {vMsg && <div className={`alert ${vMsg.type === 'success' ? 'alert-success' : 'alert-error'} mb-4`}>{vMsg.text}</div>}
 
-            <div className="flex justify-between items-center mb-16">
-              <div className="section-title" style={{ marginBottom: 0 }}>
-                ⚠️ Danh sách vi phạm ({violations.length})
+            <div className="flex justify-between items-center mb-2">
+              <div className="text-lg font-black text-[var(--text)]">
+                Danh sách vi phạm ({violations.length})
               </div>
-              <button className="btn btnDanger" onClick={() => setShowViolationForm(true)}>
-                + Ghi nhận vi phạm
+              <button className="btn btnDanger rounded-xl h-10 px-4 flex items-center gap-1.5 font-bold cursor-pointer transition-all" onClick={() => setShowViolationForm(true)}>
+                <Plus className="h-4 w-4" />
+                <span>Ghi nhận vi phạm</span>
               </button>
             </div>
 
@@ -541,9 +620,12 @@ export function RefereeRaceDetailPage() {
               columns={violationsColumns}
               loading={violationsLoading}
               emptyMessage={
-                <div className="empty-state">
-                  <div className="empty-state-icon">✅</div>
-                  <div className="empty-state-text">Không có vi phạm nào</div>
+                <div className="empty-state py-12 text-center">
+                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
+                    <ShieldAlert className="h-6 w-6" />
+                  </div>
+                  <div className="text-base font-bold text-[var(--text)]">Không có vi phạm nào</div>
+                  <p className="text-sm text-[var(--muted)] mt-1">Cuộc đua sạch, không phát hiện vi phạm nào.</p>
                 </div>
               }
             />
@@ -551,59 +633,70 @@ export function RefereeRaceDetailPage() {
             {/* Violation Form Modal */}
             {showViolationForm && (
               <div className="modal-overlay" onClick={() => setShowViolationForm(false)}>
-                <div className="modal" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-content max-w-lg" onClick={(e) => e.stopPropagation()}>
                   <div className="modal-header">
-                    <h2>⚠️ Ghi nhận vi phạm mới</h2>
+                    <h2 className="text-lg font-black flex items-center gap-2 m-0 text-[var(--text)]">
+                      <ShieldAlert className="h-5 w-5 text-red-500" />
+                      <span>Ghi nhận vi phạm mới</span>
+                    </h2>
                     <button className="modal-close" onClick={() => setShowViolationForm(false)}>✕</button>
                   </div>
 
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Ngựa vi phạm</label>
-                      <select value={vForm.horseId} onChange={(e) => setVForm({ ...vForm, horseId: e.target.value })}>
-                        <option value="">— Chọn ngựa —</option>
-                        {horses.map((h) => {
-                          const horse = (h.horse || h) as any
-                          return <option key={horse._id} value={horse._id}>{horse.name}</option>
-                        })}
-                      </select>
+                  <div className="modal-body space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="form-group">
+                        <label>Ngựa vi phạm</label>
+                        <select className="h-10 rounded-lg" value={vForm.horseId} onChange={(e) => setVForm({ ...vForm, horseId: e.target.value })}>
+                          <option value="">— Chọn ngựa —</option>
+                          {horses.map((h) => {
+                            const horse = (h.horse || h) as any
+                            return <option key={horse._id} value={horse._id}>{horse.name}</option>
+                          })}
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label>Nài ngựa (Jockey ID)</label>
+                        <input className="h-10 rounded-lg" value={vForm.jockeyId} onChange={(e) => setVForm({ ...vForm, jockeyId: e.target.value })} placeholder="Nhập Jockey ID" />
+                      </div>
                     </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="form-group">
+                        <label>Loại vi phạm</label>
+                        <select className="h-10 rounded-lg" value={vForm.type} onChange={(e) => setVForm({ ...vForm, type: e.target.value })}>
+                          <option value="FALSE_START">Xuất phát lỗi (False Start)</option>
+                          <option value="INTERFERENCE">Cản trở (Interference)</option>
+                          <option value="OVERWEIGHT">Quá cân (Overweight)</option>
+                          <option value="DOPING">Doping</option>
+                          <option value="OTHER">Khác (Other)</option>
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label>Hình phạt</label>
+                        <select className="h-10 rounded-lg" value={vForm.penalty} onChange={(e) => setVForm({ ...vForm, penalty: e.target.value })}>
+                          <option value="WARNING">Cảnh cáo (Warning)</option>
+                          <option value="DISQUALIFY">Truất quyền thi đấu (Disqualify)</option>
+                          <option value="FINE">Phạt tiền (Fine)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {vForm.penalty === 'FINE' && (
+                      <div className="form-group">
+                        <label>Số tiền phạt (VND)</label>
+                        <input className="h-10 rounded-lg" type="number" value={vForm.fineAmount} onChange={(e) => setVForm({ ...vForm, fineAmount: e.target.value })} placeholder="5000000" />
+                      </div>
+                    )}
+
                     <div className="form-group">
-                      <label>Nài ngựa (Jockey ID)</label>
-                      <input value={vForm.jockeyId} onChange={(e) => setVForm({ ...vForm, jockeyId: e.target.value })} placeholder="Nhập Jockey ID" />
+                      <label>Mô tả chi tiết</label>
+                      <textarea className="rounded-lg p-3" value={vForm.description} onChange={(e) => setVForm({ ...vForm, description: e.target.value })} placeholder="Mô tả vi phạm..." rows={3} />
                     </div>
                   </div>
 
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Loại vi phạm</label>
-                      <select value={vForm.type} onChange={(e) => setVForm({ ...vForm, type: e.target.value })}>
-                        {VIOLATION_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Hình phạt</label>
-                      <select value={vForm.penalty} onChange={(e) => setVForm({ ...vForm, penalty: e.target.value })}>
-                        {PENALTY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                      </select>
-                    </div>
-                  </div>
-
-                  {vForm.penalty === 'FINE' && (
-                    <div className="form-group">
-                      <label>Số tiền phạt (VND)</label>
-                      <input type="number" value={vForm.fineAmount} onChange={(e) => setVForm({ ...vForm, fineAmount: e.target.value })} placeholder="5000000" />
-                    </div>
-                  )}
-
-                  <div className="form-group">
-                    <label>Mô tả chi tiết</label>
-                    <textarea value={vForm.description} onChange={(e) => setVForm({ ...vForm, description: e.target.value })} placeholder="Mô tả vi phạm..." rows={3} />
-                  </div>
-
-                  <div className="flex gap-8 mt-16">
-                    <button className="btn flex-1" onClick={() => setShowViolationForm(false)}>Hủy</button>
-                    <button className="btn btnDanger flex-1" disabled={!vForm.horseId || !vForm.description || vLoading} onClick={handleCreateViolation}>
+                  <div className="modal-footer flex gap-3">
+                    <button className="btn rounded-xl h-10 px-4 cursor-pointer" onClick={() => setShowViolationForm(false)}>Hủy</button>
+                    <button className="btn btnDanger rounded-xl h-10 px-4 cursor-pointer font-bold" disabled={!vForm.horseId || !vForm.description || vLoading} onClick={handleCreateViolation}>
                       {vLoading ? 'Đang xử lý...' : '⚠️ Ghi nhận vi phạm'}
                     </button>
                   </div>
@@ -615,19 +708,19 @@ export function RefereeRaceDetailPage() {
 
         {/* ===== TAB 4: Confirm Results ===== */}
         {activeTab === 'results' && (
-          <div>
-            {confirmMsg && <div className={`alert ${confirmMsg.type === 'success' ? 'alert-success' : 'alert-error'} mb-16`}>{confirmMsg.text}</div>}
+          <div className="space-y-6">
+            {confirmMsg && <div className={`alert ${confirmMsg.type === 'success' ? 'alert-success' : 'alert-error'} mb-4`}>{confirmMsg.text}</div>}
 
             {openViolations > 0 && (
-              <div className="alert alert-warning mb-16">
+              <div className="alert alert-warning mb-4">
                 ⚠️ Còn {openViolations} vi phạm chưa xử lý. Vui lòng xử lý hết trước khi xác nhận kết quả.
               </div>
             )}
 
             {/* Existing results */}
             {results.length > 0 && (
-              <div className="mb-16">
-                <div className="section-title mb-4">📊 Kết quả hiện tại</div>
+              <div>
+                <div className="text-lg font-black text-[var(--text)] mb-3">📊 Kết quả hiện tại</div>
                 <AnimatedTable
                   data={resultsWithId}
                   columns={monitorResultsColumns}
@@ -636,45 +729,49 @@ export function RefereeRaceDetailPage() {
               </div>
             )}
 
-            <div className="section-title">🏅 Nhập bảng xếp hạng</div>
+            <div>
+              <div className="text-lg font-black text-[var(--text)] mb-4">🏅 Nhập bảng xếp hạng</div>
 
-            {rankings.map((r, idx) => (
-              <div key={idx} className="form-row mb-8" style={{ alignItems: 'end' }}>
-                <div className="form-group" style={{ maxWidth: 80 }}>
-                  <label>Hạng</label>
-                  <input type="number" min="1" value={r.position} onChange={(e) => updateRanking(idx, 'position', e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label>Ngựa</label>
-                  <select value={r.horseId} onChange={(e) => updateRanking(idx, 'horseId', e.target.value)}>
-                    <option value="">— Chọn —</option>
-                    {horses.map((h) => {
-                      const horse = (h.horse || h) as any
-                      return <option key={horse._id} value={horse._id}>{horse.name}</option>
-                    })}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Jockey ID</label>
-                  <input value={r.jockeyId} onChange={(e) => updateRanking(idx, 'jockeyId', e.target.value)} placeholder="Jockey ID" />
-                </div>
-                <div className="form-group">
-                  <label>Thời gian</label>
-                  <input value={r.finishTime} onChange={(e) => updateRanking(idx, 'finishTime', e.target.value)} placeholder="1:12.345" />
-                </div>
-                <button className="btn btnSmall btnDanger" onClick={() => removeRanking(idx)} style={{ marginBottom: 14 }}>✕</button>
+              <div className="space-y-3">
+                {rankings.map((r, idx) => (
+                  <div key={idx} className="flex flex-wrap items-end gap-3 rounded-xl bg-white/[0.01] border border-white/[0.03] p-3">
+                    <div className="form-group" style={{ maxWidth: 80 }}>
+                      <label className="text-xs">Hạng</label>
+                      <input className="h-10 rounded-lg text-center" type="number" min="1" value={r.position} onChange={(e) => updateRanking(idx, 'position', e.target.value)} />
+                    </div>
+                    <div className="form-group flex-1 min-w-[150px]">
+                      <label className="text-xs">Ngựa</label>
+                      <select className="h-10 rounded-lg" value={r.horseId} onChange={(e) => updateRanking(idx, 'horseId', e.target.value)}>
+                        <option value="">— Chọn ngựa —</option>
+                        {horses.map((h) => {
+                          const horse = (h.horse || h) as any
+                          return <option key={horse._id} value={horse._id}>{horse.name}</option>
+                        })}
+                      </select>
+                    </div>
+                    <div className="form-group flex-1 min-w-[120px]">
+                      <label className="text-xs">Jockey ID</label>
+                      <input className="h-10 rounded-lg" value={r.jockeyId} onChange={(e) => updateRanking(idx, 'jockeyId', e.target.value)} placeholder="Jockey ID" />
+                    </div>
+                    <div className="form-group flex-1 min-w-[120px]">
+                      <label className="text-xs">Thời gian</label>
+                      <input className="h-10 rounded-lg" value={r.finishTime} onChange={(e) => updateRanking(idx, 'finishTime', e.target.value)} placeholder="1:12.345" />
+                    </div>
+                    <button className="btn btnDanger h-10 w-10 p-0 flex items-center justify-center rounded-lg cursor-pointer shrink-0" onClick={() => removeRanking(idx)}>✕</button>
+                  </div>
+                ))}
               </div>
-            ))}
 
-            <button className="btn mb-16" onClick={addRankingRow}>+ Thêm hàng</button>
+              <button className="btn rounded-xl h-10 px-4 cursor-pointer mt-4 font-bold" onClick={addRankingRow}>+ Thêm hàng xếp hạng</button>
+            </div>
 
             <div className="form-group">
-              <label>Ghi chú</label>
-              <textarea value={resultNotes} onChange={(e) => setResultNotes(e.target.value)} placeholder="Ghi chú về cuộc đua..." rows={2} />
+              <label>Ghi chú cuộc đua</label>
+              <textarea className="rounded-lg p-3" value={resultNotes} onChange={(e) => setResultNotes(e.target.value)} placeholder="Ghi chú về cuộc đua..." rows={2} />
             </div>
 
             <button
-              className="btn btnPrimary"
+              className="btn btnPrimary rounded-xl h-11 px-6 font-bold cursor-pointer transition-all"
               disabled={rankings.length === 0 || confirmLoading || openViolations > 0}
               onClick={handleConfirmResult}
             >

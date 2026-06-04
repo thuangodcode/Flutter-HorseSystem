@@ -4,18 +4,16 @@ import type { Tournament } from '../types'
 import { getPublicTournaments } from '@/api'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { DropdownMenu, DropdownMenuItem } from '@/components/ui/dropdown'
 import { Input } from '@/components/ui/input'
 import { getStatusClassName, getStatusLabel, TOURNAMENT_STATUS_OPTIONS } from '@/lib/status'
 import { NumberCounter } from '@/components/ui/number-counter'
 import { ScrollReveal } from '@/components/ui/scroll-text'
-import { Magnetic } from '@/components/ui/magnetic'
-import { CalendarRange, Filter, RefreshCw } from 'lucide-react'
+import { CalendarRange, MapPin, RefreshCw, Search, Trophy, Users } from 'lucide-react'
+import '@/styles/spectator.css'
 
 const TIME_OPTIONS = [
-  { value: 'all', label: 'Tất cả thời gian' },
-  { value: 'upcoming', label: 'Sắp khai mạc' },
+  { value: 'all', label: 'Tất cả' },
+  { value: 'upcoming', label: 'Sắp diễn ra' },
   { value: 'ongoing', label: 'Đang diễn ra' },
   { value: 'completed', label: 'Đã kết thúc' },
 ]
@@ -24,10 +22,6 @@ const SORT_OPTIONS = [
   { value: 'newest', label: 'Mới nhất' },
   { value: 'oldest', label: 'Cũ nhất' },
 ]
-
-function getOptionLabel(options: Array<{ value: string; label: string }>, value: string) {
-  return options.find((option) => (option.value || 'all') === value)?.label || value
-}
 
 function statusBadge(s?: string) {
   return (
@@ -55,6 +49,7 @@ export function TournamentsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortOrder, setSortOrder] = useState('newest')
   const [reloadKey, setReloadKey] = useState(0)
+
   useEffect(() => {
     setLoading(true)
     setError(null)
@@ -70,7 +65,6 @@ export function TournamentsPage() {
   const filteredItems = [...items]
     .filter((tournament) => {
       if (statusFilter !== 'all' && tournament.status !== statusFilter) return false
-
       if (searchQuery.trim() !== '') {
         const query = searchQuery.toLowerCase()
         const matchesName = tournament.name?.toLowerCase().includes(query)
@@ -78,27 +72,12 @@ export function TournamentsPage() {
         const matchesDesc = tournament.description?.toLowerCase().includes(query)
         if (!matchesName && !matchesVenue && !matchesDesc) return false
       }
-
       const now = Date.now()
       const startDate = new Date(tournament.startDate).getTime()
       const endDate = new Date(tournament.endDate).getTime()
-
-      if (timeFilter === 'upcoming') {
-        return ['DRAFT', 'PUBLISHED'].includes(tournament.status || '') || startDate > now
-      }
-
-      if (timeFilter === 'ongoing') {
-        return ['ONGOING', 'ACTIVE'].includes(tournament.status || '') || (startDate <= now && endDate >= now)
-      }
-
-      if (timeFilter === 'completed') {
-        return ['COMPLETED', 'CANCELLED', 'RESULT_CONFIRMED'].includes(tournament.status || '') || endDate < now
-      }
-
-      if (timeFilter === 'draft') {
-        return tournament.status === 'DRAFT'
-      }
-
+      if (timeFilter === 'upcoming') return ['DRAFT', 'PUBLISHED'].includes(tournament.status || '') || startDate > now
+      if (timeFilter === 'ongoing') return ['ONGOING', 'ACTIVE'].includes(tournament.status || '') || (startDate <= now && endDate >= now)
+      if (timeFilter === 'completed') return ['COMPLETED', 'CANCELLED', 'RESULT_CONFIRMED'].includes(tournament.status || '') || endDate < now
       return true
     })
     .sort((a, b) => {
@@ -106,183 +85,165 @@ export function TournamentsPage() {
       return sortOrder === 'oldest' ? diff : -diff
     })
 
-  const ongoingCount = items.filter((tournament) => ['ONGOING', 'ACTIVE'].includes(tournament.status || '')).length
-  const draftCount = items.filter((tournament) => tournament.status === 'DRAFT').length
-  const completedCount = items.filter((tournament) => ['COMPLETED', 'CANCELLED', 'RESULT_CONFIRMED'].includes(tournament.status || '')).length
+  const ongoingCount = items.filter((t) => ['ONGOING', 'ACTIVE'].includes(t.status || '')).length
+  const completedCount = items.filter((t) => ['COMPLETED', 'CANCELLED', 'RESULT_CONFIRMED'].includes(t.status || '')).length
 
   return (
-    <div className="space-y-6">
-      <ScrollReveal direction="up" distance={60} duration={0.8} delay={0.1}>
-        <div className="spotlight-card-outer animate-border-custom w-full">
-          <div className="p-7">
-            <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-            <div className="space-y-3">
-              <div className="flex items-start gap-4">
-                <div className="rounded-2xl bg-[var(--primary-light)] p-4 ring-1 ring-[var(--primary-ring)]">
-                  <img src="/trophy.gif" className="h-9 w-9 object-contain" alt="Trophy" />
+    <div className="space-y-8">
+
+      {/* ══ Hero Header ══ */}
+      <ScrollReveal direction="up" distance={40} duration={0.7} delay={0.05}>
+        <div className="spectator-hero">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-4 relative z-10">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-amber-500/15 ring-1 ring-amber-500/25 flex items-center justify-center">
+                  <Trophy className="w-7 h-7 text-amber-400" />
                 </div>
-                <div className="space-y-1">
-                  <div className="text-4xl font-black text-[var(--text)]">Giải đấu</div>
-                  <div className="max-w-2xl text-[var(--muted)] font-semibold" style={{ fontSize: '14.5px', lineHeight: '1.6' }}>
-                    Theo dõi giải đấu theo trạng thái, thời gian diễn ra và sắp xếp danh sách theo nhu cầu.
-                  </div>
+                <div>
+                  <h1 className="text-3xl font-black text-[var(--text)] tracking-tight m-0">Giải đấu</h1>
+                  <p className="text-sm text-[var(--muted)] font-medium mt-1">
+                    Theo dõi các giải đấu đua ngựa, lịch thi đấu và xếp hạng.
+                  </p>
                 </div>
               </div>
+
+              {/* Summary Badges */}
               <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="border-[var(--primary-ring)] bg-[var(--primary-light)] text-[var(--primary)] font-bold">
-                  Tổng <NumberCounter value={items.length} duration={1.2} easing="easeOut" />
+                <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-400 font-bold">
+                  Tổng <NumberCounter value={items.length} duration={1} easing="easeOut" />
                 </Badge>
-                <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 font-bold">
-                  Đang diễn ra <NumberCounter value={ongoingCount} duration={1.2} delay={0.1} easing="easeOut" />
+                <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-bold">
+                  Đang diễn ra <NumberCounter value={ongoingCount} duration={1} delay={0.1} easing="easeOut" />
                 </Badge>
-                <Badge variant="outline" className="border-[var(--border)] bg-[var(--bg2)] text-[var(--muted)] font-bold">
-                  Đã hoàn tất <NumberCounter value={completedCount} duration={1.2} delay={0.2} easing="easeOut" />
-                </Badge>
-                <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-300 font-bold">
-                  Bản nháp <NumberCounter value={draftCount} duration={1.2} delay={0.3} easing="easeOut" />
+                <Badge variant="outline" className="border-slate-500/30 bg-slate-500/10 text-slate-300 font-bold">
+                  Đã hoàn tất <NumberCounter value={completedCount} duration={1} delay={0.2} easing="easeOut" />
                 </Badge>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 md:justify-end">
-              <Input
-                type="text"
-                placeholder="Tìm kiếm giải đấu..."
-                value={searchQuery}
-                onChange={(e: any) => setSearchQuery(e.target.value)}
-                className="h-11 w-56 border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] font-semibold placeholder:text-[var(--muted)]/50 focus:border-[var(--primary)]/50"
-              />
-
-              <DropdownMenu
-                trigger={
-                  <button className="h-11 w-[180px] border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] font-semibold px-3 flex items-center justify-between rounded-md">
-                    {getOptionLabel(TOURNAMENT_STATUS_OPTIONS, statusFilter)}
-                  </button>
-                }
-              >
-                <div className="flex flex-col">
-                  {TOURNAMENT_STATUS_OPTIONS.map((option: any) => (
-                    <DropdownMenuItem
-                      key={option.value || 'all'}
-                      onClick={() => setStatusFilter(option.value ?? 'all')}
-                      active={option.value === statusFilter}
-                    >
-                      <span>{option.label}</span>
-                    </DropdownMenuItem>
-                  ))}
-                </div>
-              </DropdownMenu>
-
-              <DropdownMenu
-                trigger={
-                  <button className="h-11 w-[180px] border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] font-semibold px-3 flex items-center justify-between rounded-md">
-                    {getOptionLabel(TIME_OPTIONS, timeFilter)}
-                  </button>
-                }
-              >
-                <div className="flex flex-col">
-                  {TIME_OPTIONS.map((option: any) => (
-                    <DropdownMenuItem
-                      key={option.value}
-                      onClick={() => setTimeFilter(option.value)}
-                      active={option.value === timeFilter}
-                    >
-                      <span>{option.label}</span>
-                    </DropdownMenuItem>
-                  ))}
-                </div>
-              </DropdownMenu>
-
-              <DropdownMenu
-                trigger={
-                  <button className="h-11 w-[180px] border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] font-semibold px-3 flex items-center justify-between rounded-md">
-                    {getOptionLabel(SORT_OPTIONS, sortOrder)}
-                  </button>
-                }
-              >
-                <div className="flex flex-col">
-                  {SORT_OPTIONS.map((option: any) => (
-                    <DropdownMenuItem
-                      key={option.value}
-                      onClick={() => setSortOrder(option.value)}
-                      active={option.value === sortOrder}
-                    >
-                      <span>{option.label}</span>
-                    </DropdownMenuItem>
-                  ))}
-                </div>
-              </DropdownMenu>
-
+            {/* Search + Actions */}
+            <div className="flex flex-col gap-3 relative z-10 sm:flex-row sm:items-center">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted)]" />
+                <Input
+                  type="text"
+                  placeholder="Tìm kiếm giải đấu..."
+                  value={searchQuery}
+                  onChange={(e: any) => setSearchQuery(e.target.value)}
+                  className="h-10 w-56 pl-9 border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] font-medium placeholder:text-[var(--muted)]/40"
+                />
+              </div>
               <Button
                 variant="outline"
-                className="h-11 border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] hover:bg-[var(--surface-strong)] font-semibold"
+                className="h-10 font-semibold border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] hover:bg-[var(--surface-3)] gap-2"
                 onClick={() => setReloadKey(reloadKey + 1)}
               >
-                <RefreshCw className="mr-2 h-4 w-4" />
+                <RefreshCw className="h-4 w-4" />
                 Làm mới
               </Button>
             </div>
-            </div>
+          </div>
+
+          {/* Filter Pills */}
+          <div className="flex flex-wrap gap-2 mt-6">
+            {/* Status filters */}
+            {TOURNAMENT_STATUS_OPTIONS.map((option: any) => (
+              <button
+                key={option.value || 'all'}
+                className={`spectator-filter-pill ${(option.value ?? 'all') === statusFilter ? 'spectator-filter-pill-active' : ''}`}
+                onClick={() => setStatusFilter(option.value ?? 'all')}
+              >
+                {option.label}
+              </button>
+            ))}
+            <div className="w-px h-6 bg-[var(--border)] mx-1 self-center" />
+            {/* Time filters */}
+            {TIME_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                className={`spectator-filter-pill ${option.value === timeFilter ? 'spectator-filter-pill-active' : ''}`}
+                onClick={() => setTimeFilter(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+            <div className="w-px h-6 bg-[var(--border)] mx-1 self-center" />
+            {/* Sort */}
+            {SORT_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                className={`spectator-filter-pill ${option.value === sortOrder ? 'spectator-filter-pill-active' : ''}`}
+                onClick={() => setSortOrder(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
         </div>
       </ScrollReveal>
 
+      {/* ══ Content ══ */}
       {error && <div className="alert alert-error">⚠️ {error}</div>}
 
       {loading ? (
-        <div className="loading">
-          <div className="spinner" />
+        <div className="grid gap-5 lg:grid-cols-2">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="spectator-shimmer h-48" />
+          ))}
         </div>
       ) : filteredItems.length === 0 ? (
-        <Card className="border-[var(--border)] bg-[var(--surface)]">
-          <CardContent className="py-14 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--primary-light)] text-3xl">
-              🏆
-            </div>
-            <div className="text-lg font-semibold text-[var(--text)]">Không có giải đấu phù hợp</div>
-            <p className="mt-2 text-sm text-[var(--muted)]">Thử thay đổi trạng thái hoặc khung thời gian để tìm giải đấu khác.</p>
-          </CardContent>
-        </Card>
+        <div className="spectator-empty">
+          <div className="spectator-empty-icon">🏆</div>
+          <div className="text-lg font-bold text-[var(--text)]">Không có giải đấu phù hợp</div>
+          <p className="mt-2 text-sm text-[var(--muted)] font-medium">Thử thay đổi trạng thái hoặc khung thời gian để tìm giải đấu khác.</p>
+        </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-5 lg:grid-cols-2">
           {filteredItems.map((tournament, index) => (
-            <ScrollReveal key={tournament._id || tournament.id} direction="up" distance={60} duration={0.7} delay={index * 0.1}>
-              <Link to={`/tournaments/${tournament._id || tournament.id}`} className="group block">
-                <Magnetic intensity={0.3} range={120}>
-                  <Card className="h-full border-[var(--border)] bg-[var(--surface)] transition-all duration-300 group-hover:-translate-y-1 group-hover:border-[var(--primary)]/40 group-hover:shadow-xl group-hover:shadow-[var(--primary)]/10 cursor-pointer" style={{ padding: '24px 20px' }}>
-                    <CardHeader className="space-y-3 border-b border-[var(--border)] pb-4" style={{ padding: 0 }}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-1">
-                          <CardTitle className="text-2xl font-black text-[var(--text)] group-hover:text-[var(--primary)]">{tournament.name}</CardTitle>
-                          <CardDescription className="text-[var(--muted)] font-semibold">
-                            {tournament.venue || 'Chưa xác định'}
-                          </CardDescription>
+            <ScrollReveal key={tournament._id || tournament.id} direction="up" distance={40} duration={0.6} delay={index * 0.06}>
+              <Link to={`/tournaments/${tournament._id || tournament.id}`} className="block group">
+                <div className="spectator-tournament-card">
+                  {/* Card Header */}
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="space-y-1 min-w-0">
+                      <h3 className="text-lg font-bold text-[var(--text)] group-hover:text-emerald-400 transition-colors truncate">
+                        {tournament.name}
+                      </h3>
+                      {tournament.venue && (
+                        <div className="flex items-center gap-1.5 text-sm text-[var(--muted)] font-medium">
+                          <MapPin className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">{tournament.venue}</span>
                         </div>
-                        {statusBadge(tournament.status || 'DRAFT')}
+                      )}
+                    </div>
+                    {statusBadge(tournament.status || 'DRAFT')}
+                  </div>
+
+                  {/* Card Info Grid */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center gap-2.5 rounded-xl bg-[var(--bg2)]/40 px-3 py-2.5">
+                      <CalendarRange className="w-4 h-4 text-blue-400 shrink-0" />
+                      <span className="text-xs font-semibold text-[var(--muted)] truncate">
+                        {formatDate(tournament.startDate)} → {formatDate(tournament.endDate)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2.5 rounded-xl bg-[var(--bg2)]/40 px-3 py-2.5">
+                      <Trophy className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span className="text-xs font-bold text-amber-400 truncate">
+                        {formatMoney(tournament.prizePool)}
+                      </span>
+                    </div>
+                    {tournament.maxHorses && (
+                      <div className="flex items-center gap-2.5 rounded-xl bg-[var(--bg2)]/40 px-3 py-2.5 col-span-2">
+                        <Users className="w-4 h-4 text-purple-400 shrink-0" />
+                        <span className="text-xs font-semibold text-[var(--muted)]">
+                          Tối đa {tournament.maxHorses} ngựa
+                        </span>
                       </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4 pt-4" style={{ padding: 0 }}>
-                      <div className="grid gap-3 text-sm text-[var(--muted)] font-semibold sm:grid-cols-2">
-                        <div className="flex items-center gap-2 rounded-lg bg-[var(--bg2)] px-3 py-2">
-                          <CalendarRange className="h-4 w-4 text-[var(--primary)]" />
-                          <span>{formatDate(tournament.startDate)} → {formatDate(tournament.endDate)}</span>
-                        </div>
-                        <div className="flex items-center gap-2 rounded-lg bg-[var(--bg2)] px-3 py-2">
-                          <Filter className="h-4 w-4 text-blue-500" />
-                          <span>{tournament.prizePool ? formatMoney(tournament.prizePool) : 'Chưa có giải thưởng'}</span>
-                        </div>
-                        <div className="flex items-center gap-2 rounded-lg bg-[var(--bg2)] px-3 py-2">
-                          <span className="text-amber-500">🏅</span>
-                          <span>{tournament.maxHorses ? `Tối đa ${tournament.maxHorses} ngựa` : 'Chưa giới hạn số ngựa'}</span>
-                        </div>
-                        <div className="flex items-center gap-2 rounded-lg bg-[var(--bg2)] px-3 py-2">
-                          <span className="text-emerald-500">💰</span>
-                          <span>{formatMoney(tournament.prizePool)}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Magnetic>
+                    )}
+                  </div>
+                </div>
               </Link>
             </ScrollReveal>
           ))}
