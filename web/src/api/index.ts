@@ -8,7 +8,7 @@ const BE_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
 // 1. CHỨC NĂNG AUTHENTICATION & PROFILE
 // ============================================================================
 
-export async function login(params: { email: string; password: string; role: Role }): Promise<Session> {
+export async function login(params: { email: string; password: string; role?: Role }): Promise<Session> {
   const res = await http.post(`${BE_BASE_URL}/auth/login`, {
     email: params.email,
     password: params.password,

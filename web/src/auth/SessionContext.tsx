@@ -6,7 +6,7 @@ import * as api from '@/api'
 
 type SessionContextValue = {
   session: Session | null
-  login: (params: { email: string; password: string; role: Role }) => Promise<void>
+  login: (params: { email: string; password: string; role?: Role }) => Promise<void>
   register: (params: { name: string; email: string; password: string; role: Role }) => Promise<void>
   logout: () => void
   balance: number
