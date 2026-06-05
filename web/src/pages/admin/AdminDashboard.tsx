@@ -224,13 +224,6 @@ export function AdminDashboard() {
   }
   const totalRacesStatus = raceStatus.COMPLETED + raceStatus.SCHEDULED + raceStatus.ONGOING + raceStatus.CANCELLED
 
-  const registrationStatusLabels: Record<string, string> = {
-    PENDING_APPROVAL: 'Chờ duyệt',
-    APPROVED: 'Đã duyệt',
-    CONFIRMED: 'Đã xác nhận',
-    REJECTED: 'Đã từ chối',
-  }
-
   // Pending horse registrations
   const pendingRegs = registrations.filter(reg => reg.status === 'PENDING_APPROVAL')
 

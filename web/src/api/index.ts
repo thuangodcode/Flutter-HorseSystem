@@ -85,9 +85,11 @@ export async function getRaces(tournamentId?: string): Promise<Race[]> {
     ? `${BE_BASE_URL}/races?tournamentId=${tournamentId}` 
     : `${BE_BASE_URL}/races`
   const res = await http.get(url)
-  const data = res.data.races || res.data
+  const data = res.data.races || res.data.data || (Array.isArray(res.data) ? res.data : [])
+  
   return data.map((r: any) => ({
-    id: r._id || r.id,
+    id: String(r._id || r.id || '').trim(),
+    _id: String(r._id || r.id || '').trim(),
     tournamentId: r.tournamentId,
     name: r.name,
     distance: r.distance,
@@ -102,10 +104,12 @@ export async function getRaces(tournamentId?: string): Promise<Race[]> {
 }
 
 export async function getRace(id: string): Promise<Race> {
-  const res = await http.get(`${BE_BASE_URL}/races/${id}`)
-  const r = res.data
+  const raceId = String(id || '').trim()
+  const res = await http.get(`${BE_BASE_URL}/races/${raceId}`)
+  const r = res.data.race || res.data
   return {
-    id: r._id || r.id,
+    id: String(r._id || r.id || '').trim(),
+    _id: String(r._id || r.id || '').trim(),
     tournamentId: r.tournamentId,
     name: r.name,
     distance: r.distance,
@@ -121,8 +125,11 @@ export async function getRace(id: string): Promise<Race> {
 
 export async function getHorses(): Promise<Horse[]> {
   const res = await http.get(`${BE_BASE_URL}/horses/me`)
-  return res.data.map((h: any) => ({
-    id: h._id || h.id,
+  const data = res.data.horses || res.data.data || (Array.isArray(res.data) ? res.data : [])
+
+  return data.map((h: any) => ({
+    id: String(h._id || h.id || '').trim(),
+    _id: String(h._id || h.id || '').trim(),
     name: h.name,
     breed: h.breed,
     age: h.age,
@@ -142,30 +149,38 @@ export async function createHorse(data: Partial<Horse>): Promise<any> {
 }
 
 export async function updateHorse(id: string, data: Partial<Horse>): Promise<any> {
-  const res = await http.put(`${BE_BASE_URL}/horses/${id}`, data)
+  const horseId = String(id || '').trim()
+  const res = await http.put(`${BE_BASE_URL}/horses/${horseId}`, data)
   return res.data
 }
 
 export async function deleteHorse(id: string): Promise<any> {
-  const res = await http.delete(`${BE_BASE_URL}/horses/${id}`)
+  const horseId = String(id || '').trim()
+  const res = await http.delete(`${BE_BASE_URL}/horses/${horseId}`)
   return res.data
 }
 
 export async function registerHorseRace(horseId: string, raceId: string): Promise<any> {
-  const res = await http.post(`${BE_BASE_URL}/horses/${horseId}/register-race`, { raceId })
+  const hId = String(horseId || '').trim()
+  const rId = String(raceId || '').trim()
+  const res = await http.post(`${BE_BASE_URL}/horses/${hId}/register-race`, { raceId: rId })
   return res.data
 }
 
 export async function confirmRaceParticipation(horseId: string, raceId: string): Promise<any> {
-  const res = await http.patch(`${BE_BASE_URL}/horses/me/${horseId}/confirm-race/${raceId}`)
+  const hId = String(horseId || '').trim()
+  const rId = String(raceId || '').trim()
+  const res = await http.patch(`${BE_BASE_URL}/horses/me/${hId}/confirm-race/${rId}`)
   return res.data
 }
 
 export async function searchJockeys(params?: { status?: string; page?: number; limit?: number }): Promise<Jockey[]> {
   const res = await http.get(`${BE_BASE_URL}/jockeys`, { params })
-  const data = res.data.jockeys || res.data.data || res.data
+  const data = res.data.jockeys || res.data.data || (Array.isArray(res.data) ? res.data : [])
+  
   return data.map((j: any) => ({
-    id: j._id || j.id,
+    id: String(j._id || j.id || '').trim(),
+    _id: String(j._id || j.id || '').trim(),
     userId: j.userId,
     age: j.age,
     experience: j.experience,
@@ -176,46 +191,117 @@ export async function searchJockeys(params?: { status?: string; page?: number; l
     specialties: j.specialties,
     wins: j.wins,
     races: j.races,
+    createdAt: j.createdAt,
   }))
 }
 
-export async function sendJockeyInvitation(horseId: string, jockeyId: string, raceId: string, message?: string): Promise<any> {
-  const res = await http.post(`${BE_BASE_URL}/horses/${horseId}/invitations`, { jockeyId, raceId, message })
-  return res.data
+export async function sendJockeyInvitation(horseId: string, jockeyId: string, raceId: string, message?: string, registrationId?: string): Promise<any> {
+  const hId = String(horseId || '').trim()
+  const jId = String(jockeyId || '').trim()
+  const rId = String(raceId || '').trim()
+  const regId = String(registrationId || '').trim()
+
+  if (!hId || !jId || !rId) {
+    throw new Error('Thiếu thông tin ID để gửi lời mời')
+  }
+
+  const msg = message || 'Mời bạn cưỡi ngựa của tôi'
+
+  // Try with raceId first
+  try {
+    const res = await http.post(`${BE_BASE_URL}/horses/${hId}/invitations`, {
+      jockeyId: jId,
+      raceId: rId,
+      message: msg
+    })
+    return res.data
+  } catch (err: any) {
+    const errMsg = err?.response?.data?.message || ''
+    const isRaceNotFound = err?.response?.status === 404 && errMsg.toLowerCase().includes('race')
+    // If backend says "Race not found" and we have a registrationId, try using registrationId as raceId
+    if (isRaceNotFound && regId) {
+      console.log('[FALLBACK] Retrying invitation with registrationId as raceId:', regId)
+      const res2 = await http.post(`${BE_BASE_URL}/horses/${hId}/invitations`, {
+        jockeyId: jId,
+        raceId: regId,
+        message: msg
+      })
+      return res2.data
+    }
+    throw err
+  }
 }
 
 export async function getHorseJockeys(horseId: string): Promise<any[]> {
-  const res = await http.get(`${BE_BASE_URL}/horses/${horseId}/jockeys`)
-  return res.data.jockeys || res.data
+  const hId = String(horseId || '').trim()
+  const res = await http.get(`${BE_BASE_URL}/horses/${hId}/jockeys`)
+  return res.data.jockeys || (Array.isArray(res.data) ? res.data : [])
 }
 
 export async function confirmJockey(horseId: string, jockeyId: string, raceId: string): Promise<any> {
-  const res = await http.patch(`${BE_BASE_URL}/horses/${horseId}/jockeys/${jockeyId}/confirm`, { raceId })
+  const hId = String(horseId || '').trim()
+  const jId = String(jockeyId || '').trim()
+  const rId = String(raceId || '').trim()
+  const res = await http.patch(`${BE_BASE_URL}/horses/${hId}/jockeys/${jId}/confirm`, { raceId: rId })
   return res.data
 }
 
 export async function getInvites(): Promise<Invite[]> {
   const res = await http.get(`${BE_BASE_URL}/jockeys/me/invitations`)
-  const data = res.data.invitations || res.data
-  return data.map((inv: any) => ({
-    id: inv._id || inv.id,
-    horseId: inv.horseId?._id || inv.horseId,
-    horseName: inv.horseId?.name || (typeof inv.horseId === 'object' ? inv.horseId?.name : inv.horseId) || 'Ngựa thi đấu',
-    horseBreed: inv.horseId?.breed,
-    horseAge: inv.horseId?.age,
-    horseWeight: inv.horseId?.weight,
-    horseColor: inv.horseId?.color,
-    horseGender: inv.horseId?.gender,
-    horseHealthCertUrl: inv.horseId?.healthCertUrl,
-    jockeyId: inv.jockeyId,
-    raceId: inv.raceId,
-    raceName: inv.raceId?.name,
-    raceScheduledAt: inv.raceId?.scheduledAt,
-    raceDistance: inv.raceId?.distance,
-    status: inv.status === 'REJECTED' ? 'DECLINED' : inv.status,
-    message: inv.message,
-    sentAt: inv.sentAt,
-  }))
+  
+  // #region debug-point jockey-invites-data
+  fetch('http://127.0.0.1:7777/event', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sessionId: 'jockey-invites-missing-data',
+      runId: 'pre-fix',
+      hypothesisId: 'H1',
+      msg: '[DEBUG] Raw invitations data',
+      data: res.data
+    })
+  }).catch(() => {});
+  // #endregion
+
+  const data = res.data.invitations || res.data || []
+  return data.map((inv: any) => {
+    // Determine Horse Data
+    const horseObj = inv.horse || inv.horseId || {};
+    const hasHorseObj = typeof horseObj === 'object' && horseObj !== null && !Array.isArray(horseObj);
+    
+    // Determine Race Data
+    const raceObj = inv.race || inv.raceId || {};
+    const hasRaceObj = typeof raceObj === 'object' && raceObj !== null && !Array.isArray(raceObj);
+
+    // Determine Owner Data
+    const ownerObj = inv.ownerId || inv.owner || inv.horseId?.ownerId || {};
+    const hasOwnerObj = typeof ownerObj === 'object' && ownerObj !== null && !Array.isArray(ownerObj);
+
+    return {
+      id: inv._id || inv.id,
+      horseId: hasHorseObj ? (horseObj._id || horseObj.id) : (typeof inv.horseId === 'string' ? inv.horseId : undefined),
+      horseName: inv.horseName || horseObj.name || inv.horse_name || (typeof inv.horseId === 'string' && !inv.horseId.match(/^[0-9a-fA-F]{24}$/) ? inv.horseId : undefined) || 'Ngựa thi đấu',
+      horseBreed: inv.horseBreed || horseObj.breed || inv.breed || 'Chưa rõ',
+      horseAge: inv.horseAge || horseObj.age || inv.age,
+      horseWeight: inv.horseWeight || horseObj.weight || inv.weight,
+      horseColor: inv.horseColor || horseObj.color || inv.color,
+      horseGender: inv.horseGender || horseObj.gender || inv.gender,
+      horseHealthCertUrl: inv.horseHealthCertUrl || horseObj.healthCertUrl || inv.healthCertUrl,
+      
+      jockeyId: inv.jockeyId?._id || inv.jockeyId,
+      
+      raceId: hasRaceObj ? (raceObj._id || raceObj.id) : (typeof inv.raceId === 'string' ? inv.raceId : undefined),
+      raceName: inv.raceName || raceObj.name || inv.race_name || (typeof inv.raceId === 'string' && !inv.raceId.match(/^[0-9a-fA-F]{24}$/) ? inv.raceId : undefined) || 'Chưa xác định',
+      raceScheduledAt: inv.raceScheduledAt || raceObj.scheduledAt || inv.scheduledAt || inv.scheduledTime || raceObj.scheduledTime,
+      raceDistance: inv.raceDistance || raceObj.distance || inv.distance || raceObj.raceDistance,
+      
+      status: inv.status === 'REJECTED' ? 'DECLINED' : inv.status,
+      message: inv.message,
+      sentAt: inv.sentAt,
+      ownerId: hasOwnerObj ? (ownerObj._id || ownerObj.id) : (typeof inv.ownerId === 'string' ? inv.ownerId : undefined),
+      ownerName: inv.ownerName || ownerObj.fullName || ownerObj.name || inv.owner_name || 'Chủ ngựa',
+    };
+  })
 }
 
 export async function acceptInvitation(inviteId: string): Promise<any> {
@@ -275,7 +361,7 @@ export async function getRefereeRaces(): Promise<Race[]> {
 // ============================================================================
 
 // --- QUẢN LÝ USER ---
-export async function getAdminUsers(params?: { search?: string; role?: string; status?: string }): Promise<User[]> {
+export async function getAdminUsers(params?: { search?: string; role?: string; status?: string; limit?: number; page?: number }): Promise<User[]> {
   const res = await http.get(`${BE_BASE_URL}/admin/users`, { params })
   const data = res.data.data || res.data
   return data.map((u: any) => ({
@@ -402,7 +488,7 @@ export async function rejectHorse(horseId: string, reason?: string): Promise<any
   return res.data
 }
 
-export async function getAdminJockeys(params?: { status?: string }): Promise<Jockey[]> {
+export async function getAdminJockeys(params?: { status?: string; page?: number; limit?: number }): Promise<Jockey[]> {
   const res = await http.get(`${BE_BASE_URL}/admin/horses/jockeys`, { params })
   const data = res.data.jockeys || res.data
   return data.map((j: any) => ({
@@ -417,6 +503,7 @@ export async function getAdminJockeys(params?: { status?: string }): Promise<Joc
     specialties: j.specialties,
     wins: j.wins,
     races: j.races,
+    createdAt: j.createdAt,
   }))
 }
 
@@ -527,17 +614,31 @@ export async function getMyPredictions(): Promise<Prediction[]> {
 }
 
 export async function getRaceHorses(raceId: string): Promise<any> {
-  const res = await http.get(`${BE_BASE_URL}/races/${raceId}/horses`)
+  const rId = String(raceId).trim();
+  const res = await http.get(`${BE_BASE_URL}/races/${rId}/horses`)
   const list = Array.isArray(res.data) ? res.data : (res.data.horses || res.data.data || [])
-  return list.map((h: any) => ({
-    id: h._id || h.id,
-    _id: h._id || h.id,
-    horse: h.horse || h,
-    horseId: h.horseId || h.horse?._id || h.horse?.id,
-    raceId: h.raceId,
-    registrationStatus: h.registrationStatus || h.status || 'PENDING',
-    status: h.status || h.registrationStatus || 'PENDING',
-  }))
+  return list.map((h: any) => {
+    const rawHorseId = (h.horse && typeof h.horse === 'object') 
+      ? (h.horse._id || h.horse.id) 
+      : (h.horseId && typeof h.horseId === 'object' ? (h.horseId._id || h.horseId.id) : (h.horseId || h.horse || h._id || h.id));
+    
+    const horseId = String(rawHorseId || '').trim();
+    const entryRaceId = (h.raceId && typeof h.raceId === 'object')
+      ? (h.raceId._id || h.raceId.id)
+      : (h.raceId || res.data.raceId || rId);
+    
+    return {
+      id: String(h.registrationId || h._id || h.id || '').trim(),
+      _id: String(h.registrationId || h._id || h.id || '').trim(),
+      registrationId: String(h.registrationId || '').trim(),
+      horse: h.horse || h,
+      horseId: horseId,
+      raceId: String(entryRaceId || '').trim(),
+      registrationStatus: h.registrationStatus || h.status || 'PENDING',
+      status: h.status || h.registrationStatus || 'PENDING',
+      confirmedByOwner: h.confirmedByOwner !== undefined ? h.confirmedByOwner : undefined,
+    };
+  })
 }
 
 export async function getRefereeRaceHorses(raceId: string): Promise<{ horses: RaceHorseRegistration[] }> {
@@ -548,7 +649,7 @@ export async function getRefereeRaceHorses(raceId: string): Promise<{ horses: Ra
       id: h._id || h.id,
       _id: h._id || h.id,
       horse: h.horse || h,
-      horseId: h.horseId || h.horse?._id || h.horse?.id,
+      horseId: h.horseId || h.horse?._id || h.horse?.id || h._id || h.id,
       raceId: h.raceId,
       registrationStatus: h.registrationStatus || h.status || 'PENDING',
       status: h.status || h.registrationStatus || 'PENDING',

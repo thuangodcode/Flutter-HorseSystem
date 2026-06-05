@@ -22,3 +22,19 @@ http.interceptors.request.use((config) => {
   }
   return config
 })
+
+// Add response interceptor to handle 401 errors
+http.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      console.error('Session expired or unauthorized. Clearing session.')
+      localStorage.removeItem('hr_session')
+      // Only redirect if we're not already on the login page
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login'
+      }
+    }
+    return Promise.reject(error)
+  }
+)

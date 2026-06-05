@@ -228,10 +228,14 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
       } else if (activeTab === 'horses-jockeys') {
         const [hList, jList] = await Promise.all([
           getAdminHorses(),
-          getAdminJockeys()
+          getAdminJockeys({ limit: 100 })
         ])
         setHorses(hList)
-        setJockeys(jList)
+        setJockeys(jList.sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+          return dateB - dateA
+        }))
       } else if (activeTab === 'referee-results') {
         const [rList, refList] = await Promise.all([
           getRaces(),

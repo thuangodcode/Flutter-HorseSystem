@@ -2,16 +2,16 @@ import { useState, useEffect } from 'react'
 import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useSession } from '../auth/SessionContext'
 import { motion, AnimatePresence } from 'motion/react'
-import { 
-  LayoutDashboard, 
-  Trophy, 
-  Target, 
-  Bell, 
-  Mail, 
-  Scale, 
-  Users, 
-  Calendar, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  Trophy,
+  Target,
+  Bell,
+  Mail,
+  Scale,
+  Users,
+  Calendar,
+  LogOut,
   Zap,
   Sparkles,
   User as UserIcon,
@@ -76,7 +76,6 @@ function getRoleNav(role: string): NavItem[] {
     return [
       ...common,
       { to: '/app/invites', label: 'Lời mời', icon: Mail },
-      { to: '/app/jockey/races', label: 'Cuộc đua của tôi', icon: Zap },
       { to: '/app/jockey/schedule', label: 'Lịch thi đấu', icon: Calendar },
       { to: '/app/jockey/results', label: 'Kết quả', icon: Trophy },
     ]
@@ -98,9 +97,9 @@ function getRoleNav(role: string): NavItem[] {
     return [
       ...common,
       { to: '/app/admin/users', label: 'Tài khoản', icon: Users },
-      { 
-        to: '/app/admin/scheduling', 
-        label: 'Quản lý', 
+      {
+        to: '/app/admin/scheduling',
+        label: 'Quản lý',
         icon: Calendar,
         children: [
           { to: '/app/admin/scheduling/tournaments', label: 'Giải Đấu & Lịch Trình', icon: Trophy },
@@ -268,7 +267,7 @@ export function AppLayout() {
       {/* Sticky Premium Navbar */}
       <header className="sticky top-0 z-50 w-full border-b border-border bg-(--surface)/90 backdrop-blur-md transition-all duration-300 shadow-sm shrink-0">
         <div className="w-full px-4 h-14 flex items-center justify-between gap-4">
-          
+
           {/* Left: Mobile menu + Logo */}
           <div className="flex items-center gap-3">
             {/* Menu toggle */}
@@ -281,8 +280,8 @@ export function AppLayout() {
             </button>
 
             {/* Logo */}
-            <Link 
-              to="/app/dashboard" 
+            <Link
+              to="/app/dashboard"
               className="flex items-center gap-2.5 group transition-transform duration-200 active:scale-95 whitespace-nowrap"
             >
               <div className="w-8 h-8 rounded-lg bg-linear-to-tr from-sky-600 to-sky-400 flex items-center justify-center shadow-md shadow-sky-500/10 group-hover:scale-105 transition-all duration-300">
@@ -336,7 +335,7 @@ export function AppLayout() {
                     try {
                       if (v) localStorage.setItem('admin_view_as', v)
                       else localStorage.removeItem('admin_view_as')
-                    } catch {}
+                    } catch { }
                     setAdminViewAs(v)
                     // Go to dashboard to avoid landing on restricted pages unexpectedly
                     navigate('/app/dashboard')
@@ -443,7 +442,7 @@ export function AppLayout() {
 
       {/* Body: Sidebar + Content */}
       <div className="flex flex-1 overflow-hidden">
-        
+
         {/* Mobile Overlay */}
         <AnimatePresence>
           {isSidebarOpen && (
@@ -468,8 +467,8 @@ export function AppLayout() {
             ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
             ${!isSidebarOpen ? 'lg:border-r-0' : ''}
           `}
-          style={{ 
-            width: sidebarWidth, 
+          style={{
+            width: sidebarWidth,
             minWidth: sidebarWidth,
             overflow: 'hidden'
           }}
@@ -496,7 +495,7 @@ export function AppLayout() {
             {navItems.map((item, index) => {
               const Icon = item.icon
               const hasChildren = !!item.children
-              const isActive = hasChildren 
+              const isActive = hasChildren
                 ? location.pathname.startsWith(item.to)
                 : activeIndex === index
 
@@ -552,8 +551,8 @@ export function AppLayout() {
                       className={`
                         relative flex items-center justify-between px-3 py-2.5 rounded-xl
                         transition-all duration-200 group
-                        ${isActive 
-                          ? 'text-amber-500 font-bold' 
+                        ${isActive
+                          ? 'text-amber-500 font-bold'
                           : 'text-(--muted) hover:text-(--text) hover:bg-amber-500/5'
                         }
                       `}
@@ -565,28 +564,27 @@ export function AppLayout() {
                           className="shrink-0"
                         >
                           {item.label === 'Giải đấu' || item.label === 'Kết quả' ? (
-                            <img 
-                              src="/trophy.gif" 
-                              className="w-5 h-5 object-contain" 
-                              alt={item.label} 
+                            <img
+                              src="/trophy.gif"
+                              className="w-5 h-5 object-contain"
+                              alt={item.label}
                             />
                           ) : item.label === 'Cuộc đua' || item.label === 'Cuộc đua của tôi' ? (
-                            <img 
-                              src="/race.gif" 
-                              className="w-5 h-5 object-contain" 
-                              alt={item.label} 
+                            <img
+                              src="/race.gif"
+                              className="w-5 h-5 object-contain"
+                              alt={item.label}
                             />
                           ) : item.label === 'Dự đoán' ? (
-                            <img 
-                              src="/prediction.gif" 
-                              className="w-5 h-5 object-contain" 
-                              alt={item.label} 
+                            <img
+                              src="/prediction.gif"
+                              className="w-5 h-5 object-contain"
+                              alt={item.label}
                             />
                           ) : (
-                            <Icon 
-                              className={`w-5 h-5 transition-all duration-200 ${
-                                isActive ? 'text-amber-500 drop-shadow-[0_0_6px_rgba(245,158,11,0.4)]' : ''
-                              }`} 
+                            <Icon
+                              className={`w-5 h-5 transition-all duration-200 ${isActive ? 'text-amber-500 drop-shadow-[0_0_6px_rgba(245,158,11,0.4)]' : ''
+                                }`}
                             />
                           )}
                         </motion.div>
@@ -598,9 +596,8 @@ export function AppLayout() {
                               animate={{ opacity: 1, x: 0 }}
                               exit={{ opacity: 0, x: -8 }}
                               transition={{ duration: 0.15 }}
-                              className={`text-[13px] font-semibold tracking-wide whitespace-nowrap ${
-                                isActive ? 'font-bold' : ''
-                              }`}
+                              className={`text-[13px] font-semibold tracking-wide whitespace-nowrap ${isActive ? 'font-bold' : ''
+                                }`}
                             >
                               {item.label}
                             </motion.span>
@@ -619,10 +616,9 @@ export function AppLayout() {
                           }}
                           className="p-1 rounded-md hover:bg-amber-500/10 transition-colors text-muted hover:text-(--text) cursor-pointer flex items-center justify-center border-0 bg-transparent"
                         >
-                          <ChevronDown 
-                            className={`w-4 h-4 transition-transform duration-200 ${
-                              isSchedulingOpen ? 'rotate-180' : 'rotate-0'
-                            }`}
+                          <ChevronDown
+                            className={`w-4 h-4 transition-transform duration-200 ${isSchedulingOpen ? 'rotate-180' : 'rotate-0'
+                              }`}
                           />
                         </button>
                       )}
@@ -722,18 +718,16 @@ export function AppLayout() {
                   />
                 )}
                 <div
-                  className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${
-                    profileActive
+                  className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${profileActive
                       ? 'text-amber-500 font-bold'
                       : 'text-(--muted) hover:text-(--text) hover:bg-amber-500/5'
-                  }`}
+                    }`}
                   style={{ justifyContent: 'flex-start' }}
                 >
                   <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} className="shrink-0">
                     <UserIcon
-                      className={`w-5 h-5 transition-all duration-200 ${
-                        profileActive ? 'text-amber-500 drop-shadow-[0_0_6px_rgba(245,158,11,0.4)]' : ''
-                      }`}
+                      className={`w-5 h-5 transition-all duration-200 ${profileActive ? 'text-amber-500 drop-shadow-[0_0_6px_rgba(245,158,11,0.4)]' : ''
+                        }`}
                     />
                   </motion.div>
 
@@ -792,7 +786,7 @@ export function AppLayout() {
           <footer className="border-t border-border bg-(--surface)/20 py-2.5 text-center text-[11px] text-slate-400 mt-auto shrink-0">
             <div className="w-full mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="text-xs text-muted font-medium flex items-center gap-1.5">
-                <span>© 2026 Equestrian Admin Elite. All rights reserved.</span>
+                <span>© 2026 Equestrian Racing Management System (ERMS). All rights reserved.</span>
               </div>
               <div className="flex gap-6">
                 <a href="#" className="hover:text-(--text) transition-colors">Điều khoản</a>

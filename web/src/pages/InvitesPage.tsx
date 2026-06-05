@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Invite } from '../types'
-import { getInvites, acceptInvitation, rejectInvitation } from '@/api'
+import { getInvites, acceptInvitation, rejectInvitation, getRaces, getRaceHorses } from '@/api'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { ScrollReveal } from '@/components/ui/scroll-text'
 import { Magnetic } from '@/components/ui/magnetic'
@@ -18,8 +18,63 @@ export function InvitesPage() {
     loadData()
   }, [])
 
-  const loadData = () => {
-    getInvites().then(setItems).catch(() => setItems([]))
+  const loadData = async () => {
+    try {
+      const invites = await getInvites()
+      const allRaces = await getRaces()
+      
+      const registrations = await Promise.all(
+        allRaces.map(async (race) => {
+          try {
+            const horses = await getRaceHorses(race.id)
+            return { race, horses }
+          } catch {
+            return { race, horses: [] }
+          }
+        })
+      )
+      
+      const enriched = invites.map((inv) => {
+        const targetHorseId = typeof inv.horseId === 'object' && inv.horseId !== null
+          ? (inv.horseId._id || inv.horseId.id)
+          : inv.horseId
+          
+        if (!targetHorseId) return inv
+        
+        let matchedReg: any = null
+        let matchedRace: any = null
+        
+        for (const reg of registrations) {
+          const found = reg.horses.find((h: any) => String(h.horseId) === String(targetHorseId))
+          if (found) {
+            matchedReg = found
+            matchedRace = reg.race
+            break
+          }
+        }
+        
+        if (matchedReg && matchedRace) {
+          const horseObj = matchedReg.horse || {}
+          const ownerObj = horseObj.ownerId || horseObj.owner || {}
+          return {
+            ...inv,
+            raceId: matchedRace.id,
+            raceName: matchedRace.name || inv.raceName,
+            raceDistance: matchedRace.distance || inv.raceDistance,
+            raceScheduledAt: matchedRace.scheduledAt || inv.raceScheduledAt,
+            horseBreed: horseObj.breed || inv.horseBreed,
+            horseWeight: horseObj.weight || inv.horseWeight,
+            ownerName: ownerObj.fullName || ownerObj.name || ownerObj.email || inv.ownerName
+          }
+        }
+        return inv
+      })
+      
+      setItems(enriched)
+    } catch (e) {
+      console.error('Failed to load enriched invites', e)
+      setItems([])
+    }
   }
 
   const handleAction = async (inviteId: string, action: 'accept' | 'reject') => {
@@ -97,7 +152,7 @@ export function InvitesPage() {
                   <div className="flex justify-between items-start gap-4">
                     <div>
                       <CardDescription className="text-xs font-bold uppercase tracking-wider text-[var(--primary)] mb-1">
-                        Từ Chủ Ngựa
+                        Từ Chủ Ngựa: <span className="text-[var(--text)]">{inv.ownerName || '—'}</span>
                       </CardDescription>
                       <CardTitle className="text-2xl font-black text-[var(--text)] flex items-center gap-2">
                         🐎 {inv.horseName}
@@ -157,7 +212,7 @@ export function InvitesPage() {
                         </Magnetic>
                       </>
                     ) : (
-                      <Link to="/app/jockey/races" className="w-full">
+                      <Link to="/app/jockey/schedule" className="w-full">
                         <Button className="w-full bg-[var(--bg2)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-strong)]">
                           Xem lịch thi đấu <ChevronRight className="w-4 h-4 ml-1" />
                         </Button>

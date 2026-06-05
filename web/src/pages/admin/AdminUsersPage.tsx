@@ -180,8 +180,17 @@ export function AdminUsersPage() {
       search: search || undefined,
       role: roleFilter || undefined,
       status: statusFilter || undefined,
+      limit: 100
     })
-      .then((data) => { setUsers(data); setLoading(false) })
+      .then((data) => { 
+        const sorted = [...data].sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+          return dateB - dateA
+        })
+        setUsers(sorted)
+        setLoading(false) 
+      })
       .catch((err) => {
         setError(err.response?.data?.message || err.message || 'Lỗi khi tải danh sách người dùng')
         setLoading(false)

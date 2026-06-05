@@ -74,6 +74,7 @@ export type Jockey = {
   specialties: string[]
   wins: number
   races: number
+  createdAt?: string
 }
 
 export type Invite = {
@@ -87,7 +88,9 @@ export type Invite = {
   raceId?: any
   raceName?: string
   raceDistance?: number
+  raceScheduledAt?: string
   ownerId?: any
+  ownerName?: string
   message?: string
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'DECLINED'
   sentAt?: string
