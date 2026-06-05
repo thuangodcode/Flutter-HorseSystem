@@ -640,8 +640,15 @@ input::placeholder { color: #64748b; }
 }
 
 .badge-pending    { background: rgba(245, 158, 11, 0.18); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.30); }
-.badge-approved, .badge-confirmed, .badge-active, .badge-completed {
+.badge-status-pending { background: rgba(59, 130, 246, 0.12); color: #2563eb; border: 1px solid rgba(59, 130, 246, 0.30); }
+.badge-status-approved { background: rgba(16, 185, 129, 0.12); color: #047857; border: 1px solid rgba(16, 185, 129, 0.30); }
+.badge-status-confirmed { background: rgba(234, 179, 8, 0.12); color: #92400e; border: 1px solid rgba(234, 179, 8, 0.30); }
+.badge-status-rejected { background: rgba(239, 68, 68, 0.12); color: #991b1b; border: 1px solid rgba(239, 68, 68, 0.30); }
+.badge-approved, .badge-active, .badge-completed {
   background: rgba(16, 185, 129, 0.18); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.30);
+}
+.badge-confirmed {
+  background: rgba(234, 179, 8, 0.18); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.30);
 }
 .badge-rejected, .badge-inactive, .badge-cancelled {
   background: rgba(239, 68, 68, 0.18); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.30);

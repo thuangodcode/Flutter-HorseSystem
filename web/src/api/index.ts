@@ -348,28 +348,19 @@ export async function getRaceRegistrations(status?: string, raceId?: string): Pr
     params: { status, raceId },
   })
   const data = Array.isArray(res.data) ? res.data : (res.data.registrations || res.data.data || [])
+
   return data.map((r: any) => ({
     id: r.regId || r._id || r.id,
-    horseId: (r.horse && typeof r.horse === 'object') ? r.horse : 
-             (r.horseId && typeof r.horseId === 'object') ? r.horseId : 
-             { 
-               id: r.horseId, 
-               name: r.horseName, 
-               breed: r.horseBreed || r.breed,
-               age: r.horseAge || r.age,
-               ownerId: { fullName: r.ownerName || r.ownerFullName || r.owner, phone: r.ownerPhone || r.phone }
-             },
-    raceId: (r.race && typeof r.race === 'object') ? r.race : 
-            (r.raceId && typeof r.raceId === 'object') ? r.raceId : 
-            { 
-              id: r.raceId, 
-              name: r.raceName,
-              scheduledAt: r.raceScheduledAt || r.scheduledAt || r.raceDate
-            },
+    horseId: (r.horse && typeof r.horse === 'object') ? (r.horse._id || r.horse.id || r.horse) : (typeof r.horseId === 'object' ? (r.horseId._id || r.horseId.id || r.horseId) : r.horseId),
+    horseName: r.horseName || (r.horse && typeof r.horse === 'object' ? r.horse.name : undefined) || (typeof r.horseId === 'object' ? r.horseId.name : undefined),
+    horseBreed: r.horseBreed || (r.horse && typeof r.horse === 'object' ? r.horse.breed : undefined) || (typeof r.horseId === 'object' ? r.horseId.breed : undefined),
+    raceId: (r.race && typeof r.race === 'object') ? (r.race._id || r.race.id || r.race) : (typeof r.raceId === 'object' ? (r.raceId._id || r.raceId.id || r.raceId) : r.raceId),
+    raceName: r.raceName || (r.race && typeof r.race === 'object' ? r.race.name : undefined) || (typeof r.raceId === 'object' ? r.raceId.name : undefined),
     status: r.status,
     confirmedByOwner: r.confirmedByOwner,
     createdAt: r.createdAt,
     rejectionReason: r.rejectionReason,
+    ownerName: r.ownerName || r.ownerFullName || (r.horse && typeof r.horse === 'object' ? (r.horse.ownerId?.fullName || r.horse.ownerId?.name || r.horse.owner?.fullName || r.horse.owner) : undefined) || (typeof r.horseId === 'object' ? (r.horseId?.ownerId?.fullName || r.horseId?.ownerId?.name || r.horseId?.owner?.fullName || r.horseId?.owner) : undefined) || r.owner,
   }))
 }
 

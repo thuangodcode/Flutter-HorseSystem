@@ -9,6 +9,7 @@ import {
   getTournaments,
   getRaces,
   getAdminUsers,
+  getAdminHorses,
   getRaceRegistrations,
   getAdminPredictions,
   approveRaceRegistration,
@@ -49,6 +50,7 @@ export function AdminDashboard() {
   const [races, setRaces] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
   const [registrations, setRegistrations] = useState<any[]>([])
+  const [registrationOwners, setRegistrationOwners] = useState<Record<string, { fullName?: string; phone?: string }>>({})
   const [predictions, setPredictions] = useState<any[]>([])
 
   // Toast functions
@@ -62,10 +64,11 @@ export function AdminDashboard() {
   const fetchAllStats = async () => {
     try {
       setError(null)
-      const [tData, rData, uData, regData, pData] = await Promise.all([
+      const [tData, rData, uData, hData, regData, pData] = await Promise.all([
         getTournaments().catch(() => []),
         getRaces().catch(() => []),
         getAdminUsers().catch(() => []),
+        getAdminHorses().catch(() => []),
         getRaceRegistrations().catch(() => []),
         getAdminPredictions().catch(() => []),
       ])
@@ -75,6 +78,16 @@ export function AdminDashboard() {
       setUsers(uData)
       setRegistrations(regData)
       setPredictions(pData)
+
+      const ownerMap: Record<string, { fullName?: string; phone?: string }> = {}
+      hData.forEach((horse: any) => {
+        const ownerData = typeof horse.ownerId === 'object' ? horse.ownerId : { fullName: horse.ownerId }
+        ownerMap[horse.id] = {
+          fullName: ownerData?.fullName || ownerData?.name || '',
+          phone: ownerData?.phone || ownerData?.email || ''
+        }
+      })
+      setRegistrationOwners(ownerMap)
     } catch (err: any) {
       console.error(err)
       setError('Lỗi kết nối đến máy chủ. Không thể đồng bộ số liệu thời gian thực.')
@@ -210,6 +223,13 @@ export function AdminDashboard() {
     CANCELLED: races.filter(r => ['CANCELLED'].includes(r.status || '')).length,
   }
   const totalRacesStatus = raceStatus.COMPLETED + raceStatus.SCHEDULED + raceStatus.ONGOING + raceStatus.CANCELLED
+
+  const registrationStatusLabels: Record<string, string> = {
+    PENDING_APPROVAL: 'Chờ duyệt',
+    APPROVED: 'Đã duyệt',
+    CONFIRMED: 'Đã xác nhận',
+    REJECTED: 'Đã từ chối',
+  }
 
   // Pending horse registrations
   const pendingRegs = registrations.filter(reg => reg.status === 'PENDING_APPROVAL')
@@ -842,16 +862,21 @@ export function AdminDashboard() {
                       <div key={reg.id} className="p-4 rounded-xl border border-[var(--border)] bg-[var(--bg2)]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-emerald-500/20 transition-all duration-300">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-black text-[var(--text)]">🐴 {reg.horseId?.name || 'Ngựa thi đấu'}</span>
+                            <span className="text-sm font-black text-[var(--text)]">🐴 {reg.horseName || 'Ngựa thi đấu'}</span>
                             <Badge variant="outline" className="text-2xs border-[var(--border)] text-[var(--muted)] font-bold">
-                              Giống: {reg.horseId?.breed || 'Chưa rõ'}
+                              Giống: {reg.horseBreed || (typeof reg.horseId === 'object' ? reg.horseId?.breed : undefined) || 'Chưa rõ'}
                             </Badge>
                           </div>
                           <div className="text-xs font-semibold text-[var(--muted)]">
-                            Chặng đua: <span className="text-[var(--text)] font-extrabold">{reg.raceId?.name || 'Không rõ'}</span>
+                            Chặng đua: <span className="text-[var(--text)] font-extrabold">{reg.raceName || 'Không rõ'}</span>
                           </div>
                           <div className="text-2xs font-semibold text-[var(--muted)]/75">
-                            Chủ sở hữu: {reg.horseId?.ownerId?.fullName || 'Chủ ngựa'}
+                            Chủ sở hữu: {(
+                              registrationOwners[typeof reg.horseId === 'string' ? reg.horseId : (reg.horseId?.id || reg.horseId?._id)]?.fullName ||
+                              reg.ownerName ||
+                              (typeof reg.horseId === 'object' ? reg.horseId?.ownerId?.fullName || reg.horseId?.ownerId?.name || reg.horseId?.owner?.fullName || reg.horseId?.owner : undefined) ||
+                              'Chủ ngựa'
+                            )}
                           </div>
                         </div>
 

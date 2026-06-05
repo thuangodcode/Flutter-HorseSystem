@@ -83,6 +83,7 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
   const [tournaments, setTournaments] = useState<Tournament[]>([])
   const [races, setRaces] = useState<Race[]>([])
   const [registrations, setRegistrations] = useState<RaceRegistration[]>([])
+  const [registrationOwners, setRegistrationOwners] = useState<Record<string, { fullName?: string; phone?: string }>>({})
   const [horses, setHorses] = useState<Horse[]>([])
   const [jockeys, setJockeys] = useState<Jockey[]>([])
   const [referees, setReferees] = useState<User[]>([])
@@ -210,8 +211,20 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
         setReferees(refList)
         setRaces(allRaces)
       } else if (activeTab === 'registrations') {
-        const list = await getRaceRegistrations()
+        const [list, hList] = await Promise.all([
+          getRaceRegistrations(),
+          getAdminHorses()
+        ])
+        const ownerMap: Record<string, { fullName?: string; phone?: string }> = {}
+        hList.forEach((h) => {
+          const ownerData = typeof h.ownerId === 'object' ? h.ownerId : { fullName: h.ownerId }
+          ownerMap[h.id] = {
+            fullName: ownerData?.fullName || ownerData?.name || '',
+            phone: ownerData?.phone || ownerData?.email || ''
+          }
+        })
         setRegistrations(list)
+        setRegistrationOwners(ownerMap)
       } else if (activeTab === 'horses-jockeys') {
         const [hList, jList] = await Promise.all([
           getAdminHorses(),
@@ -865,57 +878,65 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {registrations.map((reg) => (
-                    <tr key={reg.id}>
-                      <td>
-                        <div style={{ fontWeight: 600 }}>{reg.raceId?.name || 'Cuộc đua chưa rõ'}</div>
-                        {reg.raceId?.scheduledAt && (
-                          <div className="muted" style={{ fontSize: '12px' }}>
-                            Ngày đua: {new Date(reg.raceId.scheduledAt).toLocaleDateString('vi-VN')}
-                          </div>
-                        )}
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 600 }}>{reg.horseId?.name || 'Ngựa chưa rõ'}</div>
-                        {(reg.horseId?.breed || reg.horseId?.age != null) && (
-                          <div className="muted" style={{ fontSize: '12px' }}>
-                            {[
-                              reg.horseId?.breed ? `Giống: ${reg.horseId.breed}` : null,
-                              reg.horseId?.age != null ? `Tuổi: ${reg.horseId.age}` : null
-                            ].filter(Boolean).join(' | ')}
-                          </div>
-                        )}
-                      </td>
-                      <td>
-                        <div>{reg.horseId?.ownerId?.fullName || reg.horseId?.ownerId?.name || 'Chưa có thông tin chủ ngựa'}</div>
-                        {reg.horseId?.ownerId?.phone && (
-                          <div className="muted flex items-center gap-1" style={{ fontSize: '12px' }}>
-                            <Phone className="w-3 h-3 text-muted shrink-0" />
-                            <span>{reg.horseId.ownerId.phone}</span>
-                          </div>
-                        )}
-                      </td>
-                      <td>
-                        <span className={`badge ${reg.status === 'APPROVED' ? 'badge-approved' : reg.status === 'REJECTED' ? 'badge-rejected' : 'badge-pending'}`}>
-                          {reg.status}
-                        </span>
-                        {reg.status === 'REJECTED' && (reg as any).rejectionReason && (
-                          <div className="text-xs" style={{ marginTop: 4, color: '#ef4444' }}>Lý do: {(reg as any).rejectionReason}</div>
-                        )}
-                      </td>
-                      <td>{reg.createdAt ? new Date(reg.createdAt).toLocaleDateString('vi-VN') : ''}</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', gap: 6 }}>
-                          <button className="btn btnPrimary" style={{ fontSize: '13px', padding: '6px 10px' }} onClick={() => handleApproveReg(reg.id)}>
-                            Duyệt
-                          </button>
-                          <button className="btn" style={{ fontSize: '13px', padding: '6px 10px', color: '#ef4444' }} onClick={() => handleRejectReg(reg.id)}>
-                            Từ chối
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {registrations.map((reg) => {
+                    const raceName = reg.raceName || (typeof reg.raceId === 'object' ? reg.raceId?.name : '')
+                    const raceScheduledAt = typeof reg.raceId === 'object' ? reg.raceId?.scheduledAt : undefined
+                    const horseName = reg.horseName || (typeof reg.horseId === 'object' ? reg.horseId?.name : '')
+                    const horseKey = typeof reg.horseId === 'string' ? reg.horseId : reg.horseId?._id || reg.horseId?.id
+                    const ownerInfo = horseKey ? registrationOwners[horseKey] : undefined
+                    const horseOwnerName = ownerInfo?.fullName || reg.ownerName || (typeof reg.horseId === 'object' ? reg.horseId?.ownerId?.fullName || reg.horseId?.ownerId?.name || reg.horseId?.owner?.fullName || reg.horseId?.owner : '')
+                    const horseOwnerPhone = ownerInfo?.phone || (typeof reg.horseId === 'object' ? reg.horseId?.ownerId?.phone : undefined)
+
+                    return (
+                      <tr key={reg.id}>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{raceName || 'Cuộc đua chưa rõ'}</div>
+                          {raceScheduledAt && (
+                            <div className="muted" style={{ fontSize: '12px' }}>
+                              Ngày đua: {new Date(raceScheduledAt).toLocaleDateString('vi-VN')}
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{horseName || 'Ngựa chưa rõ'}</div>
+                        </td>
+                        <td>
+                          <div>{horseOwnerName || 'Chưa có thông tin chủ ngựa'}</div>
+                          {horseOwnerPhone && (
+                            <div className="muted flex items-center gap-1" style={{ fontSize: '12px' }}>
+                              <Phone className="w-3 h-3 text-muted shrink-0" />
+                              <span>{horseOwnerPhone}</span>
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          <span className={`badge badge-status-${reg.status === 'APPROVED' ? 'approved' : reg.status === 'CONFIRMED' ? 'confirmed' : reg.status === 'REJECTED' ? 'rejected' : 'pending'}`}>
+                            {reg.status === 'APPROVED' ? 'Đã duyệt' : reg.status === 'CONFIRMED' ? 'Đã xác nhận' : reg.status === 'REJECTED' ? 'Đã từ chối' : reg.status === 'PENDING_APPROVAL' ? 'Chờ duyệt' : reg.status}
+                          </span>
+                          {reg.status === 'REJECTED' && (reg as any).rejectionReason && (
+                            <div className="text-xs" style={{ marginTop: 4, color: '#ef4444' }}>
+                              Lý do: {(reg as any).rejectionReason}
+                            </div>
+                          )}
+                        </td>
+                        <td>{reg.createdAt ? new Date(reg.createdAt).toLocaleDateString('vi-VN') : ''}</td>
+                        <td style={{ textAlign: 'right' }}>
+                          {reg.status === 'PENDING_APPROVAL' ? (
+                            <div style={{ display: 'inline-flex', gap: 6 }}>
+                              <button className="btn btnPrimary" style={{ fontSize: '13px', padding: '6px 10px' }} onClick={() => handleApproveReg(reg.id)}>
+                                Duyệt
+                              </button>
+                              <button className="btn" style={{ fontSize: '13px', padding: '6px 10px', color: '#ef4444' }} onClick={() => handleRejectReg(reg.id)}>
+                                Từ chối
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-[var(--muted)]">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -964,7 +985,7 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                         </td>
                         <td>
                           <span className={`badge ${h.status === 'APPROVED' ? 'badge-approved' : h.status === 'REJECTED' ? 'badge-rejected' : 'badge-pending'}`}>
-                            {h.status}
+                            {h.status === 'APPROVED' ? 'Đã duyệt' : h.status === 'REJECTED' ? 'Đã từ chối' : h.status === 'PENDING' ? 'Chờ duyệt' : h.status}
                           </span>
                           {h.status === 'REJECTED' && (h as any).rejectionReason && (
                             <div className="text-xs" style={{ marginTop: 4, color: '#ef4444' }}>Lý do: {(h as any).rejectionReason}</div>
@@ -1046,7 +1067,7 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                         </td>
                         <td>
                           <span className={`badge ${j.status === 'AVAILABLE' ? 'badge-approved' : 'badge-rejected'}`}>
-                            {j.status}
+                            {j.status === 'AVAILABLE' ? 'Sẵn sàng' : j.status === 'UNAVAILABLE' ? 'Không sẵn sàng' : j.status}
                           </span>
                         </td>
                       </tr>
@@ -1095,7 +1116,7 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                       <td>{new Date(r.scheduledAt).toLocaleString('vi-VN')}</td>
                       <td>
                         <span className={`badge ${r.status === 'COMPLETED' ? 'badge-approved' : r.status === 'ONGOING' ? 'badge-ongoing' : r.status === 'CANCELLED' ? 'badge-rejected' : 'badge-scheduled'}`}>
-                          {r.status}
+                          {r.status === 'COMPLETED' ? 'Kết thúc' : r.status === 'ONGOING' ? 'Đang diễn ra' : r.status === 'CANCELLED' ? 'Đã hủy' : r.status === 'SCHEDULED' ? 'Đã lên lịch' : r.status}
                         </span>
                       </td>
                       <td>
@@ -1239,7 +1260,7 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                         </td>
                         <td>
                           <span className={`badge ${p.status === 'WON' ? 'badge-approved' : p.status === 'LOST' ? 'badge-rejected' : p.status === 'CLOSED' ? 'badge-inactive' : 'badge-pending'}`}>
-                            {p.status}
+                            {p.status === 'WON' ? 'Thắng cược' : p.status === 'LOST' ? 'Thua cược' : p.status === 'CLOSED' ? 'Đã đóng' : p.status === 'PENDING' ? 'Chờ xử lý' : p.status}
                           </span>
                         </td>
                         <td>{p.createdAt ? new Date(p.createdAt).toLocaleDateString('vi-VN') : ''}</td>
@@ -1831,8 +1852,8 @@ function PredictionRaceList({
                 </td>
                 <td>{new Date(r.scheduledAt).toLocaleString('vi-VN')}</td>
                 <td>
-                  <span className={`badge ${r.status === 'COMPLETED' ? 'badge-approved' : r.status === 'ONGOING' ? 'badge-ongoing' : 'badge-scheduled'}`}>
-                    {r.status}
+                  <span className={`badge ${r.status === 'COMPLETED' ? 'badge-approved' : r.status === 'ONGOING' ? 'badge-ongoing' : r.status === 'CANCELLED' ? 'badge-rejected' : 'badge-scheduled'}`}>
+                    {r.status === 'COMPLETED' ? 'Kết thúc' : r.status === 'ONGOING' ? 'Đang diễn ra' : r.status === 'CANCELLED' ? 'Đã hủy' : r.status === 'SCHEDULED' ? 'Đã lên lịch' : r.status}
                   </span>
                 </td>
                 <td style={{ fontWeight: 600 }}>{betCount}</td>

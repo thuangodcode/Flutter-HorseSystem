@@ -98,10 +98,15 @@ export type RaceRegistration = {
   id: string
   _id?: string
   horseId: any
+  horseName?: string
+  horseBreed?: string
   raceId: any
+  raceName?: string
+  ownerName?: string
   status: 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'CONFIRMED'
   confirmedByOwner: boolean
   createdAt?: string
+  rejectionReason?: string
 }
 
 export type Prediction = {
