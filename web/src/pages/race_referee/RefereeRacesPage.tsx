@@ -1,17 +1,25 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import type { Race } from '../../types'
 import { getRefereeRaces } from '@/api'
+import { AnimatedTable, type ColumnDef } from '@/components/ui/animated-table'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { getStatusClassName, getStatusLabel } from '@/lib/status'
+import { Scale, ClipboardList, Activity, Calendar, CheckCircle2 } from 'lucide-react'
 
 function statusBadge(s?: string) {
   if (!s) return null
-  return <span className={`badge badge-${s.toLowerCase()}`}>
-    {s === 'ONGOING' && <span className="live-dot" />}
-    {s}
-  </span>
+  return (
+    <Badge variant="outline" className={getStatusClassName(s, 'race') + ' font-bold'}>
+      {s === 'ONGOING' && <span className="live-dot mr-2" />}
+      {getStatusLabel(s, 'race')}
+    </Badge>
+  )
 }
 
-function formatDateTime(d: string) {
+function formatDateTime(d?: string) {
+  if (!d) return '—'
   return new Date(d).toLocaleString('vi-VN')
 }
 
@@ -19,6 +27,7 @@ export function RefereeRacesPage() {
   const [items, setItems] = useState<Race[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
     setLoading(true)
@@ -31,147 +40,145 @@ export function RefereeRacesPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  // Group by status
-  const ongoing = items.filter(r => r.status === 'ONGOING')
-  const scheduled = items.filter(r => r.status === 'SCHEDULED')
-  const completed = items.filter(r => r.status === 'COMPLETED' || r.status === 'RESULT_CONFIRMED')
-  const other = items.filter(r => !['ONGOING', 'SCHEDULED', 'COMPLETED', 'RESULT_CONFIRMED'].includes(r.status || ''))
+  const itemsWithId = useMemo(() => items.map((r, i) => ({ ...r, id: r._id ?? r.id ?? String(i) })), [items])
+
+  const columns: ColumnDef<any>[] = [
+    {
+      id: 'name',
+      header: 'Tên cuộc đua',
+      accessorKey: 'name',
+      cell: (r: any) => (
+        <Link to={`/referee/races/${r._id ?? r.id}`} className="font-bold hover:underline">
+          {r.name}
+        </Link>
+      ),
+    },
+    {
+      id: 'scheduledAt',
+      header: 'Thời gian',
+      accessorKey: 'scheduledAt',
+      cell: (r: any) => formatDateTime(r.scheduledAt),
+    },
+    {
+      id: 'tournament',
+      header: 'Giải đấu',
+      accessorKey: 'tournamentId',
+      cell: (r: any) => r.tournamentId?.name || '—',
+    },
+    {
+      id: 'distance',
+      header: 'Khoảng cách',
+      accessorKey: 'distance',
+      cell: (r: any) => (r.distance ? `${r.distance} m` : '—'),
+    },
+    {
+      id: 'status',
+      header: 'Trạng thái',
+      accessorKey: 'status',
+      cell: (r: any) => statusBadge(r.status),
+    },
+    {
+      id: 'actions',
+      header: 'Hành động',
+      cell: (r: any) => (
+        <div className="flex items-center gap-2">
+          <button className="btn-link" onClick={() => navigate(`/referee/races/${r._id ?? r.id}`)}>Chi tiết</button>
+        </div>
+      ),
+    },
+  ]
 
   return (
-    <div>
+    <div className="space-y-6">
       <div className="page-header">
-        <h1>⚖️ Quản lý cuộc đua — Trọng tài</h1>
+        <h1 className="text-3xl font-black text-[var(--text)] tracking-tight flex items-center gap-2.5">
+          <Scale className="h-8 w-8 text-emerald-500 shrink-0" />
+          <span>Quản lý cuộc đua — Trọng tài</span>
+        </h1>
       </div>
 
       {error && <div className="alert alert-error">⚠️ {error}</div>}
 
-      {/* Stats */}
-      <div className="stat-grid">
-        <div className="stat-card">
-          <div className="stat-icon">📋</div>
-          <div className="stat-label">Tổng phân công</div>
-          <div className="stat-value">{items.length}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">🔴</div>
-          <div className="stat-label">Đang diễn ra</div>
-          <div className="stat-value" style={{ color: 'var(--warning)' }}>{ongoing.length}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">📅</div>
-          <div className="stat-label">Sắp tới</div>
-          <div className="stat-value" style={{ color: 'var(--info)' }}>{scheduled.length}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">✅</div>
-          <div className="stat-label">Hoàn thành</div>
-          <div className="stat-value" style={{ color: 'var(--success)' }}>{completed.length}</div>
-        </div>
-      </div>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Thống kê phân công</CardTitle>
+          <CardDescription>Thông tin nhanh về công việc trọng tài hiện tại</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-4">
+            {/* Thẻ 1: Tổng phân công */}
+            <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] border border-white/[0.04] p-3.5 transition-all hover:bg-white/[0.04]">
+              <div className="h-9 w-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+                <ClipboardList className="h-4.5 w-4.5 text-blue-400" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[10px] uppercase font-extrabold tracking-wider text-[var(--muted)]/40 leading-none mb-1">Tổng phân công</span>
+                <span className="text-xs font-bold text-[var(--text)] truncate">{items.length}</span>
+              </div>
+            </div>
 
-      {loading ? (
-        <div className="loading"><div className="spinner" /></div>
-      ) : items.length === 0 ? (
-        <div className="card">
-          <div className="empty-state">
-            <div className="empty-state-icon">⚖️</div>
-            <div className="empty-state-text">Chưa được phân công cuộc đua nào</div>
+            {/* Thẻ 2: Đang diễn ra */}
+            <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] border border-white/[0.04] p-3.5 transition-all hover:bg-white/[0.04]">
+              <div className="h-9 w-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                <Activity className="h-4.5 w-4.5 text-amber-400" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[10px] uppercase font-extrabold tracking-wider text-[var(--muted)]/40 leading-none mb-1">Đang diễn ra</span>
+                <span className="text-xs font-bold text-amber-400 truncate">{items.filter(r => r.status === 'ONGOING').length}</span>
+              </div>
+            </div>
+
+            {/* Thẻ 3: Sắp tới */}
+            <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] border border-white/[0.04] p-3.5 transition-all hover:bg-white/[0.04]">
+              <div className="h-9 w-9 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
+                <Calendar className="h-4.5 w-4.5 text-purple-400" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[10px] uppercase font-extrabold tracking-wider text-[var(--muted)]/40 leading-none mb-1">Sắp tới</span>
+                <span className="text-xs font-bold text-purple-400 truncate">{items.filter(r => r.status === 'SCHEDULED').length}</span>
+              </div>
+            </div>
+
+            {/* Thẻ 4: Hoàn thành */}
+            <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] border border-white/[0.04] p-3.5 transition-all hover:bg-white/[0.04]">
+              <div className="h-9 w-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="h-4.5 w-4.5 text-emerald-400" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[10px] uppercase font-extrabold tracking-wider text-[var(--muted)]/40 leading-none mb-1">Hoàn thành</span>
+                <span className="text-xs font-bold text-emerald-400 truncate">{items.filter(r => r.status === 'COMPLETED' || r.status === 'RESULT_CONFIRMED').length}</span>
+              </div>
+            </div>
           </div>
-        </div>
-      ) : (
-        <>
-          {/* Ongoing races first */}
-          {ongoing.length > 0 && (
-            <div className="section">
-              <div className="section-title"><span className="live-dot" /> Đang diễn ra</div>
-              <div className="grid-cards">
-                {ongoing.map((r) => (
-                  <Link key={r._id || r.id} to={`/referee/races/${r._id || r.id}`} style={{ textDecoration: 'none' }}>
-                    <div className="grid-card" style={{ borderColor: 'rgba(245,158,11,0.3)' }}>
-                      <div className="grid-card-header">
-                        <div className="grid-card-title">{r.name}</div>
-                        {statusBadge(r.status)}
-                      </div>
-                      <div className="grid-card-meta">
-                        <span>🕐 {formatDateTime(r.scheduledAt)}</span>
-                        {r.tournamentId?.name && <span>🏆 {r.tournamentId.name}</span>}
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
+        </CardContent>
+      </Card>
 
-          {/* Scheduled */}
-          {scheduled.length > 0 && (
-            <div className="section">
-              <div className="section-title">📅 Sắp diễn ra</div>
-              <div className="grid-cards">
-                {scheduled.map((r) => (
-                  <Link key={r._id || r.id} to={`/referee/races/${r._id || r.id}`} style={{ textDecoration: 'none' }}>
-                    <div className="grid-card">
-                      <div className="grid-card-header">
-                        <div className="grid-card-title">{r.name}</div>
-                        {statusBadge(r.status)}
-                      </div>
-                      <div className="grid-card-meta">
-                        <span>🕐 {formatDateTime(r.scheduledAt)}</span>
-                        {r.tournamentId?.name && <span>🏆 {r.tournamentId.name}</span>}
-                        {r.distance && <span>📏 {r.distance}m</span>}
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
+      <Card>
+        <CardHeader className="flex items-center justify-between">
+          <CardTitle>Danh sách cuộc đua</CardTitle>
+          <CardDescription>Quản lý và truy cập chi tiết mỗi cuộc đua</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="loading"><div className="spinner" /></div>
+          ) : (
+            <AnimatedTable
+              data={itemsWithId}
+              columns={columns}
+              onRowClick={(r: any) => navigate(`/referee/races/${r._id ?? r.id}`)}
+              emptyMessage={
+                <div className="empty-state py-12 text-center">
+                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500">
+                    <Scale className="h-6 w-6" />
+                  </div>
+                  <div className="text-base font-bold text-[var(--text)]">Chưa được phân công cuộc đua nào</div>
+                  <p className="text-sm text-[var(--muted)] mt-1">Khi ban tổ chức phân công giám sát cuộc đua, danh sách sẽ hiển thị ở đây.</p>
+                </div>
+              }
+            />
           )}
-
-          {/* Completed */}
-          {completed.length > 0 && (
-            <div className="section">
-              <div className="section-title">✅ Đã hoàn thành</div>
-              <div className="grid-cards">
-                {completed.map((r) => (
-                  <Link key={r._id || r.id} to={`/referee/races/${r._id || r.id}`} style={{ textDecoration: 'none' }}>
-                    <div className="grid-card" style={{ opacity: 0.85 }}>
-                      <div className="grid-card-header">
-                        <div className="grid-card-title">{r.name}</div>
-                        {statusBadge(r.status)}
-                      </div>
-                      <div className="grid-card-meta">
-                        <span>🕐 {formatDateTime(r.scheduledAt)}</span>
-                        {r.tournamentId?.name && <span>🏆 {r.tournamentId.name}</span>}
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {other.length > 0 && (
-            <div className="section">
-              <div className="section-title">Khác</div>
-              <div className="grid-cards">
-                {other.map((r) => (
-                  <Link key={r._id || r.id} to={`/referee/races/${r._id || r.id}`} style={{ textDecoration: 'none' }}>
-                    <div className="grid-card">
-                      <div className="grid-card-header">
-                        <div className="grid-card-title">{r.name}</div>
-                        {statusBadge(r.status)}
-                      </div>
-                      <div className="grid-card-meta">
-                        <span>🕐 {formatDateTime(r.scheduledAt)}</span>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-        </>
-      )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

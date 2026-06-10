@@ -14,6 +14,7 @@ import { RaceDetailPage } from './pages/RaceDetailPage.tsx'
 import { HorsesPage } from './pages/HorsesPage.tsx'
 import { InvitesPage } from './pages/InvitesPage.tsx'
 import { PredictionsPage } from './pages/spectator/PredictionsPage.tsx'
+import { NotificationsPage } from './pages/spectator/NotificationsPage.tsx'
 import { AdminUsersPage } from './pages/admin/AdminUsersPage.tsx'
 import { AdminSchedulingPage } from './pages/admin/AdminSchedulingPage.tsx'
 import { RefereeRacesPage } from './pages/race_referee/RefereeRacesPage.tsx'
@@ -32,11 +33,9 @@ function RequireAuth(props: { children: ReactNode }) {
   return <>{props.children}</>
 }
 
-/** After login, redirect admin to /admin/scheduling, everyone else to /tournaments */
+/** After login, redirect all users to dashboard first */
 function DefaultRedirect() {
-  const { session } = useSession()
-  if (session?.user.role === 'ADMIN') return <Navigate to="/admin/scheduling" replace />
-  return <Navigate to="/tournaments" replace />
+  return <Navigate to="dashboard" replace />
 }
 
 // Redirect helpers for absolute paths used in subpages
@@ -86,8 +85,19 @@ const router = createBrowserRouter([
       { path: 'jockey/results', element: <JockeyResultsPage /> },
       { path: 'jockey/profile', element: <JockeyProfilePage /> },
       { path: 'predictions', element: <PredictionsPage /> },
+      { path: 'notifications', element: <NotificationsPage /> },
       { path: 'admin/users', element: <AdminUsersPage /> },
-      { path: 'admin/scheduling', element: <AdminSchedulingPage /> },
+      {
+        path: 'admin/scheduling',
+        children: [
+          { index: true, element: <Navigate to="tournaments" replace /> },
+          { path: 'tournaments', element: <AdminSchedulingPage tab="tournaments" /> },
+          { path: 'registrations', element: <AdminSchedulingPage tab="registrations" /> },
+          { path: 'horses-jockeys', element: <AdminSchedulingPage tab="horses-jockeys" /> },
+          { path: 'referee-results', element: <AdminSchedulingPage tab="referee-results" /> },
+          { path: 'predictions', element: <AdminSchedulingPage tab="predictions" /> },
+        ]
+      },
       { path: 'referee/races', element: <RefereeRacesPage /> },
       { path: 'referee/races/:raceId', element: <RefereeRaceDetailPage /> },
       { path: 'referee/races/:raceId/report', element: <RefereeReportPage /> },

@@ -3,10 +3,28 @@ import { Link, useParams, useNavigate } from 'react-router-dom'
 import type { Tournament, Race, LeaderboardEntry } from '../types'
 import { getPublicTournament, getPublicRaces, getTournamentLeaderboard } from '@/api'
 import { AnimatedTable } from '../components/ui/animated-table'
+import { Badge } from '@/components/ui/badge'
+import { getStatusClassName, getStatusLabel } from '@/lib/status'
+import { ScrollReveal } from '@/components/ui/scroll-text'
+import { ArrowLeft, CalendarRange, MapPin, Medal, Trophy, Users } from 'lucide-react'
+import '@/styles/spectator.css'
 
 function statusBadge(s?: string) {
   if (!s) return null
-  return <span className={`badge badge-${s.toLowerCase()}`}>{s}</span>
+  return (
+    <Badge variant="outline" className={getStatusClassName(s, 'tournament')}>
+      {getStatusLabel(s, 'tournament')}
+    </Badge>
+  )
+}
+
+function raceStatusBadge(s?: string) {
+  if (!s) return null
+  return (
+    <Badge variant="outline" className={getStatusClassName(s, 'race')}>
+      {getStatusLabel(s, 'race')}
+    </Badge>
+  )
 }
 
 function formatDate(d: string) {
@@ -54,37 +72,52 @@ export function TournamentDetailPage() {
       .finally(() => setLoading(false))
   }, [id])
 
-  if (loading) return <div className="loading"><div className="spinner" /></div>
-  if (error) return <div className="card"><div className="alert alert-error">⚠️ {error}</div><Link to="/tournaments" className="back-link">← Quay lại</Link></div>
+  if (loading) return (
+    <div className="space-y-6">
+      <div className="spectator-shimmer h-10 w-48" />
+      <div className="spectator-shimmer h-64 w-full" />
+      <div className="spectator-shimmer h-48 w-full" />
+    </div>
+  )
+
+  if (error) return (
+    <div className="spectator-card">
+      <div className="alert alert-error mb-4">⚠️ {error}</div>
+      <Link to="/tournaments" className="flex items-center gap-2 text-sm font-medium text-[var(--muted)] hover:text-[var(--primary)] transition-colors">
+        <ArrowLeft className="w-4 h-4" /> Quay lại danh sách giải
+      </Link>
+    </div>
+  )
 
   if (!tournament) return null
 
+  /* ── Table Columns ── */
   const racesColumns = [
     {
       id: 'name',
       header: 'Cuộc đua',
-      cell: (r: Race) => <span className="fw-600">{r.name}</span>,
+      cell: (r: Race) => <span className="font-bold text-[var(--text)]">{r.name}</span>,
     },
     {
       id: 'distance',
       header: 'Khoảng cách',
-      cell: (r: Race) => <span>{r.distance ? `${r.distance}m` : '—'}</span>,
+      cell: (r: Race) => <span className="font-semibold text-[var(--muted)]">{r.distance ? `${r.distance}m` : '—'}</span>,
     },
     {
       id: 'scheduledAt',
       header: 'Thời gian',
-      cell: (r: Race) => <span className="fs-13">{formatDateTime(r.scheduledAt)}</span>,
+      cell: (r: Race) => <span className="font-semibold text-[var(--muted)] text-sm">{formatDateTime(r.scheduledAt)}</span>,
     },
     {
       id: 'status',
       header: 'Trạng thái',
-      cell: (r: Race) => statusBadge(r.status),
+      cell: (r: Race) => raceStatusBadge(r.status),
     },
     {
       id: 'prizeFirst',
       header: 'Giải thưởng',
       align: 'right' as const,
-      cell: (r: Race) => <span className="money">{r.prizeFirst ? formatMoney(r.prizeFirst) : '—'}</span>,
+      cell: (r: Race) => <span className="font-bold text-amber-400">{r.prizeFirst ? formatMoney(r.prizeFirst) : '—'}</span>,
     },
   ]
 
@@ -93,7 +126,7 @@ export function TournamentDetailPage() {
       id: 'rank',
       header: '#',
       cell: (_: LeaderboardEntry, idx: number) => (
-        <span className={`position-cell ${idx < 3 ? `rank-${idx + 1}` : ''}`}>
+        <span className="font-bold">
           {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
         </span>
       ),
@@ -101,28 +134,28 @@ export function TournamentDetailPage() {
     {
       id: 'name',
       header: 'Tên',
-      cell: (entry: LeaderboardEntry) => <span className="fw-600">{entry.horseName || entry.jockeyName || '—'}</span>,
+      cell: (entry: LeaderboardEntry) => <span className="font-bold text-[var(--text)]">{entry.horseName || entry.jockeyName || '—'}</span>,
     },
     {
       id: 'races',
       header: 'Số trận',
-      cell: (entry: LeaderboardEntry) => <span>{entry.races ?? '—'}</span>,
+      cell: (entry: LeaderboardEntry) => <span className="font-semibold text-[var(--muted)]">{entry.races ?? '—'}</span>,
     },
     {
       id: 'wins',
       header: 'Thắng',
-      cell: (entry: LeaderboardEntry) => <span>{entry.wins ?? '—'}</span>,
+      cell: (entry: LeaderboardEntry) => <span className="font-bold text-emerald-400">{entry.wins ?? '—'}</span>,
     },
     {
       id: 'totalPoints',
       header: 'Tổng điểm',
-      cell: (entry: LeaderboardEntry) => <span className="fw-700">{entry.totalPoints ?? '—'}</span>,
+      cell: (entry: LeaderboardEntry) => <span className="font-black text-[var(--text)]">{entry.totalPoints ?? '—'}</span>,
     },
     {
       id: 'totalPrize',
       header: 'Giải thưởng',
       align: 'right' as const,
-      cell: (entry: LeaderboardEntry) => <span className="money">{formatMoney(entry.totalPrize)}</span>,
+      cell: (entry: LeaderboardEntry) => <span className="font-bold text-amber-400">{formatMoney(entry.totalPrize)}</span>,
     },
   ]
 
@@ -130,79 +163,130 @@ export function TournamentDetailPage() {
   const leaderboardWithId = leaderboard.map((entry, idx) => ({ ...entry, id: entry.id || entry._id || String(idx) }))
 
   return (
-    <div>
-      <Link to="/tournaments" className="back-link">← Quay lại danh sách giải</Link>
+    <div className="space-y-6">
+      {/* Back Link */}
+      <Link to="/tournaments" className="inline-flex items-center gap-2 text-sm font-medium text-[var(--muted)] hover:text-emerald-400 transition-colors">
+        <ArrowLeft className="w-4 h-4" />
+        Quay lại danh sách giải
+      </Link>
 
-      <div className="card" style={{ marginBottom: 20 }}>
-        <div className="flex justify-between items-center flex-wrap gap-8">
-          <div>
-            <h1 style={{ margin: 0 }}>🏆 {tournament.name}</h1>
-            {tournament.description && <p className="muted mt-8">{tournament.description}</p>}
-          </div>
-          {statusBadge(tournament.status || 'DRAFT')}
-        </div>
-
-        <div className="stat-grid mt-16">
-          <div className="stat-card">
-            <div className="stat-icon">📍</div>
-            <div className="stat-label">Địa điểm</div>
-            <div className="stat-value" style={{ fontSize: 18 }}>{tournament.venue}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">📅</div>
-            <div className="stat-label">Thời gian</div>
-            <div className="stat-value" style={{ fontSize: 16 }}>{formatDate(tournament.startDate)} → {formatDate(tournament.endDate)}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">💰</div>
-            <div className="stat-label">Tổng giải thưởng</div>
-            <div className="stat-value" style={{ fontSize: 18 }}>{formatMoney(tournament.prizePool)}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">🐴</div>
-            <div className="stat-label">Số cuộc đua</div>
-            <div className="stat-value">{races.length}</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="tabs" style={{ marginBottom: 16 }}>
-          <button className={`tab-btn ${activeTab === 'races' ? 'active' : ''}`} onClick={() => setActiveTab('races')}>
-            📅 Lịch đua ({races.length})
-          </button>
-          <button className={`tab-btn ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => setActiveTab('leaderboard')}>
-            🥇 Bảng xếp hạng
-          </button>
-        </div>
-
-        {activeTab === 'races' && (
-          <AnimatedTable
-            data={racesWithId}
-            columns={racesColumns}
-            onRowClick={(r: any) => navigate(`/races/${r._id}`)}
-            emptyMessage={
-              <div className="empty-state py-8">
-                <div className="empty-state-icon">📅</div>
-                <div className="empty-state-text">Chưa có cuộc đua nào trong giải</div>
+      {/* ══ Tournament Hero ══ */}
+      <ScrollReveal direction="up" distance={40} duration={0.7} delay={0.05}>
+        <div className="spectator-hero">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 relative z-10">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/15 ring-1 ring-amber-500/25 flex items-center justify-center text-2xl">
+                  🏆
+                </div>
+                <h1 className="text-3xl font-black text-[var(--text)] tracking-tight m-0">{tournament.name}</h1>
               </div>
-            }
-          />
-        )}
+              {tournament.description && (
+                <p className="text-[var(--muted)] text-sm font-medium max-w-2xl ml-[60px]">{tournament.description}</p>
+              )}
+            </div>
+            <div className="shrink-0 ml-[60px] md:ml-0">
+              {statusBadge(tournament.status || 'DRAFT')}
+            </div>
+          </div>
 
-        {activeTab === 'leaderboard' && (
-          <AnimatedTable
-            data={leaderboardWithId}
-            columns={leaderboardColumns as any}
-            emptyMessage={
-              <div className="empty-state py-8">
-                <div className="empty-state-icon">🥇</div>
-                <div className="empty-state-text">Chưa có dữ liệu bảng xếp hạng</div>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6 relative z-10">
+            <div className="spectator-stat-card">
+              <div className="spectator-stat-icon spectator-stat-icon-blue">
+                <MapPin className="w-5 h-5" />
               </div>
-            }
-          />
-        )}
-      </div>
+              <div>
+                <div className="spectator-stat-label">Địa điểm</div>
+                <div className="spectator-stat-value text-base">{tournament.venue}</div>
+              </div>
+            </div>
+
+            <div className="spectator-stat-card">
+              <div className="spectator-stat-icon spectator-stat-icon-emerald">
+                <CalendarRange className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="spectator-stat-label">Thời gian</div>
+                <div className="spectator-stat-value text-sm">{formatDate(tournament.startDate)} → {formatDate(tournament.endDate)}</div>
+              </div>
+            </div>
+
+            <div className="spectator-stat-card">
+              <div className="spectator-stat-icon spectator-stat-icon-amber">
+                <Trophy className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="spectator-stat-label">Tổng giải thưởng</div>
+                <div className="spectator-stat-value text-base text-amber-400">{formatMoney(tournament.prizePool)}</div>
+              </div>
+            </div>
+
+            <div className="spectator-stat-card">
+              <div className="spectator-stat-icon spectator-stat-icon-purple">
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="spectator-stat-label">Số cuộc đua</div>
+                <div className="spectator-stat-value text-base">{races.length}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ScrollReveal>
+
+      {/* ══ Tabs + Content ══ */}
+      <ScrollReveal direction="up" distance={40} duration={0.7} delay={0.1}>
+        <div className="spectator-card">
+          {/* Tab Buttons */}
+          <div className="spectator-tabs mb-6">
+            <button
+              className={`spectator-tab ${activeTab === 'races' ? 'spectator-tab-active' : ''}`}
+              onClick={() => setActiveTab('races')}
+            >
+              <CalendarRange className="w-4 h-4" />
+              Lịch Đua ({races.length})
+            </button>
+            <button
+              className={`spectator-tab ${activeTab === 'leaderboard' ? 'spectator-tab-active' : ''}`}
+              onClick={() => setActiveTab('leaderboard')}
+            >
+              <Medal className="w-4 h-4" />
+              Bảng Xếp Hạng
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === 'races' && (
+            <AnimatedTable
+              data={racesWithId}
+              columns={racesColumns}
+              onRowClick={(r: any) => navigate(`/races/${r._id}`)}
+              emptyMessage={
+                <div className="spectator-empty">
+                  <div className="spectator-empty-icon">📅</div>
+                  <div className="text-base font-bold text-[var(--text)]">Chưa có cuộc đua nào trong giải</div>
+                  <p className="text-sm text-[var(--muted)] font-medium mt-1">Cuộc đua sẽ được thêm khi ban tổ chức cập nhật lịch thi đấu.</p>
+                </div>
+              }
+            />
+          )}
+
+          {activeTab === 'leaderboard' && (
+            <AnimatedTable
+              data={leaderboardWithId}
+              columns={leaderboardColumns as any}
+              emptyMessage={
+                <div className="spectator-empty">
+                  <div className="spectator-empty-icon">🥇</div>
+                  <div className="text-base font-bold text-[var(--text)]">Chưa có dữ liệu bảng xếp hạng</div>
+                  <p className="text-sm text-[var(--muted)] font-medium mt-1">Bảng xếp hạng sẽ cập nhật sau khi có kết quả cuộc đua.</p>
+                </div>
+              }
+            />
+          )}
+        </div>
+      </ScrollReveal>
     </div>
   )
 }

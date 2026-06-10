@@ -19,3 +19,12 @@ desktop.ini
 
 # Refact AI
 .refact/
+
+# Temporary debug files and logs
+.dbg/
+debug-*.md
+debug-*.js
+scratch-test.js
+web/tsc_errors.txt
+*.bak
+*.backup

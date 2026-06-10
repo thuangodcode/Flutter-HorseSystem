@@ -5,16 +5,16 @@ import { checkPredictionOpen, getMyPredictions, getPublicRaces, getRaceHorses, p
 import { AnimatedTable, type ColumnDef } from '@/components/ui/animated-table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { getStatusClassName, getStatusLabel, PREDICTION_STATUS_OPTIONS } from '@/lib/status'
 import { useSession } from '../../auth/SessionContext'
 import { NumberCounter } from '@/components/ui/number-counter'
 import { ScrollReveal } from '@/components/ui/scroll-text'
-import { Magnetic } from '@/components/ui/magnetic'
-import { BadgeDollarSign, RefreshCw, Sparkles, Trophy } from 'lucide-react'
+import { BadgeDollarSign, CheckCircle2, Clock, History, RefreshCw, Sparkles, Target, Trophy, TrendingUp, Zap } from 'lucide-react'
+import '@/styles/spectator.css'
 
+/* ── Helpers ─────────────────────────────────────── */
 function statusBadge(s: string) {
   return (
     <Badge variant="outline" className={`${getStatusClassName(s, 'prediction')} font-bold`}>
@@ -72,6 +72,22 @@ function isWithinWindow(dateValue: string, window: string) {
   return now - createdAt <= windows[window]
 }
 
+function normalizeHorse(horse: any) {
+  if (!horse) return null
+  if (horse.horse) return horse.horse
+  if (horse.horseId) return horse.horseId
+  return horse
+}
+
+function findHorseById(horses: any[], horseId: string) {
+  for (const horse of horses) {
+    const item = normalizeHorse(horse)
+    if (item?._id === horseId) return item
+  }
+  return null
+}
+
+/* ── Main Component ──────────────────────────────── */
 export function PredictionsPage() {
   const [predictions, setPredictions] = useState<Prediction[]>([])
   const [historyLoading, setHistoryLoading] = useState(true)
@@ -93,6 +109,7 @@ export function PredictionsPage() {
   const [predMsg, setPredMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [isPredOpen, setIsPredOpen] = useState(false)
 
+  // Load prediction history
   useEffect(() => {
     setHistoryLoading(true)
     getMyPredictions()
@@ -118,24 +135,37 @@ export function PredictionsPage() {
       .finally(() => setHistoryLoading(false))
   }, [historyReloadKey])
 
+  // Load available races
   useEffect(() => {
     setRacesLoading(true)
-    getPublicRaces({ status: 'SCHEDULED' })
-      .then((data: any) => {
-        const list = Array.isArray(data) ? data : (data?.races || data?.data || [])
-        setRaces(list)
+    Promise.all([
+      getPublicRaces({ status: 'SCHEDULED' }).catch((): any[] => []),
+      getPublicRaces({ status: 'ONGOING' }).catch((): any[] => []),
+    ])
+      .then(([scheduled, ongoing]: [any, any]) => {
+        const scheduledList: any[] = Array.isArray(scheduled) ? scheduled : (scheduled?.races || scheduled?.data || [])
+        const ongoingList: any[] = Array.isArray(ongoing) ? ongoing : (ongoing?.races || ongoing?.data || [])
+        const merged: any[] = [...scheduledList, ...ongoingList]
+        const seen = new Set<string>()
+        const unique = merged.filter((r: any) => {
+          const key = r._id || r.id
+          if (seen.has(key)) return false
+          seen.add(key)
+          return true
+        })
+        setRaces(unique)
       })
       .catch(() => setRaces([]))
       .finally(() => setRacesLoading(false))
   }, [])
 
+  // Load horses when a race is selected
   useEffect(() => {
     if (!selectedRace) {
       setHorses([])
       setIsPredOpen(false)
       return
     }
-
     setHorsesLoading(true)
     Promise.all([
       getRaceHorses(selectedRace).catch(() => []),
@@ -162,7 +192,6 @@ export function PredictionsPage() {
     }
     setPredLoading(true)
     setPredMsg(null)
-
     try {
       await placePrediction(selectedRace, selectedHorse, betValue)
       updateBalance(balance - betValue)
@@ -188,14 +217,12 @@ export function PredictionsPage() {
   const filteredHistory = [...predictions]
     .filter((prediction) => {
       if (historyStatusFilter !== 'all' && prediction.status !== historyStatusFilter) return false
-
       if (historySearchQuery.trim() !== '') {
         const query = historySearchQuery.toLowerCase()
         const matchesRace = String(prediction.raceId?.name || prediction.raceId || '').toLowerCase().includes(query)
         const matchesHorse = String(prediction.horseId?.name || prediction.horseId || '').toLowerCase().includes(query)
         if (!matchesRace && !matchesHorse) return false
       }
-
       return isWithinWindow(prediction.createdAt ?? '', historyTimeFilter)
     })
     .sort((a, b) => {
@@ -207,32 +234,28 @@ export function PredictionsPage() {
     {
       id: 'race',
       header: 'Cuộc đua',
-      cell: (prediction: any) => {
-        return (
-          <span className="font-bold text-(--text)">
-            {prediction.raceId?.name || (typeof prediction.raceId === 'string' ? (
-              <Link to={`/races/${prediction.raceId}`} className="text-amber-600 dark:text-amber-300 hover:underline">Xem cuộc đua</Link>
-            ) : '—')}
-          </span>
-        )
-      },
+      cell: (prediction: any) => (
+        <span className="font-bold text-[var(--text)]">
+          {prediction.raceId?.name || (typeof prediction.raceId === 'string' ? (
+            <Link to={`/races/${prediction.raceId}`} className="text-emerald-400 hover:underline font-bold">Xem cuộc đua</Link>
+          ) : '—')}
+        </span>
+      ),
     },
     {
       id: 'horse',
       header: 'Ngựa',
       cell: (prediction: any) => (
-        <span className="font-bold text-(--text)">
+        <span className="font-bold text-[var(--text)]">
           {prediction.horseId?.name || '—'}
         </span>
       ),
     },
     {
       id: 'amount',
-      header: 'Số tiền',
+      header: 'Số tiền cược',
       cell: (prediction: any) => (
-        <span className="font-bold text-(--text)">
-          {formatMoney(prediction.betAmount)}
-        </span>
+        <span className="font-bold text-amber-400">{formatMoney(prediction.betAmount)}</span>
       ),
     },
     {
@@ -244,7 +267,7 @@ export function PredictionsPage() {
       id: 'payout',
       header: 'Tiền thưởng',
       cell: (prediction: any) => (
-        <span className={prediction.status === 'WON' ? 'text-emerald-600 dark:text-emerald-300 font-black' : 'text-muted font-bold'}>
+        <span className={prediction.status === 'WON' ? 'text-emerald-400 font-black' : 'text-[var(--muted)] font-bold'}>
           {prediction.status === 'WON' ? formatMoney(prediction.payout) : '—'}
         </span>
       ),
@@ -253,9 +276,7 @@ export function PredictionsPage() {
       id: 'createdAt',
       header: 'Ngày đặt',
       cell: (prediction: any) => (
-        <span className="font-bold text-muted">
-          {formatDate(prediction.createdAt)}
-        </span>
+        <span className="font-semibold text-[var(--muted)] text-sm">{formatDate(prediction.createdAt)}</span>
       ),
     },
   ]
@@ -266,241 +287,348 @@ export function PredictionsPage() {
   }))
 
   return (
-    <div className="space-y-6">
-      <ScrollReveal direction="up" distance={60} duration={0.8} delay={0.1}>
-        <Card className="border-border bg-(--surface) shadow-2xl card-hover">
-          <CardHeader className="gap-4 md:flex-row md:items-end md:justify-between">
-            <div className="space-y-3">
-              <div className="flex items-start gap-4">
-                <div className="rounded-2xl bg-amber-500/10 p-3 ring-1 ring-amber-500/20">
-                  <Trophy className="h-7 w-7 text-amber-300" />
+    <div className="space-y-8">
+
+      {/* ════════════════════════════════════════════════════
+          SECTION 1: Hero Header — Stats Overview
+          ════════════════════════════════════════════════════ */}
+      <ScrollReveal direction="up" distance={40} duration={0.7} delay={0.05}>
+        <div className="spectator-hero">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            {/* Left: Title + Description */}
+            <div className="space-y-4 relative z-10">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 ring-1 ring-emerald-500/25 flex items-center justify-center">
+                  <Target className="w-7 h-7 text-emerald-400" />
                 </div>
-                <div className="space-y-1">
-                  <CardTitle className="text-3xl text-(--text) font-black">Dự đoán kết quả</CardTitle>
-                  <CardDescription className="max-w-2xl text-muted font-bold">
-                    Theo dõi lịch sử dự đoán, lọc theo trạng thái hoặc thời gian và đặt dự đoán mới trong cùng một luồng.
-                  </CardDescription>
+                <div>
+                  <h1 className="text-3xl font-black text-[var(--text)] tracking-tight m-0">Dự đoán kết quả</h1>
+                  <p className="text-sm text-[var(--muted)] font-medium mt-1 max-w-lg">
+                    Đặt dự đoán cho các cuộc đua sắp diễn ra và theo dõi lịch sử cược của bạn.
+                  </p>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="font-black border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-200">Tổng <NumberCounter value={predictions.length} duration={1.2} easing="easeOut" /></Badge>
-                <Badge variant="outline" className="font-black border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200">Đã thắng <NumberCounter value={wonCount} duration={1.2} delay={0.1} easing="easeOut" /></Badge>
-                <Badge variant="outline" className="font-black border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-200">Tổng cược {formatMoney(totalBet)}</Badge>
-                <Badge variant="outline" className="font-black border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-200">Tiền thưởng {formatMoney(totalPayout)}</Badge>
+
+              {/* Quick Stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2">
+                <div className="spectator-stat-card">
+                  <div className="spectator-stat-icon spectator-stat-icon-amber">
+                    <Zap className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="spectator-stat-label">Tổng cược</div>
+                    <div className="spectator-stat-value text-lg"><NumberCounter value={predictions.length} duration={1} easing="easeOut" /></div>
+                  </div>
+                </div>
+                <div className="spectator-stat-card">
+                  <div className="spectator-stat-icon spectator-stat-icon-emerald">
+                    <Trophy className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="spectator-stat-label">Đã thắng</div>
+                    <div className="spectator-stat-value text-lg text-emerald-400"><NumberCounter value={wonCount} duration={1} delay={0.1} easing="easeOut" /></div>
+                  </div>
+                </div>
+                <div className="spectator-stat-card">
+                  <div className="spectator-stat-icon spectator-stat-icon-blue">
+                    <TrendingUp className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="spectator-stat-label">Đã đặt</div>
+                    <div className="spectator-stat-value text-sm">{formatMoney(totalBet)}</div>
+                  </div>
+                </div>
+                <div className="spectator-stat-card">
+                  <div className="spectator-stat-icon spectator-stat-icon-purple">
+                    <BadgeDollarSign className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="spectator-stat-label">Tiền thưởng</div>
+                    <div className="spectator-stat-value text-sm text-emerald-400">{formatMoney(totalPayout)}</div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <Button 
-                variant="outline" 
-                className="h-11 font-bold border-border bg-(--bg2) text-(--text) hover:bg-(--surface-strong)/50" 
+            {/* Right: Action Buttons */}
+            <div className="flex flex-wrap gap-3 relative z-10 lg:mt-2">
+              <Button
+                variant="outline"
+                className="h-10 font-semibold border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] hover:bg-[var(--surface-3)] gap-2"
                 onClick={() => document.getElementById('history-section')?.scrollIntoView({ behavior: 'smooth' })}
               >
-                📋 Lịch sử dự đoán
+                <History className="h-4 w-4" />
+                Lịch sử
               </Button>
               <Button
                 variant="outline"
-                className="h-11 font-bold border-border bg-(--bg2) text-(--text) hover:bg-(--surface-strong)/50"
+                className="h-10 font-semibold border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] hover:bg-[var(--surface-3)] gap-2"
                 onClick={() => setHistoryReloadKey((value) => value + 1)}
               >
-                <RefreshCw className="mr-2 h-4 w-4" />
+                <RefreshCw className="h-4 w-4" />
                 Làm mới
               </Button>
             </div>
-          </CardHeader>
-        </Card>
+          </div>
+        </div>
       </ScrollReveal>
 
-      <Magnetic intensity={0.3} range={150}>
-        <Card className="border-border bg-(--surface) shadow-lg card-hover">
-          <CardHeader className="border-b border-border">
-            <CardTitle className="flex items-center gap-2 text-xl text-(--text) font-black">
-              <Sparkles className="h-5 w-5 text-amber-300" />
-              Tạo dự đoán mới
-            </CardTitle>
-            <CardDescription className="text-muted font-bold">Chỉ các cuộc đua sắp diễn ra có thể đặt dự đoán.</CardDescription>
-          </CardHeader>
-        <CardContent className="grid gap-6 pt-6 lg:grid-cols-[1.15fr_0.85fr]">
-          <div className="space-y-4">
-            {predMsg && (
-              <div className={`rounded-xl border px-4 py-3 text-sm font-bold ${predMsg.type === 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-100' : 'border-red-500/30 bg-red-500/10 text-red-800 dark:text-red-100'}`}>
-                {predMsg.text}
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-(--text)">Chọn cuộc đua</label>
-              {racesLoading ? (
-                <p className="text-sm text-muted font-bold">Đang tải...</p>
-              ) : (
-                <Select value={selectedRace} onValueChange={(value) => { setSelectedRace(value ?? ''); setSelectedHorse('') }}>
-                  <SelectTrigger className="h-11 w-full border-border bg-(--bg2) text-(--text) font-bold">
-                    {selectedRace ? `${races.find((race) => race._id === selectedRace)?.name || '— Chọn cuộc đua —'} (${getStatusLabel(races.find((race) => race._id === selectedRace)?.status, 'race')})` : '— Chọn cuộc đua —'}
-                  </SelectTrigger>
-                  <SelectContent>
-                    {races.map((race) => (
-                      <SelectItem key={race._id} value={race._id} className="font-bold">{race.name} ({getStatusLabel(race.status, 'race')})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+      {/* ════════════════════════════════════════════════════
+          SECTION 2: Prediction Form + Status Panel
+          ════════════════════════════════════════════════════ */}
+      <ScrollReveal direction="up" distance={40} duration={0.7} delay={0.1}>
+        <div className="spectator-card">
+          {/* Form Header */}
+          <div className="flex items-center gap-3 mb-6 pb-5 border-b border-[var(--border)]">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/12 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-amber-400" />
             </div>
+            <div>
+              <h2 className="text-xl font-bold text-[var(--text)] m-0">Tạo dự đoán mới</h2>
+              <p className="text-xs text-[var(--muted)] font-medium mt-0.5">Chọn cuộc đua đang mở và đặt cược cho ngựa bạn tin tưởng.</p>
+            </div>
+          </div>
 
-            {selectedRace && !isPredOpen && !horsesLoading && (
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-100 font-bold">⚠️ Cuộc đua này chưa mở hoặc đã đóng dự đoán</div>
-            )}
+          <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+            {/* ── Left: Form Fields ── */}
+            <div className="space-y-5">
+              {/* Alert Message */}
+              {predMsg && (
+                <div className={`rounded-xl border px-4 py-3 text-sm font-semibold flex items-center gap-2 ${predMsg.type === 'success' ? 'border-emerald-500/30 bg-emerald-500/8 text-emerald-300' : 'border-red-500/30 bg-red-500/8 text-red-300'}`}>
+                  {predMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <span>⚠️</span>}
+                  {predMsg.text}
+                </div>
+              )}
 
-            {selectedRace && (
+              {/* Race Select */}
               <div className="space-y-2">
-                <label className="text-sm font-bold text-(--text)">Chọn ngựa dự đoán thắng</label>
-                {horsesLoading ? (
-                  <p className="text-sm text-muted font-bold">Đang tải danh sách ngựa...</p>
-                ) : horses.length === 0 ? (
-                  <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-800 dark:text-red-100 font-bold">
-                    ⚠️ Cuộc đua này chưa có chú ngựa nào hoàn tất thủ tục đăng ký (Chờ duyệt & Xác nhận). Vui lòng quay lại sau!
+                <label className="block text-sm font-semibold text-[var(--text)]">Chọn cuộc đua</label>
+                {racesLoading ? (
+                  <div className="spectator-shimmer h-11 w-full" />
+                ) : races.length === 0 ? (
+                  <div className="spectator-tip text-sm font-semibold text-amber-300">
+                    ⚠️ Hiện không có cuộc đua nào đang mở để đặt dự đoán.
                   </div>
                 ) : (
-                  <Select value={selectedHorse} onValueChange={(value) => setSelectedHorse(value ?? '')}>
-                    <SelectTrigger className="h-11 w-full border-border bg-(--bg2) text-(--text) font-bold">
-                      {selectedHorse ? (horses.find((horse: any) => (horse.horse || horse.horseId || horse)._id === selectedHorse)?.name || '— Chọn ngựa —') : '— Chọn ngựa —'}
+                  <Select value={selectedRace} onValueChange={(value) => { setSelectedRace(value ?? ''); setSelectedHorse('') }}>
+                    <SelectTrigger className="h-11 w-full border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] font-semibold">
+                      {selectedRace
+                        ? `${races.find((race: any) => (race._id || race.id) === selectedRace)?.name || '— Chọn cuộc đua —'} (${getStatusLabel(races.find((race: any) => (race._id || race.id) === selectedRace)?.status, 'race')})`
+                        : '— Chọn cuộc đua —'}
                     </SelectTrigger>
                     <SelectContent>
-                      {horses.map((horse: any) => {
-                        const item = horse.horse || horse.horseId || horse
-                        return <SelectItem key={item._id} value={item._id} className="font-bold">{item.name}</SelectItem>
-                      })}
+                      {races.map((race: any) => (
+                        <SelectItem key={race._id || race.id} value={race._id || race.id} className="font-semibold">
+                          {race.name} ({getStatusLabel(race.status, 'race')})
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 )}
               </div>
-            )}
 
-            {selectedRace && (
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-(--text)">Số tiền đặt cược</label>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  min="100000"
-                  max="10000000"
-                  step="50000"
-                  value={betAmount}
-                  onChange={(event) => setBetAmount(formatMoneyInput(event.target.value))}
-                  placeholder="Ví dụ: 500,000"
-                  className="h-11 border-border bg-(--bg2) text-(--text) placeholder:text-(--muted)/50 font-bold"
-                />
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {[500000, 1000000, 2000000, 5000000].map((amount) => (
-                    <button
-                      key={amount}
-                      type="button"
-                      className="h-8 px-3 rounded-lg border border-amber-500/30 text-amber-500 bg-amber-500/5 hover:bg-amber-500/20 font-bold text-xs transition-colors cursor-pointer"
-                      onClick={() => setBetAmount(formatMoneyInput(String(amount)))}
-                    >
-                      {amount.toLocaleString('vi-VN')} VND
-                    </button>
-                  ))}
+              {/* Warning: prediction not open */}
+              {selectedRace && !isPredOpen && !horsesLoading && (
+                <div className="spectator-tip text-sm font-semibold text-amber-300">
+                  ⚠️ Cuộc đua này chưa mở hoặc đã đóng dự đoán
                 </div>
-                <p className="text-xs text-muted font-bold">Giới hạn từ 100,000 đến 10,000,000 VND.</p>
-              </div>
-            )}
+              )}
 
-            {selectedRace && (
-              <Button className="h-11 w-full bg-amber-500 text-slate-950 hover:bg-amber-400 font-bold" disabled={!selectedHorse || !betAmount || predLoading || !isPredOpen} onClick={handleSubmit}>
-                {predLoading ? 'Đang xử lý...' : '✅ Xác nhận dự đoán'}
-              </Button>
-            )}
-          </div>
+              {/* Horse Select */}
+              {selectedRace && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-[var(--text)]">Chọn ngựa dự đoán thắng</label>
+                  {horsesLoading ? (
+                    <div className="spectator-shimmer h-11 w-full" />
+                  ) : horses.length === 0 ? (
+                    <div className="rounded-xl border border-red-500/20 bg-red-500/6 px-4 py-3 text-sm text-red-300 font-semibold">
+                      ⚠️ Cuộc đua này chưa có ngựa nào hoàn tất đăng ký. Vui lòng quay lại sau!
+                    </div>
+                  ) : (
+                    <Select value={selectedHorse} onValueChange={(value) => setSelectedHorse(value ?? '')}>
+                      <SelectTrigger className="h-11 w-full border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] font-semibold">
+                        {selectedHorse ? (findHorseById(horses, selectedHorse)?.name || '— Chọn ngựa —') : '— Chọn ngựa —'}
+                      </SelectTrigger>
+                      <SelectContent>
+                        {horses.map((horse: any) => {
+                          const item = normalizeHorse(horse)
+                          return (
+                            <SelectItem key={item._id} value={item._id} className="font-semibold">
+                              {item.name}
+                            </SelectItem>
+                          )
+                        })}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              )}
 
-          <div className="space-y-4 rounded-2xl border border-border bg-(--bg2)/50 p-5">
-            <div className="flex items-center gap-2 text-sm font-black text-(--text)">
-              <BadgeDollarSign className="h-4 w-4 text-emerald-300" />
-              Trạng thái phiên đặt cược
+              {/* Bet Amount */}
+              {selectedRace && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-[var(--text)]">Số tiền đặt cược</label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={betAmount}
+                    onChange={(event) => setBetAmount(formatMoneyInput(event.target.value))}
+                    placeholder="Nhập số tiền..."
+                    className="h-11 border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] placeholder:text-[var(--muted)]/40 font-semibold"
+                  />
+                  {/* Quick amount buttons */}
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {[500000, 1000000, 2000000, 5000000].map((amount) => (
+                      <button
+                        key={amount}
+                        type="button"
+                        className="spectator-quick-bet"
+                        onClick={() => setBetAmount(formatMoneyInput(String(amount)))}
+                      >
+                        {amount.toLocaleString('vi-VN')}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-[var(--muted)] font-medium mt-1">Giới hạn: 100,000 — 10,000,000 VND</p>
+                </div>
+              )}
+
+              {/* Submit */}
+              {selectedRace && (
+                <button
+                  className="spectator-submit-btn"
+                  disabled={!selectedHorse || !betAmount || predLoading || !isPredOpen}
+                  onClick={handleSubmit}
+                >
+                  {predLoading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-5 h-5" />
+                      Xác nhận dự đoán
+                    </>
+                  )}
+                </button>
+              )}
             </div>
-            <div className="space-y-3 text-sm text-muted">
-              <div className="flex items-center justify-between rounded-xl bg-(--surface-strong)/30 px-3 py-2 font-bold">
-                <span className="font-bold">Cuộc đua mở dự đoán</span>
-                <span className={isPredOpen ? 'text-emerald-600 dark:text-emerald-500 font-black' : 'text-amber-600 dark:text-amber-300 font-black'}>{isPredOpen ? 'Đang mở' : 'Chưa mở'}</span>
+
+            {/* ── Right: Status Panel ── */}
+            <div className="spectator-status-panel space-y-4">
+              <div className="flex items-center gap-2 text-sm font-bold text-[var(--text)]">
+                <BadgeDollarSign className="h-4 w-4 text-emerald-400" />
+                Trạng thái phiên đặt cược
               </div>
-              <div className="flex items-center justify-between rounded-xl bg-(--surface-strong)/30 px-3 py-2 font-bold">
-                <span className="font-bold">Số ngựa khả dụng</span>
-                <span className="text-(--text) font-black">{horses.length}</span>
+
+              <div className="space-y-3">
+                <div className="spectator-status-row">
+                  <span className="text-[var(--muted)] font-medium text-sm">Dự đoán</span>
+                  <span className={isPredOpen ? 'text-emerald-400 font-bold text-sm' : 'text-amber-400 font-bold text-sm'}>
+                    {isPredOpen ? '🟢 Đang mở' : '🟡 Chưa mở'}
+                  </span>
+                </div>
+                <div className="spectator-status-row">
+                  <span className="text-[var(--muted)] font-medium text-sm">Số ngựa</span>
+                  <span className="font-bold text-[var(--text)] text-sm">{horses.length}</span>
+                </div>
+                <div className="spectator-status-row">
+                  <span className="text-[var(--muted)] font-medium text-sm">Số dư hiện tại</span>
+                  <span className="font-bold text-amber-400 text-sm">{formatMoney(balance)}</span>
+                </div>
+                <div className="spectator-status-row">
+                  <span className="text-[var(--muted)] font-medium text-sm">Tổng thưởng</span>
+                  <span className="font-bold text-emerald-400 text-sm">{formatMoney(totalPayout)}</span>
+                </div>
               </div>
-              <div className="flex items-center justify-between rounded-xl bg-(--surface-strong)/30 px-3 py-2 font-bold">
-                <span className="font-bold">Tiền thưởng hiện tại</span>
-                <span className="text-(--text) font-black">{formatMoney(totalPayout)}</span>
-              </div>
-              <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs leading-6 text-amber-800 dark:text-amber-100 font-bold">
-                <div className="mb-1 font-black">Gợi ý</div>
-                Hãy chọn một cuộc đua có trạng thái <span className="font-black underline">Đã lên lịch</span>, sau đó chọn ngựa và nhập số tiền trước khi xác nhận.
+
+              {/* Tip Box */}
+              <div className="spectator-tip">
+                <div className="font-bold text-amber-400 text-xs mb-1 flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5" /> Gợi ý
+                </div>
+                <p className="text-xs text-[var(--muted)] font-medium leading-relaxed">
+                  Chọn cuộc đua <span className="text-[var(--text)] font-semibold">Đã lên lịch</span> hoặc <span className="text-[var(--text)] font-semibold">Đang diễn ra</span>, sau đó chọn ngựa và nhập số tiền.
+                </p>
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
-      </Magnetic>
+        </div>
+      </ScrollReveal>
 
-      <div id="history-section" className="pt-6">
-        <ScrollReveal direction="up" distance={60} duration={0.8} delay={0.1}>
-          <Card className="border-border bg-(--surface) shadow-2xl card-hover">
-            <CardHeader className="border-b border-border gap-4 md:flex-row md:items-center md:justify-between pb-4">
-              <div className="space-y-1">
-                <CardTitle className="text-2xl text-(--text) font-black">📋 Lịch sử dự đoán</CardTitle>
-                <CardDescription className="text-muted font-bold">Xem và lọc lịch sử dự đoán đặt cược của bạn.</CardDescription>
+      {/* ════════════════════════════════════════════════════
+          SECTION 3: Prediction History
+          ════════════════════════════════════════════════════ */}
+      <div id="history-section">
+        <ScrollReveal direction="up" distance={40} duration={0.7} delay={0.15}>
+          <div className="spectator-card">
+            {/* Header + Filters */}
+            <div className="flex flex-col gap-4 mb-6 pb-5 border-b border-[var(--border)] md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/12 flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-blue-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-[var(--text)] m-0">Lịch sử dự đoán</h2>
+                  <p className="text-xs text-[var(--muted)] font-medium mt-0.5">Xem và lọc lịch sử đặt cược của bạn.</p>
+                </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2">
                 <Input
                   type="text"
-                  placeholder="Tìm kiếm dự đoán..."
+                  placeholder="Tìm kiếm..."
                   value={historySearchQuery}
                   onChange={(e) => setHistorySearchQuery(e.target.value)}
-                  className="h-11 w-56 border-border bg-(--bg2) text-(--text) font-semibold placeholder:text-(--muted)/50 focus:border-amber-500/50"
+                  className="h-9 w-44 border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] font-medium placeholder:text-[var(--muted)]/40 text-sm"
                 />
                 <Select value={historyStatusFilter} onValueChange={(value) => setHistoryStatusFilter(value ?? 'all')}>
-                  <SelectTrigger className="h-11 w-45 border-border bg-(--bg2) text-(--text) font-bold">{getOptionLabel(PREDICTION_STATUS_OPTIONS, historyStatusFilter)}</SelectTrigger>
+                  <SelectTrigger className="h-9 w-36 border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] font-semibold text-sm">{getOptionLabel(PREDICTION_STATUS_OPTIONS, historyStatusFilter)}</SelectTrigger>
                   <SelectContent>
                     {PREDICTION_STATUS_OPTIONS.map((option) => (
-                      <SelectItem key={option.value || 'all'} value={option.value || 'all'} className="font-bold">{option.label}</SelectItem>
+                      <SelectItem key={option.value || 'all'} value={option.value || 'all'} className="font-semibold">{option.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <Select value={historyTimeFilter} onValueChange={(value) => setHistoryTimeFilter(value ?? 'all')}>
-                  <SelectTrigger className="h-11 w-45 border-border bg-(--bg2) text-(--text) font-bold">{getOptionLabel(HISTORY_TIME_OPTIONS, historyTimeFilter)}</SelectTrigger>
+                  <SelectTrigger className="h-9 w-40 border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] font-semibold text-sm">{getOptionLabel(HISTORY_TIME_OPTIONS, historyTimeFilter)}</SelectTrigger>
                   <SelectContent>
                     {HISTORY_TIME_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value} className="font-bold">{option.label}</SelectItem>
+                      <SelectItem key={option.value} value={option.value} className="font-semibold">{option.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <Select value={historySortOrder} onValueChange={(value) => setHistorySortOrder(value ?? 'newest')}>
-                  <SelectTrigger className="h-11 w-45 border-border bg-(--bg2) text-(--text) font-bold">{getOptionLabel(SORT_OPTIONS, historySortOrder)}</SelectTrigger>
+                  <SelectTrigger className="h-9 w-32 border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] font-semibold text-sm">{getOptionLabel(SORT_OPTIONS, historySortOrder)}</SelectTrigger>
                   <SelectContent>
                     {SORT_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value} className="font-bold">{option.label}</SelectItem>
+                      <SelectItem key={option.value} value={option.value} className="font-semibold">{option.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            </CardHeader>
-            <CardContent className="pt-6">
-              {historyLoading ? (
-                <div className="loading py-20"><div className="spinner" /></div>
-              ) : filteredHistory.length === 0 ? (
-                <div className="rounded-2xl border border-border bg-(--bg2)/60 px-6 py-12 text-center">
-                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-3xl">🎯</div>
-                  <div className="text-lg font-black text-(--text)">Chưa có dự đoán phù hợp</div>
-                  <p className="mt-2 text-sm text-muted font-bold">Thay đổi bộ lọc để xem các dự đoán khác.</p>
-                </div>
-              ) : (
-                <AnimatedTable
-                  data={filteredHistoryWithId}
-                  columns={predictionsColumns}
-                  emptyMessage="Không có dự đoán phù hợp"
-                />
-              )}
-            </CardContent>
-          </Card>
+            </div>
+
+            {/* Table Content */}
+            {historyLoading ? (
+              <div className="space-y-3 py-6">
+                {[...Array(4)].map((_, i) => <div key={i} className="spectator-shimmer h-14 w-full" />)}
+              </div>
+            ) : filteredHistory.length === 0 ? (
+              <div className="spectator-empty">
+                <div className="spectator-empty-icon">🎯</div>
+                <div className="text-lg font-bold text-[var(--text)]">Chưa có dự đoán phù hợp</div>
+                <p className="mt-2 text-sm text-[var(--muted)] font-medium">Thay đổi bộ lọc để xem các dự đoán khác.</p>
+              </div>
+            ) : (
+              <AnimatedTable
+                data={filteredHistoryWithId}
+                columns={predictionsColumns}
+                emptyMessage="Không có dự đoán phù hợp"
+              />
+            )}
+          </div>
         </ScrollReveal>
       </div>
     </div>

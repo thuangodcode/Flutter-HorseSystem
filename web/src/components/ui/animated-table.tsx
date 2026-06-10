@@ -68,13 +68,13 @@ const TableSearch = ({
   placeholder?: string;
 }) => (
   <div className="relative">
-    <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+    <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
     <input
       type="text"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="h-9 w-full rounded-md border border-slate-800 bg-slate-950 pr-8 pl-9 text-slate-100 text-sm placeholder:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+      className="h-9 w-full rounded-md border border-[var(--border)] bg-[var(--surface-2)] pr-8 pl-9 text-[var(--text)] text-sm placeholder-[var(--muted)]/50 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
     />
     <AnimatePresence>
       {value && (
@@ -83,7 +83,7 @@ const TableSearch = ({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.8 }}
           onClick={() => onChange("")}
-          className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+          className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-0.5 text-[var(--muted)] hover:bg-[var(--surface-3)] hover:text-[var(--text)]"
         >
           <X className="h-3.5 w-3.5" />
         </motion.button>
@@ -132,8 +132,8 @@ const ColumnVisibilityDropdown = <T,>({
       <button
         onClick={() => setOpen(!open)}
         className={cn(
-          "flex h-9 items-center gap-2 rounded-md border border-slate-850 bg-slate-950/70 px-3 text-slate-300 text-sm transition-colors hover:bg-slate-800 hover:text-slate-100",
-          open && "border-amber-500 text-slate-100",
+          "flex h-9 items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-[var(--text-2)] text-sm transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)]",
+          open && "border-emerald-500 text-[var(--text)]",
         )}
       >
         <Columns3 className="h-4 w-4" />
@@ -146,27 +146,27 @@ const ColumnVisibilityDropdown = <T,>({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.96 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full right-0 z-20 mt-2 min-w-45 rounded-lg border border-slate-850 bg-slate-900 p-1 shadow-lg"
+            className="absolute top-full right-0 z-20 mt-2 min-w-45 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-1 shadow-lg"
           >
             {hideableColumns.map((column) => (
               <button
                 key={column.id}
                 onClick={() => toggleColumn(column.id)}
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-slate-850"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-[var(--surface-3)]"
               >
                 <div
                   className={cn(
                     "flex h-4 w-4 items-center justify-center rounded border transition-all",
                     visibleColumns.includes(column.id)
-                      ? "border-amber-500 bg-amber-500 text-slate-950"
-                      : "border-slate-700",
+                      ? "border-emerald-500 bg-emerald-500 text-white"
+                      : "border-[var(--border-2)]",
                   )}
                 >
                   {visibleColumns.includes(column.id) && (
                     <Check className="h-3 w-3" strokeWidth={3} />
                   )}
                 </div>
-                <span className="text-slate-200 text-xs">
+                <span className="text-[var(--text)] text-xs">
                   {typeof column.header === "string" ? column.header : column.id}
                 </span>
               </button>
@@ -195,13 +195,13 @@ const TablePagination = ({
   const canGoNext = page < totalPages;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 border-slate-850 border-t bg-slate-950/60 px-4 py-3">
-      <div className="flex items-center gap-2 text-slate-400 text-sm">
+    <div className="flex flex-wrap items-center justify-between gap-4 border-[var(--border)] border-t bg-[var(--surface)] px-6 py-4">
+      <div className="flex items-center gap-2 text-[var(--muted)] text-sm">
         <span>Hiển thị:</span>
         <select
           value={pageSize}
           onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
-          className="h-8 rounded border border-slate-800 bg-slate-900 px-2 text-slate-100 text-xs focus:border-amber-500 focus:outline-none"
+          className="h-8 rounded border border-[var(--border)] bg-[var(--surface-2)] px-2 text-[var(--text)] text-xs focus:border-emerald-500 focus:outline-none"
         >
           {pageSizeOptions.map((size) => (
             <option key={size} value={size}>
@@ -211,7 +211,7 @@ const TablePagination = ({
         </select>
       </div>
 
-      <div className="flex items-center gap-1 text-slate-400 text-sm">
+      <div className="flex items-center gap-1 text-[var(--muted)] text-sm">
         <span>
           {totalItems > 0 ? `${startItem}-${endItem} trên ${totalItems}` : "0 kết quả"}
         </span>
@@ -224,10 +224,10 @@ const TablePagination = ({
           disabled={!canGoPrev}
           onClick={() => onPageChange(1)}
           className={cn(
-            "flex h-8 w-8 items-center justify-center rounded border border-slate-800 transition-colors",
+            "flex h-8 w-8 items-center justify-center rounded border border-[var(--border)] transition-colors",
             canGoPrev
-              ? "text-slate-100 hover:bg-slate-800"
-              : "cursor-not-allowed text-slate-650 opacity-40",
+              ? "text-[var(--text)] hover:bg-[var(--surface-2)]"
+              : "cursor-not-allowed text-[var(--muted)] opacity-45",
           )}
         >
           <ChevronsLeft className="h-4 w-4" />
@@ -238,10 +238,10 @@ const TablePagination = ({
           disabled={!canGoPrev}
           onClick={() => onPageChange(page - 1)}
           className={cn(
-            "flex h-8 w-8 items-center justify-center rounded border border-slate-800 transition-colors",
+            "flex h-8 w-8 items-center justify-center rounded border border-[var(--border)] transition-colors",
             canGoPrev
-              ? "text-slate-100 hover:bg-slate-800"
-              : "cursor-not-allowed text-slate-650 opacity-40",
+              ? "text-[var(--text)] hover:bg-[var(--surface-2)]"
+              : "cursor-not-allowed text-[var(--muted)] opacity-45",
           )}
         >
           <ChevronLeft className="h-4 w-4" />
@@ -269,8 +269,8 @@ const TablePagination = ({
                 className={cn(
                   "flex h-8 w-8 items-center justify-center rounded text-xs transition-colors font-semibold",
                   page === pageNum
-                    ? "bg-amber-500 text-slate-950 font-bold"
-                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-100",
+                    ? "bg-emerald-500 text-white font-bold"
+                    : "text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]",
                 )}
               >
                 {pageNum}
@@ -285,10 +285,10 @@ const TablePagination = ({
           disabled={!canGoNext}
           onClick={() => onPageChange(page + 1)}
           className={cn(
-            "flex h-8 w-8 items-center justify-center rounded border border-slate-800 transition-colors",
+            "flex h-8 w-8 items-center justify-center rounded border border-[var(--border)] transition-colors",
             canGoNext
-              ? "text-slate-100 hover:bg-slate-800"
-              : "cursor-not-allowed text-slate-650 opacity-40",
+              ? "text-[var(--text)] hover:bg-[var(--surface-2)]"
+              : "cursor-not-allowed text-[var(--muted)] opacity-45",
           )}
         >
           <ChevronRight className="h-4 w-4" />
@@ -299,10 +299,10 @@ const TablePagination = ({
           disabled={!canGoNext}
           onClick={() => onPageChange(totalPages)}
           className={cn(
-            "flex h-8 w-8 items-center justify-center rounded border border-slate-800 transition-colors",
+            "flex h-8 w-8 items-center justify-center rounded border border-[var(--border)] transition-colors",
             canGoNext
-              ? "text-slate-100 hover:bg-slate-800"
-              : "cursor-not-allowed text-slate-650 opacity-40",
+              ? "text-[var(--text)] hover:bg-[var(--surface-2)]"
+              : "cursor-not-allowed text-[var(--muted)] opacity-45",
           )}
         >
           <ChevronsRight className="h-4 w-4" />
@@ -320,7 +320,7 @@ const AnimatedTableRoot = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "relative w-full overflow-hidden rounded-xl border border-slate-800/80 bg-slate-950/70 backdrop-blur-md shadow-2xl",
+      "relative w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] backdrop-blur-md shadow-lg",
       className,
     )}
     {...props}
@@ -358,7 +358,7 @@ const TableHeader = React.forwardRef<
   <thead
     ref={ref}
     className={cn(
-      "bg-slate-900/60 border-b border-slate-850",
+      "bg-[var(--surface-2)]/60 border-b border-[var(--border)]",
       sticky && "sticky top-0 z-10 shadow-sm",
       className,
     )}
@@ -396,10 +396,10 @@ const TableRow = React.forwardRef<HTMLTableRowElement, TableRowProps>(
       transition={{ duration: 0.2, delay: index * 0.03 }}
       onClick={onClick}
       className={cn(
-        "group border-slate-850 border-b transition-colors duration-150",
-        "hover:bg-slate-800/40",
-        isSelected && "bg-amber-500/10 hover:bg-amber-500/15",
-        striped && index % 2 === 1 && "bg-slate-900/20",
+        "group border-[var(--border)] border-b transition-colors duration-150",
+        "hover:bg-[var(--surface-2)]/50",
+        isSelected && "bg-emerald-500/10 hover:bg-emerald-500/15",
+        striped && index % 2 === 1 && "bg-[var(--surface-2)]/30",
         className,
       )}
     >
@@ -416,7 +416,7 @@ const ExpandedRow = ({ children, colSpan }: { children: React.ReactNode; colSpan
     animate={{ opacity: 1, height: "auto" }}
     exit={{ opacity: 0, height: 0 }}
     transition={{ duration: 0.2 }}
-    className="border-slate-850 border-b bg-slate-950/40"
+    className="border-[var(--border)] border-b bg-[var(--surface-2)]/20"
   >
     <td colSpan={colSpan} className="p-0">
       <motion.div
@@ -424,7 +424,7 @@ const ExpandedRow = ({ children, colSpan }: { children: React.ReactNode; colSpan
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.15, delay: 0.05 }}
-        className="px-4 py-3"
+        className="px-6 py-4"
       >
         {children}
       </motion.div>
@@ -445,7 +445,7 @@ const ExpandButton = ({
       e.stopPropagation();
       onClick();
     }}
-    className="flex h-6 w-6 items-center justify-center rounded transition-colors hover:bg-slate-800 text-slate-400 hover:text-slate-100"
+    className="flex h-6 w-6 items-center justify-center rounded transition-colors hover:bg-[var(--surface-2)] text-[var(--muted)] hover:text-[var(--text)]"
     animate={{ rotate: isExpanded ? 90 : 0 }}
     transition={{ duration: 0.2 }}
   >
@@ -473,9 +473,9 @@ const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
       <th
         ref={ref}
         className={cn(
-          "h-12 px-4 font-bold text-slate-400 text-xs tracking-wider uppercase",
+          "h-14 px-6 font-bold text-[var(--muted)] text-xs tracking-wider uppercase",
           alignClass,
-          sortable && "cursor-pointer select-none hover:text-slate-200",
+          sortable && "cursor-pointer select-none hover:text-[var(--text)]",
           className,
         )}
         onClick={sortable ? onSort : undefined}
@@ -491,13 +491,13 @@ const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
           <span>{children}</span>
           {sortable && (
             <motion.span
-              className="shrink-0 text-slate-500"
+              className="shrink-0 text-[var(--muted)]"
               animate={sortDirection ? { scale: 1 } : { scale: 0.9 }}
             >
               {sortDirection === "asc" ? (
-                <ChevronUp className="h-3.5 w-3.5 text-amber-500" />
+                <ChevronUp className="h-3.5 w-3.5 text-emerald-500" />
               ) : sortDirection === "desc" ? (
-                <ChevronDown className="h-3.5 w-3.5 text-amber-500" />
+                <ChevronDown className="h-3.5 w-3.5 text-emerald-500" />
               ) : (
                 <ChevronsUpDown className="h-3.5 w-3.5 opacity-40 group-hover:opacity-75" />
               )}
@@ -526,7 +526,7 @@ const TableCell = React.forwardRef<HTMLTableCellElement, TableCellProps>(
     return (
       <td
         ref={ref}
-        className={cn("p-4 align-middle text-slate-300 text-sm", alignClass, className)}
+        className={cn("px-6 py-5 align-middle text-[var(--text-2)] text-sm leading-relaxed", alignClass, className)}
         {...props}
       />
     );
@@ -559,8 +559,8 @@ const CheckboxCell = ({ checked, indeterminate, onChange }: CheckboxCellProps) =
     className={cn(
       "flex h-4 w-4 cursor-pointer items-center justify-center rounded border transition-all duration-150",
       checked || indeterminate
-        ? "border-amber-500 bg-amber-500 text-slate-950"
-        : "border-slate-700 hover:border-slate-500",
+        ? "border-emerald-500 bg-emerald-500 text-white"
+        : "border-[var(--border-2)] hover:border-emerald-500/55",
     )}
   >
     <AnimatePresence mode="wait">
@@ -588,21 +588,21 @@ const SkeletonRow = ({ columns, index }: { columns: number; index: number }) => 
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
     transition={{ delay: index * 0.05 }}
-    className="border-slate-850 border-b"
+    className="border-[var(--border)] border-b"
   >
-    <td colSpan={columns} className="p-4">
+    <td colSpan={columns} className="px-6 py-5">
       <div className="flex items-center gap-4">
-        <div className="h-4 w-4 animate-pulse rounded bg-slate-800" />
+        <div className="h-4 w-4 animate-pulse rounded bg-[var(--surface-3)]/60" />
         <div className="flex-1 space-y-2">
           <div
-            className="h-4 animate-pulse rounded bg-slate-800"
+            className="h-4 animate-pulse rounded bg-[var(--surface-3)]/60"
             style={{ width: `${60 + Math.random() * 30}%` }}
           />
         </div>
         {Array.from({ length: columns - 2 }).map((_, i) => (
           <div
             key={i}
-            className="h-4 animate-pulse rounded bg-slate-800"
+            className="h-4 animate-pulse rounded bg-[var(--surface-3)]/60"
             style={{ width: `${40 + Math.random() * 40}px` }}
           />
         ))}
@@ -615,7 +615,7 @@ const SkeletonRow = ({ columns, index }: { columns: number; index: number }) => 
 const EmptyState = ({ message, colSpan }: { message: React.ReactNode; colSpan: number }) => (
   <motion.tr initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
     <td colSpan={colSpan} className="h-32 text-center">
-      <div className="flex flex-col items-center justify-center gap-2 text-slate-500">
+      <div className="flex flex-col items-center justify-center gap-2 text-[var(--muted)]">
         {message || "Không có dữ liệu"}
       </div>
     </td>
@@ -720,7 +720,7 @@ export function AnimatedTable<T extends { id: string | number }>({
     <AnimatedTableRoot className={className}>
       {/* Toolbar */}
       {showToolbar && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-slate-850 border-b bg-slate-900/30 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-[var(--border)] border-b bg-[var(--surface-2)]/30 px-6 py-4">
           {searchable && (
             <div className="w-full sm:w-64">
               <TableSearch
@@ -746,7 +746,7 @@ export function AnimatedTable<T extends { id: string | number }>({
       <TableScrollContainer stickyHeader={stickyHeader}>
         <TableElement>
           <TableHeader sticky={stickyHeader}>
-            <tr className="border-slate-850 border-b">
+            <tr className="border-[var(--border)] border-b">
               {expandable && <TableHead className="w-10" />}
               {selectable && (
                 <TableHead className="w-12">

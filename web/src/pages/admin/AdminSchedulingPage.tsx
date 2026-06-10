@@ -1,5 +1,23 @@
-import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useEffect, useState, startTransition } from 'react'
+import { 
+  Trophy, 
+  ClipboardList, 
+  Sparkles, 
+  Scale, 
+  Target, 
+  Settings, 
+  Flag,
+  AlertTriangle,
+  CheckCircle,
+  HelpCircle,
+  Lock,
+  Coins,
+  Phone,
+  ExternalLink,
+  User as UserIcon,
+  Calendar,
+  TrendingUp
+} from 'lucide-react'
 import type { Tournament, Race, User, RaceRegistration, Horse, Jockey, Prediction } from '../../types'
 import {
   getTournaments,
@@ -23,11 +41,10 @@ import {
   getAdminPredictions,
   closePredictions,
   settlePredictions,
-  getPredictionStats,
 } from '@/api'
 import { http } from '../../api/http'
 
-type Tab = 'dashboard' | 'tournaments' | 'registrations' | 'horses-jockeys' | 'referee-results' | 'predictions'
+type Tab = 'tournaments' | 'registrations' | 'horses-jockeys' | 'referee-results' | 'predictions'
 
 // ── Toast helper ──────────────────────────────────────────────────────────────
 type ToastType = 'success' | 'error' | 'warning' | 'info'
@@ -42,12 +59,21 @@ function useToast() {
   }
   return { toasts, show }
 }
-const toastIcon: Record<ToastType, string> = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' }
+const toastIcon: Record<ToastType, any> = { 
+  success: <CheckCircle className="w-4.5 h-4.5 text-emerald-400 shrink-0" />, 
+  error: <AlertTriangle className="w-4.5 h-4.5 text-red-400 shrink-0" />, 
+  warning: <AlertTriangle className="w-4.5 h-4.5 text-amber-400 shrink-0" />, 
+  info: <HelpCircle className="w-4.5 h-4.5 text-blue-400 shrink-0" /> 
+}
 
-export function AdminSchedulingPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const activeTab = (searchParams.get('tab') as Tab) || 'dashboard'
-  
+export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
+  const [activeTab, setActiveTab] = useState<Tab>(tab || 'tournaments')
+
+  useEffect(() => {
+    if (tab) {
+      setActiveTab(tab)
+    }
+  }, [tab])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -57,10 +83,31 @@ export function AdminSchedulingPage() {
   const [tournaments, setTournaments] = useState<Tournament[]>([])
   const [races, setRaces] = useState<Race[]>([])
   const [registrations, setRegistrations] = useState<RaceRegistration[]>([])
+  const [registrationOwners, setRegistrationOwners] = useState<Record<string, { fullName?: string; phone?: string }>>({})
+
+  const [lastModifiedTournId, setLastModifiedTournId] = useState<string | null>(null)
+  const [lastModifiedRaceId, setLastModifiedRaceId] = useState<string | null>(null)
+  const [lastModifiedRegId, setLastModifiedRegId] = useState<string | null>(null)
+  const [lastModifiedHorseId, setLastModifiedHorseId] = useState<string | null>(null)
   const [horses, setHorses] = useState<Horse[]>([])
   const [jockeys, setJockeys] = useState<Jockey[]>([])
   const [referees, setReferees] = useState<User[]>([])
   const [predictions, setPredictions] = useState<Prediction[]>([])
+  
+  // Filters for Predictions Tab
+  const [filterPredStatus, setFilterPredStatus] = useState<string>('ALL')
+  const [filterPredRace, setFilterPredRace] = useState<string>('ALL')
+  const [filterPredSearch, setFilterPredSearch] = useState<string>('')
+
+  // Filters for Tournaments Tab
+  const [filterTournSearch, setFilterTournSearch] = useState<string>('')
+  const [filterTournStatus, setFilterTournStatus] = useState<string>('ALL')
+  const [expandedTournId, setExpandedTournId] = useState<string | null>(null)
+
+  // Filters for Registrations Tab
+  const [filterRegSearch, setFilterRegSearch] = useState<string>('')
+  const [filterRegStatus, setFilterRegStatus] = useState<string>('ALL')
+  const [filterRegTourn, setFilterRegTourn] = useState<string>('ALL')
   
   // Dashboard Stats
   const [adminStats, setAdminStats] = useState({
@@ -141,8 +188,10 @@ export function AdminSchedulingPage() {
   }, [activeTab])
 
   useEffect(() => {
-    loadDashboardStats()
-  }, [])
+    if (!tab) {
+      loadDashboardStats()
+    }
+  }, [tab])
 
   const loadDashboardStats = async () => {
     try {
@@ -163,36 +212,113 @@ export function AdminSchedulingPage() {
     }
   }
 
-  const loadTabData = async () => {
+  const loadTabData = async (
+    highlightTournId?: string,
+    highlightRaceId?: string,
+    highlightRegId?: string,
+    highlightHorseId?: string
+  ) => {
     setLoading(true)
     setError(null)
+    const targetTournId = highlightTournId || lastModifiedTournId
+    const targetRaceId = highlightRaceId || lastModifiedRaceId
+    const targetRegId = highlightRegId || lastModifiedRegId
+    const targetHorseId = highlightHorseId || lastModifiedHorseId
+
     try {
-      if (activeTab === 'dashboard') {
-        const tList = await getTournaments()
-        const jList = await getAdminJockeys()
-        setTournaments(tList)
-        setJockeys(jList)
-      } else if (activeTab === 'tournaments') {
-        const list = await getTournaments()
-        const refList = await getAdminUsers({ role: 'REFEREE' })
-        setTournaments(list)
+      if (activeTab === 'tournaments') {
+        const [list, refList, allRaces] = await Promise.all([
+          getTournaments(),
+          getAdminUsers({ role: 'REFEREE' }),
+          getRaces()
+        ])
+        const sortedTournaments = [...list].sort((a, b) => {
+          const aId = a.id || a._id
+          const bId = b.id || b._id
+          if (targetTournId) {
+            if (aId === targetTournId) return -1
+            if (bId === targetTournId) return 1
+          }
+          const dateA = a.startDate ? new Date(a.startDate).getTime() : 0
+          const dateB = b.startDate ? new Date(b.startDate).getTime() : 0
+          return dateB - dateA
+        })
+        setTournaments(sortedTournaments)
         setReferees(refList)
+        setRaces(allRaces)
       } else if (activeTab === 'registrations') {
-        const list = await getRaceRegistrations()
-        setRegistrations(list)
+        const [list, hList] = await Promise.all([
+          getRaceRegistrations(),
+          getAdminHorses()
+        ])
+        const ownerMap: Record<string, { fullName?: string; phone?: string }> = {}
+        hList.forEach((h) => {
+          const ownerData = typeof h.ownerId === 'object' ? h.ownerId : { fullName: h.ownerId }
+          ownerMap[h.id] = {
+            fullName: ownerData?.fullName || ownerData?.name || '',
+            phone: ownerData?.phone || ownerData?.email || ''
+          }
+        })
+        const sortedRegs = [...list].sort((a, b) => {
+          const aId = a.id || a._id
+          const bId = b.id || b._id
+          if (targetRegId) {
+            if (aId === targetRegId) return -1
+            if (bId === targetRegId) return 1
+          }
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+          return dateB - dateA
+        })
+        setRegistrations(sortedRegs)
+        setRegistrationOwners(ownerMap)
       } else if (activeTab === 'horses-jockeys') {
-        const hList = await getAdminHorses()
-        const jList = await getAdminJockeys()
-        setHorses(hList)
-        setJockeys(jList)
+        const [hList, jList] = await Promise.all([
+          getAdminHorses(),
+          getAdminJockeys({ limit: 100 })
+        ])
+        const sortedHorses = [...hList].sort((a, b) => {
+          const aId = a.id || a._id
+          const bId = b.id || b._id
+          if (targetHorseId) {
+            if (aId === targetHorseId) return -1
+            if (bId === targetHorseId) return 1
+          }
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+          return dateB - dateA
+        })
+        setHorses(sortedHorses)
+        setJockeys(jList.sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+          return dateB - dateA
+        }))
       } else if (activeTab === 'referee-results') {
-        const rList = await getRaces()
-        const refList = await getAdminUsers({ role: 'REFEREE' })
-        setRaces(rList)
+        const [rList, refList] = await Promise.all([
+          getRaces(),
+          getAdminUsers({ role: 'REFEREE' })
+        ])
+        const sortedRaces = [...rList].sort((a, b) => {
+          const aId = a.id || a._id
+          const bId = b.id || b._id
+          if (targetRaceId) {
+            if (aId === targetRaceId) return -1
+            if (bId === targetRaceId) return 1
+          }
+          const dateA = a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0
+          const dateB = b.scheduledAt ? new Date(b.scheduledAt).getTime() : 0
+          return dateB - dateA
+        })
+        setRaces(sortedRaces)
         setReferees(refList)
       } else if (activeTab === 'predictions') {
-        const pList = await getAdminPredictions()
+        const [pList, rList] = await Promise.all([
+          getAdminPredictions(),
+          getRaces()
+        ])
         setPredictions(pList)
+        setRaces(rList)
       }
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Lỗi khi tải dữ liệu từ máy chủ')
@@ -237,14 +363,21 @@ export function AdminSchedulingPage() {
     try {
       if (selectedTourn) {
         await updateTournament(selectedTourn.id, tournForm as any)
+        setLastModifiedTournId(selectedTourn.id)
         showToast(`Đã cập nhật giải đấu ${tournForm.name}`)
+        loadTabData(selectedTourn.id, undefined, undefined, undefined)
       } else {
-        await createTournament(tournForm as any)
+        const res = await createTournament(tournForm as any)
+        const newId = res?.id || res?._id || res?.data?.id || res?.data?._id
+        if (newId) {
+          setLastModifiedTournId(newId)
+          loadTabData(newId, undefined, undefined, undefined)
+        } else {
+          loadTabData()
+        }
         showToast(`Đã tạo giải đấu ${tournForm.name} thành công`)
       }
       setShowTournModal(false)
-      loadTabData()
-      loadDashboardStats()
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Không thể lưu giải đấu', 'error')
     }
@@ -256,7 +389,6 @@ export function AdminSchedulingPage() {
       await deleteTournament(id)
       showToast(`Đã xóa giải đấu ${name}`)
       loadTabData()
-      loadDashboardStats()
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Không thể xóa giải đấu', 'error')
     }
@@ -272,8 +404,9 @@ export function AdminSchedulingPage() {
         COMPLETED: 'Đã kết thúc',
         CANCELLED: 'Đã hủy',
       }
+      setLastModifiedTournId(id)
       showToast(`"${name}" → ${statusLabel[newStatus] || newStatus}`)
-      loadTabData()
+      loadTabData(id, undefined, undefined, undefined)
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Không thể đổi trạng thái', 'error')
     }
@@ -317,14 +450,21 @@ export function AdminSchedulingPage() {
     try {
       if (selectedRace) {
         await updateRace(selectedRace.id, raceForm)
+        setLastModifiedRaceId(selectedRace.id)
         showToast(`Đã cập nhật cuộc đua ${raceForm.name}`)
+        loadTabData(undefined, selectedRace.id, undefined, undefined)
       } else {
-        await createRace(raceForm)
+        const res = await createRace(raceForm)
+        const newId = res?.id || res?._id || res?.data?.id || res?.data?._id
+        if (newId) {
+          setLastModifiedRaceId(newId)
+          loadTabData(undefined, newId, undefined, undefined)
+        } else {
+          loadTabData()
+        }
         showToast(`Đã tạo cuộc đua ${raceForm.name} thành công`)
       }
       setShowRaceModal(false)
-      loadTabData()
-      loadDashboardStats()
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Không thể lưu cuộc đua', 'error')
     }
@@ -355,9 +495,11 @@ export function AdminSchedulingPage() {
     e.preventDefault()
     try {
       await createSchedule(schedForm)
+      const rId = schedForm.raceId
+      setLastModifiedRaceId(rId)
       showToast('Đã lập lịch thi đấu thành công!')
       setShowSchedModal(false)
-      loadDashboardStats()
+      loadTabData(undefined, rId, undefined, undefined)
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Không thể lập lịch thi đấu', 'error')
     }
@@ -369,9 +511,9 @@ export function AdminSchedulingPage() {
   const handleApproveReg = async (regId: string) => {
     try {
       await approveRaceRegistration(regId)
+      setLastModifiedRegId(regId)
       showToast('Đã duyệt đăng ký tham gia cuộc đua')
-      loadTabData()
-      loadDashboardStats()
+      loadTabData(undefined, undefined, regId, undefined)
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Duyệt đăng ký thất bại', 'error')
     }
@@ -382,9 +524,9 @@ export function AdminSchedulingPage() {
     if (reason === null) return // user cancelled
     try {
       await rejectRaceRegistration(regId, reason)
+      setLastModifiedRegId(regId)
       showToast('Đã từ chối đăng ký', 'warning')
-      loadTabData()
-      loadDashboardStats()
+      loadTabData(undefined, undefined, regId, undefined)
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Từ chối thất bại', 'error')
     }
@@ -396,9 +538,9 @@ export function AdminSchedulingPage() {
   const handleApproveHorse = async (horseId: string) => {
     try {
       await approveHorse(horseId)
+      setLastModifiedHorseId(horseId)
       showToast('Đã duyệt hồ sơ ngựa thành công')
-      loadTabData()
-      loadDashboardStats()
+      loadTabData(undefined, undefined, undefined, horseId)
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Không thể duyệt ngựa', 'error')
     }
@@ -409,9 +551,9 @@ export function AdminSchedulingPage() {
     if (reason === null) return // user cancelled
     try {
       await rejectHorse(horseId, reason)
+      setLastModifiedHorseId(horseId)
       showToast('Đã từ chối hồ sơ ngựa', 'warning')
-      loadTabData()
-      loadDashboardStats()
+      loadTabData(undefined, undefined, undefined, horseId)
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Không thể từ chối ngựa', 'error')
     }
@@ -421,6 +563,7 @@ export function AdminSchedulingPage() {
   // REFEREE & RESULT ACTIONS
   // ---------------------------------------------------------
   const openRefModal = (raceId: string, currentRefId?: string) => {
+    console.debug('openRefModal called', { raceId, currentRefId })
     setRefRaceId(raceId)
     setSelectedRefId(currentRefId || '')
     setShowRefModal(true)
@@ -429,11 +572,14 @@ export function AdminSchedulingPage() {
   const handleSaveReferee = async () => {
     if (!selectedRefId) return
     try {
+      console.debug('assignReferee called', { refRaceId, selectedRefId })
       await assignReferee(refRaceId, selectedRefId)
+      setLastModifiedRaceId(refRaceId)
       showToast('Đã phân công trọng tài thành công')
       setShowRefModal(false)
-      loadTabData()
+      loadTabData(undefined, refRaceId, undefined, undefined)
     } catch (err: any) {
+      console.error('assignReferee error', err)
       showToast(err.response?.data?.message || 'Không thể phân công trọng tài', 'error')
     }
   }
@@ -442,15 +588,17 @@ export function AdminSchedulingPage() {
     setResultRace(race)
     setResultNotes('')
     try {
-      const res = await http.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/races/${race.id}/horses`)
+      // Get horses registered for this race
+      const res = await http.get(`${import.meta.env.VITE_API_BASE_URL || 'https://managerhourse-be.onrender.com/api-docs'}/races/${race.id}/horses`)
       const horsesList = res.data.horses || []
       setRaceHorses(horsesList)
 
+      // Initialize rankings form: default positions
       const initialRankings = horsesList.map((h: any, idx: number) => ({
         horseId: h.horse?._id || h.horse?.id,
-        jockeyId: h.horse?.ownerId?._id || h.horse?.ownerId,
+        jockeyId: h.horse?.ownerId?._id || h.horse?.ownerId, // placeholder or jockey if confirmed
         position: idx + 1,
-        finishTime: 60 + idx * 2.5,
+        finishTime: 60 + idx * 2.5, // default time estimate
         status: 'FINISHED',
         prizeAmount: idx === 0 ? race.prizeFirst : idx === 1 ? race.prizeSecond : idx === 2 ? race.prizeThird : 0,
       }))
@@ -464,6 +612,7 @@ export function AdminSchedulingPage() {
   const handleSaveResult = async () => {
     if (!resultRace) return
     try {
+      // Build results matching backend schema — guard null jockeyId
       const resultsPayload = resultRankings.map((r) => ({
         horseId: r.horseId,
         jockeyId: r.jockeyId?._id || r.jockeyId || undefined,
@@ -475,9 +624,10 @@ export function AdminSchedulingPage() {
       }))
 
       await publishRaceResult(resultRace.id, resultsPayload)
+      setLastModifiedRaceId(resultRace.id)
       showToast('Công bố kết quả cuộc đua thành công!')
       setShowResultModal(false)
-      loadTabData()
+      loadTabData(undefined, resultRace.id, undefined, undefined)
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Không thể công bố kết quả', 'error')
     }
@@ -489,8 +639,9 @@ export function AdminSchedulingPage() {
   const handleClosePredictions = async (raceId: string) => {
     try {
       await closePredictions(raceId)
+      setLastModifiedRaceId(raceId)
       showToast('Đã đóng cổng dự đoán cho cuộc đua này!')
-      loadTabData()
+      loadTabData(undefined, raceId, undefined, undefined)
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Không thể đóng cổng dự đoán', 'error')
     }
@@ -499,8 +650,9 @@ export function AdminSchedulingPage() {
   const handleSettlePredictions = async (raceId: string) => {
     try {
       await settlePredictions(raceId)
+      setLastModifiedRaceId(raceId)
       showToast('Đã tất toán dự đoán và gửi thông báo thắng/thua!')
-      loadTabData()
+      loadTabData(undefined, raceId, undefined, undefined)
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Không thể tất toán dự đoán', 'error')
     }
@@ -509,27 +661,115 @@ export function AdminSchedulingPage() {
   const handleViewPredictionStats = async (raceId: string) => {
     setPredStats(null)
     try {
-      const stats = await getPredictionStats(raceId)
-      setPredStats(stats)
+      const list = await getAdminPredictions({ raceId })
+      const totalPredictions = list.length
+      const totalPool = list.reduce((sum, p) => sum + (p.betAmount || 0), 0)
+      
+      const groups: Record<string, { horseName: string; count: number; amount: number }> = {}
+      list.forEach((p) => {
+        const hId = typeof p.horseId === 'object' ? p.horseId?._id || p.horseId?.id || '' : p.horseId || ''
+        const hName = typeof p.horseId === 'object' ? p.horseId?.name || 'Chưa rõ' : 'Chưa rõ'
+        
+        if (!groups[hId]) {
+          groups[hId] = { horseName: hName, count: 0, amount: 0 }
+        }
+        groups[hId].count += 1
+        groups[hId].amount += p.betAmount || 0
+      })
+      
+      const breakdown = Object.entries(groups).map(([horseId, data]) => ({
+        horseId,
+        horseName: data.horseName,
+        count: data.count,
+        amount: data.amount,
+        percentage: totalPool > 0 ? Math.round((data.amount / totalPool) * 100) : 0
+      }))
+      
+      setPredStats({
+        totalPredictions,
+        totalPool,
+        breakdown
+      })
       setShowPredStatsModal(true)
     } catch (err: any) {
       showToast('Không thể lấy thống kê dự đoán: ' + (err.response?.data?.message || err.message), 'error')
     }
   }
 
+  // Filter predictions list
+  const filteredPredictions = predictions.filter((p) => {
+    if (filterPredStatus !== 'ALL' && p.status !== filterPredStatus) return false
+    
+    if (filterPredRace !== 'ALL') {
+      const rId = typeof p.raceId === 'object' ? p.raceId?._id || p.raceId?.id : p.raceId
+      if (rId !== filterPredRace) return false
+    }
+    
+    if (filterPredSearch.trim() !== '') {
+      const specName = p.spectatorId?.fullName || p.spectatorId?.name || ''
+      const specEmail = p.spectatorId?.email || ''
+      const query = filterPredSearch.toLowerCase()
+      if (!specName.toLowerCase().includes(query) && !specEmail.toLowerCase().includes(query)) return false
+    }
+    
+    return true
+  })
+
+  // Filter tournaments list
+  const filteredTournaments = tournaments.filter((t) => {
+    if (filterTournStatus !== 'ALL' && t.status !== filterTournStatus) return false
+    
+    if (filterTournSearch.trim() !== '') {
+      const query = filterTournSearch.toLowerCase()
+      const name = t.name.toLowerCase()
+      const venue = (t.venue || '').toLowerCase()
+      const desc = (t.description || '').toLowerCase()
+      if (!name.includes(query) && !venue.includes(query) && !desc.includes(query)) return false
+    }
+    return true
+  })
+
+  // Filter registrations list
+  const filteredRegistrations = registrations.filter((reg) => {
+    if (filterRegStatus !== 'ALL' && reg.status !== filterRegStatus) return false
+    
+    if (filterRegTourn !== 'ALL') {
+      const resolvedTournId = typeof reg.raceId === 'object'
+        ? (typeof reg.raceId?.tournamentId === 'object' ? reg.raceId?.tournamentId?._id || reg.raceId?.tournamentId?.id : reg.raceId?.tournamentId)
+        : (() => {
+            const raceObj = races.find(r => r.id === reg.raceId)
+            if (raceObj) {
+              return typeof raceObj.tournamentId === 'object' ? raceObj.tournamentId?._id || raceObj.tournamentId?.id : raceObj.tournamentId
+            }
+            return undefined
+          })()
+      if (resolvedTournId !== filterRegTourn) return false
+    }
+
+    if (filterRegSearch.trim() !== '') {
+      const query = filterRegSearch.toLowerCase()
+      const horseName = (reg.horseName || (typeof reg.horseId === 'object' ? reg.horseId?.name : '') || '').toLowerCase()
+      const raceName = (reg.raceName || (typeof reg.raceId === 'object' ? reg.raceId?.name : '') || '').toLowerCase()
+      const horseKey = typeof reg.horseId === 'string' ? reg.horseId : reg.horseId?._id || reg.horseId?.id
+      const ownerInfo = horseKey ? registrationOwners[horseKey] : undefined
+      const ownerName = (ownerInfo?.fullName || reg.ownerName || (typeof reg.horseId === 'object' ? reg.horseId?.ownerId?.fullName || reg.horseId?.ownerId?.name || reg.horseId?.owner?.fullName || reg.horseId?.owner : '') || '').toLowerCase()
+
+      if (!horseName.includes(query) && !raceName.includes(query) && !ownerName.includes(query)) return false
+    }
+    return true
+  })
+
   const { toasts, show: showToast } = useToast()
 
-  // Get active tab info for header text
-  const tabTitles: Record<Tab, { title: string; desc: string }> = {
-    dashboard: { title: 'Bảng Điều Khiển Tổng Quan', desc: 'Chào mừng trở lại, đây là cập nhật mới nhất từ hệ thống quản lý giải đấu.' },
-    tournaments: { title: 'Quản Lý Giải Đấu Đua Ngựa', desc: 'Tạo mới, chỉnh sửa thông tin giải đấu và các vòng đua tương ứng.' },
-    registrations: { title: 'Duyệt Đăng Ký Tham Gia Cuộc Đua', desc: 'Xem các yêu cầu đăng ký đua ngựa của chủ ngựa và tiến hành duyệt hoặc từ chối.' },
-    'horses-jockeys': { title: 'Quản Lý Hồ Sơ Ngựa & Jockeys', desc: 'Duyệt các hồ sơ chiến mã và theo dõi danh sách kỵ sĩ trong hệ thống.' },
-    'referee-results': { title: 'Phân Công Trọng Tài & Công Bố Kết Quả', desc: 'Lựa chọn trọng tài điều khiển trận đấu và công bố kết quả chung cuộc.' },
-    predictions: { title: 'Quản Lý Dự Đoán Kết Quả (Bets)', desc: 'Kiểm soát hoạt động cược dự đoán. Đóng cổng cược trước giờ đua và tất toán thưởng.' },
+  const tabHeaders: Record<string, { title: string; desc: string; icon: any }> = {
+    tournaments: { title: 'Giải Đấu & Lịch Trình', desc: 'Quản lý thông tin giải đấu và xếp lịch các chặng đua.', icon: Trophy },
+    registrations: { title: 'Duyệt Đăng Ký Đua', desc: 'Duyệt hoặc từ chối đơn đăng ký tham gia thi đấu của ngựa.', icon: ClipboardList },
+    'horses-jockeys': { title: 'Ngựa & Jockeys', desc: 'Xét duyệt hồ sơ ngựa chiến mới và danh sách nài ngựa.', icon: Sparkles },
+    'referee-results': { title: 'Trọng Tài & Kết Quả', desc: 'Chỉ định trọng tài điều khiển và công bố kết quả cuộc đua.', icon: Scale },
+    predictions: { title: 'Dự Đoán (Bets)', desc: 'Theo dõi các hoạt động đặt cược và thanh quyết toán kết quả.', icon: Target }
   }
 
-  const featuredTourn = tournaments[0]; // use first tournament as featured hero
+  const currentHeader = tabHeaders[activeTab] || { title: 'Quản lý Hệ thống', desc: 'Giải đấu, lịch trình, duyệt đăng ký và công bố kết quả', icon: Settings }
 
   return (
     <>
@@ -543,248 +783,206 @@ export function AdminSchedulingPage() {
         ))}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-        
-        {/* Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6" style={{ marginBottom: 8 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+      {/* Page header */}
+      <div className="flex-between">
+        <div className="flex items-center gap-3">
+          <div className="p-3 rounded-2xl bg-emerald-500/10 ring-1 ring-emerald-500/20 text-emerald-500">
+            {(() => {
+              const HeaderIcon = currentHeader.icon || Settings
+              return <HeaderIcon className="h-6 w-6" />
+            })()}
+          </div>
           <div>
-            <h2 className="text-3xl font-headline font-extrabold text-on-surface tracking-tight" style={{ color: '#0f172a' }}>
-              {tabTitles[activeTab]?.title}
-            </h2>
-            <p className="text-on-surface-variant font-medium mt-1" style={{ color: '#64748b' }}>
-              {tabTitles[activeTab]?.desc}
+            <h1 className="text-2xl font-black text-[var(--text)] tracking-tight m-0">
+              {tab ? currentHeader.title : 'Quản lý Hệ thống'}
+            </h1>
+            <p className="muted text-sm m-0">
+              {tab ? currentHeader.desc : 'Giải đấu, lịch trình, duyệt đăng ký và công bố kết quả'}
             </p>
           </div>
-          <button className="bg-primary text-on-primary px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:shadow-lg transition-all active:scale-95" onClick={() => openTournModal(null)}>
-            <span className="material-symbols-outlined">add_circle</span>
-            Thêm giải đấu
+        </div>
+      </div>
+      
+      {/* Real Stats Panel (Only show if not accessed via dropdown sub-route) */}
+      {!tab && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 24 }}>
+          <div className="spotlight-card-outer animate-border-custom">
+            <div className="card bg-transparent border-transparent" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 shrink-0">
+                <Trophy className="h-7 w-7" />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, color: '#3b82f6', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng giải đấu</div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>{adminStats.tournaments}</div>
+              </div>
+            </div>
+          </div>
+          <div className="spotlight-card-outer animate-border-custom">
+            <div className="card bg-transparent border-transparent" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0">
+                <Flag className="h-7 w-7" />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, color: '#10b981', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cuộc đua đang mở</div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>{adminStats.activeRaces}</div>
+              </div>
+            </div>
+          </div>
+          <div className="spotlight-card-outer animate-border-custom">
+            <div className="card bg-transparent border-transparent" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 shrink-0">
+                <ClipboardList className="h-7 w-7" />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, color: '#d97706', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đăng ký đua chờ duyệt</div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>{adminStats.pendingRegs}</div>
+              </div>
+            </div>
+          </div>
+          <div className="spotlight-card-outer animate-border-custom">
+            <div className="card bg-transparent border-transparent" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 shrink-0">
+                <Sparkles className="h-7 w-7" />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, color: '#8b5cf6', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Ngựa chờ duyệt</div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text)' }}>{adminStats.pendingHorses}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab Navigation (Only show if not accessed via dropdown sub-route) */}
+      {!tab && (
+        <div className="tabs">
+          <button
+            className={`tab-link flex items-center gap-2 ${activeTab === 'tournaments' ? 'active' : ''}`}
+            onClick={() => startTransition(() => setActiveTab('tournaments'))}
+          >
+            <Trophy className="w-4 h-4 text-amber-500 shrink-0" />
+            <span>Giải Đấu & Lịch Trình</span>
+          </button>
+          <button
+            className={`tab-link flex items-center gap-2 ${activeTab === 'registrations' ? 'active' : ''}`}
+            onClick={() => startTransition(() => setActiveTab('registrations'))}
+          >
+            <ClipboardList className="w-4 h-4 text-emerald-500 shrink-0" />
+            <span>Duyệt Đăng Ký Đua</span>
+          </button>
+          <button
+            className={`tab-link flex items-center gap-2 ${activeTab === 'horses-jockeys' ? 'active' : ''}`}
+            onClick={() => startTransition(() => setActiveTab('horses-jockeys'))}
+          >
+            <Sparkles className="w-4 h-4 text-purple-500 shrink-0" />
+            <span>Ngựa & Jockeys</span>
+          </button>
+          <button
+            className={`tab-link flex items-center gap-2 ${activeTab === 'referee-results' ? 'active' : ''}`}
+            onClick={() => startTransition(() => setActiveTab('referee-results'))}
+          >
+            <Scale className="w-4 h-4 text-blue-500 shrink-0" />
+            <span>Trọng Tài & Kết Quả</span>
+          </button>
+          <button
+            className={`tab-link flex items-center gap-2 ${activeTab === 'predictions' ? 'active' : ''}`}
+            onClick={() => startTransition(() => setActiveTab('predictions'))}
+          >
+            <Target className="w-4 h-4 text-pink-500 shrink-0" />
+            <span>Dự Đoán (Bets)</span>
           </button>
         </div>
+      )}
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="glass-elevated p-6 rounded-2xl border-t border-white" style={{ background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(14,165,233,0.12)' }}>
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-12 h-12 rounded-xl bg-sky-100 flex items-center justify-center text-sky-500">
-                <span className="material-symbols-outlined text-3xl">emoji_events</span>
-              </div>
-              <span className="text-[10px] font-bold text-sky-600 px-2 py-1 bg-sky-50 rounded-full border border-sky-100">+2 Tháng này</span>
-            </div>
-            <p className="text-on-surface-variant text-sm font-semibold" style={{ color: '#64748b' }}>Tổng giải đấu</p>
-            <h3 className="text-4xl font-headline font-extrabold text-on-surface mt-1" style={{ color: '#0f172a' }}>{adminStats.tournaments}</h3>
-          </div>
-
-          <div className="glass-elevated p-6 rounded-2xl border-t border-white" style={{ background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(14,165,233,0.12)' }}>
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center text-purple-500">
-                <span className="material-symbols-outlined text-3xl">timer</span>
-              </div>
-              <span className="text-[10px] font-bold text-purple-600 px-2 py-1 bg-purple-50 rounded-full border border-purple-100">Đang diễn ra</span>
-            </div>
-            <p className="text-on-surface-variant text-sm font-semibold" style={{ color: '#64748b' }}>Cuộc đua đang chạy</p>
-            <h3 className="text-4xl font-headline font-extrabold text-on-surface mt-1" style={{ color: '#0f172a' }}>{adminStats.activeRaces}</h3>
-          </div>
-
-          <div className="glass-elevated p-6 rounded-2xl border-t border-white" style={{ background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(14,165,233,0.12)' }}>
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center text-orange-500">
-                <span className="material-symbols-outlined text-3xl">person_add</span>
-              </div>
-              <span className="text-[10px] font-bold text-red-600 px-2 py-1 bg-red-50 rounded-full border border-red-100">Cần xử lý</span>
-            </div>
-            <p className="text-on-surface-variant text-sm font-semibold" style={{ color: '#64748b' }}>Đăng ký chờ duyệt</p>
-            <h3 className="text-4xl font-headline font-extrabold text-on-surface mt-1" style={{ color: '#0f172a' }}>{adminStats.pendingRegs}</h3>
-          </div>
-
-          <div className="glass-elevated p-6 rounded-2xl border-t border-white" style={{ background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(14,165,233,0.12)' }}>
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center text-teal-500">
-                <span className="material-symbols-outlined text-3xl">pets</span>
-              </div>
-              <span className="text-[10px] font-bold text-teal-600 px-2 py-1 bg-teal-50 rounded-full border border-teal-100">Chờ duyệt</span>
-            </div>
-            <p className="text-on-surface-variant text-sm font-semibold" style={{ color: '#64748b' }}>Ngựa chờ duyệt</p>
-            <h3 className="text-4xl font-headline font-extrabold text-on-surface mt-1" style={{ color: '#0f172a' }}>{adminStats.pendingHorses}</h3>
-          </div>
+      {error && (
+        <div className="card" style={{ background: 'var(--danger-light)', border: '1px solid #fca5a5', color: '#991b1b', padding: '12px 16px' }}>
+          ⚠️ {error}
         </div>
+      )}
 
-        {error && (
-          <div className="card" style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#991b1b', padding: '12px 16px' }}>
-            ⚠️ {error}
+      {/* ---------------------------------------------------------
+          TAB 1: TOURNAMENTS & RACES
+          --------------------------------------------------------- */}
+      {activeTab === 'tournaments' && (
+        <div className="card">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 style={{ fontSize: '20px', color: 'var(--text)', margin: 0 }}>Quản Lý Giải Đấu Đua Ngựa</h2>
+              <p className="muted" style={{ margin: 0 }}>Tạo mới, chỉnh sửa thông tin giải đấu và các vòng đua tương ứng.</p>
+            </div>
+            <button className="btn btnPrimary" onClick={() => openTournModal(null)}>
+              + Thêm giải đấu
+            </button>
           </div>
-        )}
 
-        {/* ---------------------------------------------------------
-            TAB: DASHBOARD OVERVIEW
-            --------------------------------------------------------- */}
-        {activeTab === 'dashboard' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-            
-            {/* Primary Table Section */}
-            <section className="space-y-6">
-              <div className="flex items-center gap-3">
-                <div className="w-1.5 h-8 bg-primary rounded-full"></div>
-                <h3 className="text-xl font-headline font-bold text-on-surface" style={{ color: '#0f172a' }}>Quản lý Giải Đấu Ngựa</h3>
-              </div>
-
-              {featuredTourn ? (
-                <div className="glass-elevated rounded-3xl overflow-hidden border border-outline-variant" style={{ background: 'rgba(255,255,255,0.8)' }}>
-                  {/* Featured Tournament Hero */}
-                  <div className="relative h-72 w-full">
-                    <img
-                      alt={featuredTourn.name}
-                      className="w-full h-full object-cover"
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuBpYPCj3tsTP3IsrLf6g_qojI2kgd8Ufik8Om1FQO_K6HE-BecuO1fuPS6lk2iAdYyb1OQOuaWNNPRIx3V2pp2moyFuezVuD-F-Zuwue3Ywo96V4IGya5a21v9tG3Q_ARJKDa133CBT19A3OcCyXKG49hp68ECh7QAVutTbUpRWxLpIjXMRhAhu7LBKDfZ8ldH1-cl_ZvxeTudlzuOFNSMhve2UIHLZXou0HDFiHHm1Pe86RRlU9kZUAw6pDOCj8XvqcYfgL3bSu1_d"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-white via-white/30 to-transparent"></div>
-                    <div className="absolute bottom-0 left-0 p-8 w-full flex flex-col md:flex-row md:items-end justify-between gap-4">
-                      <div className="space-y-2">
-                        <span className="bg-primary text-on-primary text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-full">Giải Đấu Cao Cấp</span>
-                        <h4 className="text-3xl font-headline font-extrabold text-on-surface" style={{ color: '#0f172a' }}>{featuredTourn.name}</h4>
-                        <div className="flex flex-wrap items-center gap-6 text-on-surface-variant text-sm font-medium" style={{ color: '#475569' }}>
-                          <span className="flex items-center gap-2"><span className="material-symbols-outlined text-primary text-lg">location_on</span> {featuredTourn.venue}</span>
-                          <span className="flex items-center gap-2"><span className="material-symbols-outlined text-primary text-lg">calendar_today</span> {new Date(featuredTourn.startDate).toLocaleDateString('vi-VN')} - {new Date(featuredTourn.endDate).toLocaleDateString('vi-VN')}</span>
-                          <span className="flex items-center gap-2 font-bold text-primary"><span className="material-symbols-outlined text-lg">payments</span> Quỹ thưởng: {featuredTourn.prizePool?.toLocaleString('vi-VN')} VND</span>
-                        </div>
-                      </div>
-                      <div className="flex gap-3">
-                        <button className="bg-white/80 backdrop-blur-md hover:bg-primary/10 text-primary border border-primary/20 px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-all cursor-pointer" onClick={() => openTournModal(featuredTourn)}>
-                          <span className="material-symbols-outlined text-sm">edit</span> Sửa
-                        </button>
-                        <button className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-all cursor-pointer" onClick={() => handleDeleteTourn(featuredTourn.id, featuredTourn.name)}>
-                          <span className="material-symbols-outlined text-sm">delete</span> Xóa
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Rounds Table */}
-                  <div className="p-8" style={{ backgroundColor: 'rgba(255,255,255,0.4)' }}>
-                    <div className="flex items-center justify-between mb-6">
-                      <h5 className="text-lg font-headline font-bold text-on-surface flex items-center gap-2" style={{ color: '#0f172a' }}>
-                        <span className="material-symbols-outlined text-primary">format_list_bulleted</span>
-                        Danh sách vòng đua (Rounds)
-                      </h5>
-                      <button className="text-primary text-sm font-bold flex items-center gap-1 hover:underline cursor-pointer" style={{ background: 'none', border: 'none' }} onClick={() => openRaceModal(null, featuredTourn.id)}>
-                        <span className="material-symbols-outlined text-sm">add_circle</span>
-                        Thêm cuộc đua
-                      </button>
-                    </div>
-                    <RaceList tournamentId={featuredTourn.id} onEditRace={(race) => openRaceModal(race)} onSchedule={openSchedModal} />
-                  </div>
-                </div>
-              ) : (
-                <div className="card text-center p-12">
-                  <span className="material-symbols-outlined text-5xl text-slate-300">emoji_events</span>
-                  <h4 className="font-bold text-slate-700 mt-4">Chưa có giải đấu nào được tạo</h4>
-                  <p className="text-sm text-slate-500 mt-2">Nhấp "Thêm giải đấu" phía trên để tạo giải đấu đầu tiên của bạn.</p>
-                </div>
-              )}
-            </section>
-
-            {/* Secondary Sections Bento */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              
-              {/* Upcoming Tournaments */}
-              <div className="lg:col-span-2 glass-elevated p-8 rounded-3xl space-y-6" style={{ background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(14,165,233,0.12)' }}>
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xl font-headline font-bold text-on-surface" style={{ color: '#0f172a' }}>Giải đấu sắp tới</h4>
-                  <button className="text-primary text-xs font-bold hover:underline" style={{ background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setSearchParams({ tab: 'tournaments' })}>
-                    Xem tất cả
-                  </button>
-                </div>
-                <div className="space-y-4">
-                  {tournaments.slice(1, 3).map((t) => (
-                    <div key={t.id} className="flex items-center justify-between p-4 rounded-2xl bg-white border border-outline-variant hover:border-primary transition-all cursor-pointer group" onClick={() => setSearchParams({ tab: 'tournaments' })}>
-                      <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 rounded-xl bg-sky-100 flex items-center justify-center text-sky-600 font-bold border border-slate-100">
-                          🏆
-                        </div>
-                        <div>
-                          <h5 className="font-bold text-on-surface group-hover:text-primary transition-colors" style={{ color: '#0f172a' }}>{t.name}</h5>
-                          <p className="text-xs text-on-surface-variant font-medium mt-1" style={{ color: '#64748b' }}>{t.venue} • {new Date(t.startDate).toLocaleDateString('vi-VN')}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-extrabold text-primary">{t.prizePool?.toLocaleString('vi-VN')} VND</p>
-                        <p className="text-[10px] text-on-surface-variant font-bold uppercase" style={{ color: '#94a3b8' }}>Tiền thưởng</p>
-                      </div>
-                    </div>
-                  ))}
-                  {tournaments.length <= 1 && (
-                    <p className="text-xs text-slate-500 italic">Chưa có giải đấu tiếp theo.</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Featured Jockeys */}
-              <div className="glass-elevated p-8 rounded-3xl space-y-6" style={{ background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(14,165,233,0.12)' }}>
-                <h4 className="text-xl font-headline font-bold text-on-surface" style={{ color: '#0f172a' }}>Kỵ sĩ tiêu biểu</h4>
-                <div className="space-y-6">
-                  {jockeys.slice(0, 3).map((j) => (
-                    <div key={j.id} className="flex items-center gap-4 group cursor-pointer" onClick={() => setSearchParams({ tab: 'horses-jockeys' })}>
-                      <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center text-2xl">
-                        🏇
-                      </div>
-                      <div className="flex-1">
-                        <h5 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors" style={{ color: '#0f172a' }}>{j.userId?.fullName || 'Kỵ sĩ'}</h5>
-                        <p className="text-[10px] text-on-surface-variant font-medium" style={{ color: '#64748b' }}>Kinh nghiệm: {j.experience} năm • Win: {j.winRate}%</p>
-                      </div>
-                      <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
-                    </div>
-                  ))}
-                  {jockeys.length === 0 && (
-                    <p className="text-xs text-slate-500 italic">Chưa có kỵ sĩ đăng ký.</p>
-                  )}
-                  <button className="w-full py-3 bg-primary/5 text-primary text-xs font-bold rounded-xl border border-primary/10 hover:bg-primary hover:text-on-primary transition-all cursor-pointer" onClick={() => setSearchParams({ tab: 'horses-jockeys' })}>
-                    Xem tất cả kỵ sĩ
-                  </button>
-                </div>
-              </div>
-
+          {/* Filter Bar */}
+          <div className="flex flex-wrap gap-4 items-end mb-6 bg-white/[0.01] border border-white/[0.03] p-4 rounded-xl">
+            <div className="form-group flex-1 min-w-[200px]" style={{ margin: 0 }}>
+              <label className="text-xs font-bold mb-1.5 block">Tìm kiếm giải đấu</label>
+              <input
+                type="text"
+                placeholder="Tìm theo tên, địa điểm, mô tả..."
+                value={filterTournSearch}
+                onChange={(e) => setFilterTournSearch(e.target.value)}
+                className="h-10 rounded-lg"
+              />
+            </div>
+            <div className="form-group min-w-[150px]" style={{ margin: 0 }}>
+              <label className="text-xs font-bold mb-1.5 block">Trạng thái giải đấu</label>
+              <select
+                value={filterTournStatus}
+                onChange={(e) => setFilterTournStatus(e.target.value)}
+                className="h-10 rounded-lg"
+              >
+                <option value="ALL">Tất cả trạng thái</option>
+                <option value="DRAFT">Bản nháp (Draft)</option>
+                <option value="PUBLISHED">Đã công bố (Published)</option>
+                <option value="ONGOING">Đang diễn ra (Ongoing)</option>
+                <option value="COMPLETED">Hoàn thành (Completed)</option>
+                <option value="CANCELLED">Đã hủy (Cancelled)</option>
+              </select>
             </div>
           </div>
-        )}
 
-        {/* ---------------------------------------------------------
-            TAB 1: TOURNAMENTS & RACES
-            --------------------------------------------------------- */}
-        {activeTab === 'tournaments' && (
-          <div className="card">
-            <div className="flex-between" style={{ marginBottom: 16 }}>
-              <div>
-                <h2 style={{ fontSize: '20px', color: '#0f172a' }}>Quản Lý Giải Đấu Đua Ngựa</h2>
-                <p className="muted">Tạo mới, chỉnh sửa thông tin giải đấu và các vòng đua tương ứng.</p>
-              </div>
-              <button className="btn btnPrimary" onClick={() => openTournModal(null)}>
-                + Thêm giải đấu
-              </button>
+          {loading ? (
+            <p className="muted">Đang tải...</p>
+          ) : filteredTournaments.length === 0 ? (
+            <div className="text-center py-8 text-[var(--muted)] font-semibold">
+              Không tìm thấy giải đấu nào khớp với điều kiện lọc.
             </div>
-
-            {loading ? (
-              <p className="muted">Đang tải...</p>
-            ) : tournaments.length === 0 ? (
-              <p className="muted">Chưa có giải đấu nào được tạo.</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {tournaments.map((t) => (
-                  <div key={t.id} className="card card-light" style={{ background: '#fff', border: '1px solid var(--border)' }}>
-                    <div className="flex-between">
-                      <div style={{ flex: 1 }}>
-                        {/* Quick Status Changer */}
-                        <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>Trạng thái:</span>
-                          <select
-                            value={t.status || 'DRAFT'}
-                            onChange={(e) => handleQuickStatusChange(t.id, t.name, e.target.value)}
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {filteredTournaments.map((t) => {
+                const isExpanded = expandedTournId === t.id
+                const tournRaces = races.filter(r => (typeof r.tournamentId === 'object' ? r.tournamentId?._id || r.tournamentId?.id : r.tournamentId) === t.id)
+                return (
+                  <div 
+                    key={t.id} 
+                    className="card animate-fade-in" 
+                    style={{ 
+                      background: 'var(--surface-2)', 
+                      border: '1px solid var(--border)',
+                      padding: '16px 20px',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    <div 
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer select-none"
+                      onClick={() => setExpandedTournId(isExpanded ? null : t.id)}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 4 }}>
+                          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800 }} className="text-[var(--text)]">
+                            {t.name}
+                          </h3>
+                          <span 
                             style={{
-                              width: 'auto',
-                              padding: '3px 28px 3px 8px',
-                              fontSize: '12px',
-                              fontWeight: 700,
+                              fontSize: '11px',
+                              fontWeight: 800,
+                              padding: '2px 8px',
                               borderRadius: '999px',
-                              border: '1.5px solid',
-                              cursor: 'pointer',
+                              border: '1px solid',
                               background:
                                 t.status === 'PUBLISHED' || t.status === 'ONGOING' ? 'rgba(16,185,129,0.12)' :
                                 t.status === 'COMPLETED' ? 'rgba(16,185,129,0.08)' :
@@ -799,310 +997,301 @@ export function AdminSchedulingPage() {
                                 t.status === 'CANCELLED' ? '#dc2626' : '#d97706',
                             }}
                           >
-                            <option value="DRAFT">📝 Bản nháp</option>
-                            <option value="PUBLISHED">📢 Đã công bố</option>
-                            <option value="ONGOING">🏁 Đang diễn ra</option>
-                            <option value="COMPLETED">✅ Hoàn thành</option>
-                            <option value="CANCELLED">❌ Đã hủy</option>
-                          </select>
+                            {t.status === 'DRAFT' ? 'Bản nháp' :
+                             t.status === 'PUBLISHED' ? 'Đã công bố' :
+                             t.status === 'ONGOING' ? 'Đang diễn ra' :
+                             t.status === 'COMPLETED' ? 'Hoàn thành' : 'Đã hủy'}
+                          </span>
+                          <span className="muted text-xs font-semibold">
+                            ({tournRaces.length} cuộc đua)
+                          </span>
                         </div>
-                        <h3 style={{ margin: '0 0 4px', fontSize: '18px', color: '#0f172a' }}>{t.name}</h3>
                         <p className="muted" style={{ fontSize: '13px', margin: 0 }}>
-                          📍 Địa điểm: {t.venue} | 📅 Thời gian: {new Date(t.startDate).toLocaleDateString('vi-VN')} - {new Date(t.endDate).toLocaleDateString('vi-VN')}
+                          📍 {t.venue} | 📅 {new Date(t.startDate).toLocaleDateString('vi-VN')} - {new Date(t.endDate).toLocaleDateString('vi-VN')}
                         </p>
-                        <p className="muted" style={{ fontSize: '13px', marginTop: 4 }}>
-                          💰 Quỹ thưởng: {t.prizePool?.toLocaleString('vi-VN')} VND | Ngựa tối đa: {t.maxHorses}
-                        </p>
-                        {t.description && <p style={{ fontSize: '14px', marginTop: 8, fontStyle: 'italic', color: '#475569' }}>{t.description}</p>}
                       </div>
-                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                        <button className="btn" onClick={() => openRaceModal(null, t.id)}>+ Thêm cuộc đua</button>
-                        <button className="btn" onClick={() => openTournModal(t)}>Sửa</button>
-                        <button className="btn" style={{ color: '#ef4444' }} onClick={() => handleDeleteTourn(t.id, t.name)}>Xóa</button>
+
+                      <div 
+                        style={{ display: 'flex', gap: 8, alignItems: 'center' }} 
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button className="btn btn-sm" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => openRaceModal(null, t.id)}>+ Cuộc đua</button>
+                        <button className="btn btn-sm" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => openTournModal(t)}>Sửa</button>
+                        <button className="btn btn-sm" style={{ color: '#ef4444', padding: '6px 12px', fontSize: '12px' }} onClick={() => handleDeleteTourn(t.id, t.name)}>Xóa</button>
+                        
+                        <div 
+                          className="p-1 hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-[var(--muted)]"
+                          onClick={() => setExpandedTournId(isExpanded ? null : t.id)}
+                        >
+                          <svg 
+                            className={`w-5 h-5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} 
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                            style={{ width: '20px', height: '20px' }}
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Nested Races Section */}
-                    <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #f1f5f9' }}>
-                      <h4 style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>Các cuộc đua / vòng đấu thuộc giải:</h4>
-                      <RaceList tournamentId={t.id} onEditRace={(race) => openRaceModal(race)} onSchedule={openSchedModal} />
-                    </div>
+                    {isExpanded && (
+                      <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+                        {t.description && (
+                          <p style={{ fontSize: '13.5px', marginTop: 0, marginBottom: 16, fontStyle: 'italic', color: 'var(--text)' }}>
+                            Mô tả: {t.description}
+                          </p>
+                        )}
+                        <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>Cập nhật nhanh trạng thái:</span>
+                          <select
+                            value={t.status || 'DRAFT'}
+                            onChange={(e) => handleQuickStatusChange(t.id, t.name, e.target.value)}
+                            style={{
+                              width: 'auto',
+                              padding: '2px 28px 2px 8px',
+                              fontSize: '12px',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <option value="DRAFT">Bản nháp</option>
+                            <option value="PUBLISHED">Đã công bố</option>
+                            <option value="ONGOING">Đang diễn ra</option>
+                            <option value="COMPLETED">Hoàn thành</option>
+                            <option value="CANCELLED">Đã hủy</option>
+                          </select>
+                          <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>| Quỹ thưởng: {t.prizePool?.toLocaleString('vi-VN')} {t.currency || 'VND'} | Ngựa tối đa: {t.maxHorses}</span>
+                        </div>
+
+                        <h4 style={{ margin: '0 0 10px', fontSize: '13px', fontWeight: 700 }} className="text-[var(--text)]">Danh sách cuộc đua thuộc giải đấu:</h4>
+                        <RaceList
+                          races={tournRaces}
+                          onEditRace={(race) => openRaceModal(race)}
+                          onSchedule={openSchedModal}
+                          onRefresh={(rId) => {
+                            if (rId) setLastModifiedRaceId(rId)
+                            loadTabData(undefined, rId, undefined, undefined)
+                          }}
+                          lastModifiedRaceId={lastModifiedRaceId}
+                        />
+                      </div>
+                    )}
                   </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ---------------------------------------------------------
+          TAB 2: RACE REGISTRATIONS APPROVAL
+          --------------------------------------------------------- */}
+      {activeTab === 'registrations' && (
+        <div className="card">
+          <h2>Duyệt Đăng Ký Tham Gia Cuộc Đua</h2>
+          <p className="muted">Xem các yêu cầu đăng ký đua ngựa của chủ ngựa và tiến hành duyệt hoặc từ chối.</p>
+
+          {/* Filter Bar */}
+          <div className="flex flex-wrap gap-4 items-end mb-6 bg-white/[0.01] border border-white/[0.03] p-4 rounded-xl">
+            <div className="form-group flex-1 min-w-[200px]" style={{ margin: 0 }}>
+              <label className="text-xs font-bold mb-1.5 block">Tìm kiếm</label>
+              <input
+                type="text"
+                placeholder="Tìm tên ngựa, cuộc đua, chủ sở hữu..."
+                value={filterRegSearch}
+                onChange={(e) => setFilterRegSearch(e.target.value)}
+                className="h-10 rounded-lg"
+              />
+            </div>
+            <div className="form-group min-w-[150px]" style={{ margin: 0 }}>
+              <label className="text-xs font-bold mb-1.5 block">Trạng thái đăng ký</label>
+              <select
+                value={filterRegStatus}
+                onChange={(e) => setFilterRegStatus(e.target.value)}
+                className="h-10 rounded-lg"
+              >
+                <option value="ALL">Tất cả trạng thái</option>
+                <option value="PENDING_APPROVAL">Chờ duyệt (Pending)</option>
+                <option value="APPROVED">Đã duyệt (Approved)</option>
+                <option value="CONFIRMED">Đã xác nhận (Confirmed)</option>
+                <option value="REJECTED">Đã từ chối (Rejected)</option>
+              </select>
+            </div>
+            <div className="form-group min-w-[200px]" style={{ margin: 0 }}>
+              <label className="text-xs font-bold mb-1.5 block">Lọc theo giải đấu</label>
+              <select
+                value={filterRegTourn}
+                onChange={(e) => setFilterRegTourn(e.target.value)}
+                className="h-10 rounded-lg"
+              >
+                <option value="ALL">Tất cả giải đấu</option>
+                {tournaments.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
-              </div>
-            )}
+              </select>
+            </div>
           </div>
-        )}
 
-        {/* ---------------------------------------------------------
-            TAB 2: RACE REGISTRATIONS APPROVAL
-            --------------------------------------------------------- */}
-        {activeTab === 'registrations' && (
-          <div className="card">
-            <h2 style={{ color: '#0f172a' }}>Duyệt Đăng Ký Tham Gia Cuộc Đua</h2>
-            <p className="muted">Xem các yêu cầu đăng ký đua ngựa của chủ ngựa và tiến hành duyệt hoặc từ chối.</p>
+          {loading ? (
+            <p className="muted">Đang tải...</p>
+          ) : filteredRegistrations.length === 0 ? (
+            <div className="text-center py-8 text-[var(--muted)] font-semibold">
+              Không tìm thấy yêu cầu đăng ký nào khớp với điều kiện lọc.
+            </div>
+          ) : (
+            <div className="admin-table-wrapper">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Giải đấu / Cuộc đua</th>
+                    <th>Ngựa thi đấu</th>
+                    <th>Chủ ngựa (Owner)</th>
+                    <th>Trạng thái đăng ký</th>
+                    <th>Ngày yêu cầu</th>
+                    <th style={{ textAlign: 'right' }}>Hành động</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRegistrations.map((reg) => {
+                    const raceName = reg.raceName || (typeof reg.raceId === 'object' ? reg.raceId?.name : '')
+                    const raceScheduledAt = typeof reg.raceId === 'object' ? reg.raceId?.scheduledAt : undefined
+                    const horseName = reg.horseName || (typeof reg.horseId === 'object' ? reg.horseId?.name : '')
+                    const horseKey = typeof reg.horseId === 'string' ? reg.horseId : reg.horseId?._id || reg.horseId?.id
+                    const ownerInfo = horseKey ? registrationOwners[horseKey] : undefined
+                    const horseOwnerName = ownerInfo?.fullName || reg.ownerName || (typeof reg.horseId === 'object' ? reg.horseId?.ownerId?.fullName || reg.horseId?.ownerId?.name || reg.horseId?.owner?.fullName || reg.horseId?.owner : '')
+                    const horseOwnerPhone = ownerInfo?.phone || (typeof reg.horseId === 'object' ? reg.horseId?.ownerId?.phone : undefined)
 
-            {loading ? (
-              <p className="muted">Đang tải...</p>
-            ) : registrations.length === 0 ? (
-              <p className="muted" style={{ padding: '20px 0' }}>Không có yêu cầu đăng ký tham gia nào cần duyệt.</p>
-            ) : (
-              <div className="admin-table-wrapper">
-                <table className="admin-table">
-                  <thead>
-                    <tr>
-                      <th>Giải đấu / Cuộc đua</th>
-                      <th>Ngựa thi đấu</th>
-                      <th>Chủ ngựa (Owner)</th>
-                      <th>Trạng thái đăng ký</th>
-                      <th>Ngày yêu cầu</th>
-                      <th style={{ textAlign: 'right' }}>Hành động</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {registrations.map((reg) => (
+                    return (
                       <tr key={reg.id}>
                         <td>
-                          <div style={{ fontWeight: 600 }}>{reg.raceId?.name || 'Cuộc đua'}</div>
-                          <div className="muted" style={{ fontSize: '12px' }}>Ngày đua: {reg.raceId?.scheduledAt ? new Date(reg.raceId.scheduledAt).toLocaleDateString('vi-VN') : ''}</div>
+                          <div style={{ fontWeight: 600 }}>{raceName || 'Cuộc đua chưa rõ'}</div>
+                          {raceScheduledAt && (
+                            <div className="muted" style={{ fontSize: '12px' }}>
+                              Ngày đua: {new Date(raceScheduledAt).toLocaleDateString('vi-VN')}
+                            </div>
+                          )}
                         </td>
                         <td>
-                          <div style={{ fontWeight: 600 }}>{reg.horseId?.name || 'Ngựa'}</div>
-                          <div className="muted" style={{ fontSize: '12px' }}>Giống: {reg.horseId?.breed} | Tuổi: {reg.horseId?.age}</div>
+                          <div style={{ fontWeight: 600 }}>{horseName || 'Ngựa chưa rõ'}</div>
                         </td>
                         <td>
-                          <div>{reg.horseId?.ownerId?.fullName}</div>
-                          <div className="muted" style={{ fontSize: '12px' }}>📞 {reg.horseId?.ownerId?.phone}</div>
+                          <div>{horseOwnerName || 'Chưa có thông tin chủ ngựa'}</div>
+                          {horseOwnerPhone && (
+                            <div className="muted flex items-center gap-1" style={{ fontSize: '12px' }}>
+                              <Phone className="w-3 h-3 text-muted shrink-0" />
+                              <span>{horseOwnerPhone}</span>
+                            </div>
+                          )}
                         </td>
                         <td>
-                          <span className={`badge ${reg.status === 'APPROVED' ? 'badge-approved' : reg.status === 'REJECTED' ? 'badge-rejected' : 'badge-pending'}`}>
-                            {reg.status}
+                          <span className={`badge badge-status-${reg.status === 'APPROVED' ? 'approved' : reg.status === 'CONFIRMED' ? 'confirmed' : reg.status === 'REJECTED' ? 'rejected' : 'pending'}`}>
+                            {reg.status === 'APPROVED' ? 'Đã duyệt' : reg.status === 'CONFIRMED' ? 'Đã xác nhận' : reg.status === 'REJECTED' ? 'Đã từ chối' : reg.status === 'PENDING_APPROVAL' ? 'Chờ duyệt' : reg.status}
                           </span>
                           {reg.status === 'REJECTED' && (reg as any).rejectionReason && (
-                            <div className="text-xs" style={{ marginTop: 4, color: '#ef4444' }}>Lý do: {(reg as any).rejectionReason}</div>
+                            <div className="text-xs" style={{ marginTop: 4, color: '#ef4444' }}>
+                              Lý do: {(reg as any).rejectionReason}
+                            </div>
                           )}
                         </td>
                         <td>{reg.createdAt ? new Date(reg.createdAt).toLocaleDateString('vi-VN') : ''}</td>
                         <td style={{ textAlign: 'right' }}>
-                          <div style={{ display: 'inline-flex', gap: 6 }}>
-                            <button className="btn btnPrimary" style={{ fontSize: '13px', padding: '6px 10px' }} onClick={() => handleApproveReg(reg.id)}>
-                              Duyệt
-                            </button>
-                            <button className="btn" style={{ fontSize: '13px', padding: '6px 10px', color: '#ef4444' }} onClick={() => handleRejectReg(reg.id)}>
-                              Từ chối
-                            </button>
-                          </div>
+                          {reg.status === 'PENDING_APPROVAL' ? (
+                            <div style={{ display: 'inline-flex', gap: 6 }}>
+                              <button className="btn btnPrimary" style={{ fontSize: '13px', padding: '6px 10px' }} onClick={() => handleApproveReg(reg.id)}>
+                                Duyệt
+                              </button>
+                              <button className="btn" style={{ fontSize: '13px', padding: '6px 10px', color: '#ef4444' }} onClick={() => handleRejectReg(reg.id)}>
+                                Từ chối
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-[var(--muted)]">-</span>
+                          )}
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ---------------------------------------------------------
-            TAB 3: HORSES & JOCKEYS APPROVAL
-            --------------------------------------------------------- */}
-        {activeTab === 'horses-jockeys' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24 }}>
-            {/* Horse profiles approval */}
-            <div className="card">
-              <h2 style={{ color: '#0f172a' }}>Duyệt Hồ Sơ Ngựa Trong Hệ Thống</h2>
-              <p className="muted">Khi chủ ngựa khai báo ngựa mới, hồ sơ cần được duyệt (kiểm tra chứng nhận sức khỏe) trước khi có thể đăng ký thi đấu.</p>
-
-              {loading ? (
-                <p className="muted">Đang tải...</p>
-              ) : horses.length === 0 ? (
-                <p className="muted">Không có hồ sơ ngựa nào cần duyệt.</p>
-              ) : (
-                <div className="admin-table-wrapper">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Tên ngựa</th>
-                        <th>Giống & Đặc điểm</th>
-                        <th>Chủ ngựa</th>
-                        <th>Trạng thái</th>
-                        <th>Hồ sơ sức khỏe</th>
-                        <th style={{ textAlign: 'right' }}>Hành động</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {horses.map((h) => (
-                        <tr key={h.id}>
-                          <td style={{ fontWeight: 600 }}>{h.name}</td>
-                          <td>
-                            <div>Giống: {h.breed} | Màu: {h.color}</div>
-                            <div className="muted" style={{ fontSize: '12px' }}>Nguồn gốc: {h.origin} | Tuổi: {h.age} | Cân nặng: {h.weight}kg</div>
-                          </td>
-                          <td>
-                            <div>{h.ownerId?.fullName || 'Chủ ngựa'}</div>
-                            <div className="muted" style={{ fontSize: '12px' }}>{h.ownerId?.email}</div>
-                          </td>
-                          <td>
-                            <span className={`badge ${h.status === 'APPROVED' ? 'badge-approved' : h.status === 'REJECTED' ? 'badge-rejected' : 'badge-pending'}`}>
-                              {h.status}
-                            </span>
-                            {h.status === 'REJECTED' && (h as any).rejectionReason && (
-                              <div className="text-xs" style={{ marginTop: 4, color: '#ef4444' }}>Lý do: {(h as any).rejectionReason}</div>
-                            )}
-                          </td>
-                          <td>
-                            {h.healthCertUrl ? (
-                              <a href={h.healthCertUrl} target="_blank" rel="noreferrer" style={{ color: '#0ea5e9', fontWeight: 600 }}>
-                                Xem Health Cert 🔗
-                              </a>
-                            ) : (
-                              <span className="danger-text">Thiếu hồ sơ</span>
-                            )}
-                          </td>
-                          <td style={{ textAlign: 'right' }}>
-                            {h.status === 'PENDING' && (
-                              <div style={{ display: 'inline-flex', gap: 6 }}>
-                                <button className="btn btnPrimary" style={{ fontSize: '12px', padding: '5px 8px' }} onClick={() => handleApproveHorse(h.id)}>
-                                  Duyệt
-                                </button>
-                                <button className="btn" style={{ fontSize: '12px', padding: '5px 8px', color: '#ef4444' }} onClick={() => handleRejectHorse(h.id)}>
-                                  Từ chối
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
+          )}
+        </div>
+      )}
 
-            {/* Jockeys Directory */}
-            <div className="card">
-              <h2 style={{ color: '#0f172a' }}>Danh Sách Jockey (Kỵ sĩ)</h2>
-              <p className="muted">Danh sách tất cả kỵ sĩ đã đăng ký hoạt động trong hệ thống kèm tỉ lệ thắng và kinh nghiệm.</p>
-
-              {loading ? (
-                <p className="muted">Đang tải...</p>
-              ) : jockeys.length === 0 ? (
-                <p className="muted">Chưa có kỵ sĩ nào đăng ký.</p>
-              ) : (
-                <div className="admin-table-wrapper">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Kỵ sĩ</th>
-                        <th>Kinh nghiệm</th>
-                        <th>Tỉ lệ thắng (Win Rate)</th>
-                        <th>Số trận đã tham gia</th>
-                        <th>Số trận thắng</th>
-                        <th>Sở trường</th>
-                        <th>Trạng thái</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {jockeys.map((j) => (
-                        <tr key={j.id}>
-                          <td>
-                            <div style={{ fontWeight: 600 }}>{j.userId?.fullName || 'Kỵ sĩ'}</div>
-                            <div className="muted" style={{ fontSize: '12px' }}>{j.userId?.email} | 📞 {j.userId?.phone}</div>
-                          </td>
-                          <td>{j.experience} năm</td>
-                          <td style={{ fontWeight: 600, color: '#0ea5e9' }}>{j.winRate}%</td>
-                          <td>{j.races} trận</td>
-                          <td>{j.wins} trận</td>
-                          <td>
-                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                              {j.specialties?.map((s: string) => (
-                                <span key={s} className="badge badge-scheduled" style={{ fontSize: '10px', padding: '2px 6px' }}>{s}</span>
-                              ))}
-                            </div>
-                          </td>
-                          <td>
-                            <span className={`badge ${j.status === 'AVAILABLE' ? 'badge-approved' : 'badge-rejected'}`}>
-                              {j.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ---------------------------------------------------------
-            TAB 4: REFEREE & RESULTS PUBLISHING
-            --------------------------------------------------------- */}
-        {activeTab === 'referee-results' && (
+      {/* ---------------------------------------------------------
+          TAB 3: HORSES & JOCKEYS APPROVAL
+          --------------------------------------------------------- */}
+      {activeTab === 'horses-jockeys' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 32 }}>
+          {/* Horse profiles approval */}
           <div className="card">
-            <h2 style={{ color: '#0f172a' }}>Phân Công Trọng Tài & Công Bố Kết Quả</h2>
-            <p className="muted">Lựa chọn trọng tài điều khiển trận đấu và công bố kết quả chung cuộc kèm tiền thưởng của các cuộc đua.</p>
+            <h2>Duyệt Hồ Sơ Ngựa Trong Hệ Thống</h2>
+            <p className="muted">Khi chủ ngựa khai báo ngựa mới, hồ sơ cần được duyệt (kiểm tra chứng nhận sức khỏe) trước khi có thể đăng ký thi đấu.</p>
 
             {loading ? (
               <p className="muted">Đang tải...</p>
-            ) : races.length === 0 ? (
-              <p className="muted">Chưa có cuộc đua nào được tạo.</p>
+            ) : horses.length === 0 ? (
+              <p className="muted">Không có hồ sơ ngựa nào cần duyệt.</p>
             ) : (
               <div className="admin-table-wrapper">
                 <table className="admin-table">
                   <thead>
                     <tr>
-                      <th>Giải đấu / Cuộc đua</th>
-                      <th>Cự ly</th>
-                      <th>Ngày giờ thi đấu</th>
+                      <th>Tên ngựa</th>
+                      <th>Giống & Đặc điểm</th>
+                      <th>Chủ ngựa</th>
                       <th>Trạng thái</th>
-                      <th>Trọng tài phụ trách</th>
+                      <th>Hồ sơ sức khỏe</th>
                       <th style={{ textAlign: 'right' }}>Hành động</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {races.map((r) => (
-                      <tr key={r.id}>
+                    {horses.map((h) => (
+                      <tr key={h.id}>
+                        <td style={{ fontWeight: 600 }}>{h.name}</td>
                         <td>
-                          <div style={{ fontWeight: 600 }}>{r.name}</div>
-                          <div className="muted" style={{ fontSize: '12px' }}>Giải: {typeof r.tournamentId === 'object' ? r.tournamentId.name : 'Giải đấu'}</div>
+                          <div>Giống: {h.breed} | Màu: {h.color}</div>
+                          <div className="muted" style={{ fontSize: '12px' }}>Nguồn gốc: {h.origin} | Tuổi: {h.age} | Cân nặng: {h.weight}kg</div>
                         </td>
-                        <td>{r.distance}m</td>
-                        <td>{new Date(r.scheduledAt).toLocaleString('vi-VN')}</td>
                         <td>
-                          <span className={`badge ${r.status === 'COMPLETED' ? 'badge-approved' : r.status === 'ONGOING' ? 'badge-ongoing' : r.status === 'CANCELLED' ? 'badge-rejected' : 'badge-scheduled'}`}>
-                            {r.status}
+                          <div>{h.ownerId?.fullName || 'Chủ ngựa'}</div>
+                          <div className="muted" style={{ fontSize: '12px' }}>{h.ownerId?.email}</div>
+                        </td>
+                        <td>
+                          <span className={`badge ${h.status === 'APPROVED' ? 'badge-approved' : h.status === 'REJECTED' ? 'badge-rejected' : 'badge-pending'}`}>
+                            {h.status === 'APPROVED' ? 'Đã duyệt' : h.status === 'REJECTED' ? 'Đã từ chối' : h.status === 'PENDING' ? 'Chờ duyệt' : h.status}
                           </span>
+                          {h.status === 'REJECTED' && (h as any).rejectionReason && (
+                            <div className="text-xs" style={{ marginTop: 4, color: '#ef4444' }}>Lý do: {(h as any).rejectionReason}</div>
+                          )}
                         </td>
                         <td>
-                          {r.refereeId ? (
-                            <div style={{ fontWeight: 600 }}>
-                              👤 {typeof r.refereeId === 'object' ? r.refereeId.fullName : r.refereeId}
-                            </div>
+                          {h.healthCertUrl ? (
+                            <a href={h.healthCertUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1" style={{ color: 'var(--primary)', fontWeight: 600 }}>
+                              <span>Xem Health Cert</span>
+                              <ExternalLink className="w-3 h-3 shrink-0" />
+                            </a>
                           ) : (
-                            <span className="danger-text">⚠️ Chưa có trọng tài</span>
+                            <span className="danger-text flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3 text-red-500 shrink-0" />
+                              <span>Thiếu hồ sơ</span>
+                            </span>
                           )}
                         </td>
                         <td style={{ textAlign: 'right' }}>
-                          <div style={{ display: 'inline-flex', gap: 6 }}>
-                            {r.status === 'SCHEDULED' && (
-                              <>
-                                <button type="button" className="btn" style={{ fontSize: '12px', padding: '5px 8px' }} onClick={() => openRefModal(r.id, r.refereeId && typeof r.refereeId === 'object' ? r.refereeId._id : r.refereeId)}>
-                                  Phân trọng tài
-                                </button>
-                                <button className="btn btnPrimary" style={{ fontSize: '12px', padding: '5px 8px' }} onClick={() => openSchedModal(r)}>
-                                  Lập lịch (Schedule)
-                                </button>
-                              </>
-                            )}
-                            {r.status === 'ONGOING' && (
-                              <button className="btn btnPrimary" style={{ fontSize: '12px', padding: '5px 8px' }} onClick={() => openResultModal(r)}>
-                                Công bố kết quả
+                          {h.status === 'PENDING' && (
+                            <div style={{ display: 'inline-flex', gap: 6 }}>
+                              <button className="btn btnPrimary" style={{ fontSize: '12px', padding: '5px 8px' }} onClick={() => handleApproveHorse(h.id)}>
+                                Duyệt
                               </button>
-                            )}
-                            {r.status === 'COMPLETED' && (
-                              <span className="success-text" style={{ fontSize: '12px', fontWeight: 600 }}>✓ Đã hoàn thành</span>
-                            )}
-                          </div>
+                              <button className="btn" style={{ fontSize: '12px', padding: '5px 8px', color: '#ef4444' }} onClick={() => handleRejectHorse(h.id)}>
+                                Từ chối
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -1111,286 +1300,362 @@ export function AdminSchedulingPage() {
               </div>
             )}
           </div>
-        )}
 
-        {/* ---------------------------------------------------------
-            TAB 5: PREDICTIONS (BETTING CONTROL)
-            --------------------------------------------------------- */}
-        {activeTab === 'predictions' && (
+          {/* Jockeys Directory */}
           <div className="card">
-            <h2 style={{ color: '#0f172a' }}>Quản Lý Dự Đoán Kết Quả (Bettings)</h2>
-            <p className="muted">Kiểm soát hoạt động đặt cược dự đoán. Đóng cổng cược trước khi trận đấu bắt đầu và tiến hành trả thưởng (settle) sau khi có kết quả.</p>
+            <h2>Danh Sách Jockey (Kỵ sĩ)</h2>
+            <p className="muted">Danh sách tất cả kỵ sĩ đã đăng ký hoạt động trong hệ thống kèm tỉ lệ thắng và kinh nghiệm.</p>
 
-            <div style={{ marginTop: 16 }}>
-              <h3 style={{ fontSize: '16px', marginBottom: 12, color: '#0f172a' }}>Danh sách trận đấu đặt cược & Trạng thái:</h3>
-              <PredictionRaceList
-                onClosePred={handleClosePredictions}
-                onSettlePred={handleSettlePredictions}
-                onViewStats={handleViewPredictionStats}
-              />
-            </div>
-
-            <div style={{ marginTop: 24 }}>
-              <h3 style={{ fontSize: '16px', marginBottom: 12, color: '#0f172a' }}>Các giao dịch dự đoán gần đây:</h3>
-              {loading ? (
-                <p className="muted">Đang tải...</p>
-              ) : predictions.length === 0 ? (
-                <p className="muted">Chưa có lượt dự đoán nào.</p>
-              ) : (
-                <div className="admin-table-wrapper">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Khán giả</th>
-                        <th>Cuộc đua</th>
-                        <th>Ngựa chọn</th>
-                        <th>Số tiền cược</th>
-                        <th>Tiền thưởng có thể nhận</th>
-                        <th>Trạng thái</th>
-                        <th>Ngày đặt</th>
+            {loading ? (
+              <p className="muted">Đang tải...</p>
+            ) : jockeys.length === 0 ? (
+              <p className="muted">Chưa có kỵ sĩ nào đăng ký.</p>
+            ) : (
+              <div className="admin-table-wrapper">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Kỵ sĩ</th>
+                      <th>Kinh nghiệm</th>
+                      <th>Tỉ lệ thắng (Win Rate)</th>
+                      <th>Số trận đã tham gia</th>
+                      <th>Số trận thắng</th>
+                      <th>Sở trường</th>
+                      <th>Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {jockeys.map((j) => (
+                      <tr key={j.id}>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{j.userId?.fullName || 'Kỵ sĩ'}</div>
+                          <div className="muted" style={{ fontSize: '12px' }}>{j.userId?.email} | 📞 {j.userId?.phone}</div>
+                        </td>
+                        <td>{j.experience} năm</td>
+                        <td style={{ fontWeight: 600, color: 'var(--primary)' }}>{j.winRate}%</td>
+                        <td>{j.races} trận</td>
+                        <td>{j.wins} trận</td>
+                        <td>
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                            {j.specialties?.map((s: string) => (
+                              <span key={s} className="badge badge-scheduled" style={{ fontSize: '10px', padding: '2px 6px' }}>{s}</span>
+                            ))}
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`badge ${j.status === 'AVAILABLE' ? 'badge-approved' : 'badge-rejected'}`}>
+                            {j.status === 'AVAILABLE' ? 'Sẵn sàng' : j.status === 'UNAVAILABLE' ? 'Không sẵn sàng' : j.status}
+                          </span>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {predictions.map((p) => (
-                        <tr key={p.id}>
-                          <td>
-                            <div style={{ fontWeight: 600 }}>{p.spectatorId?.fullName || p.spectatorId?.name || 'Khán giả'}</div>
-                            <div className="muted" style={{ fontSize: '12px' }}>{p.spectatorId?.email}</div>
-                          </td>
-                          <td>{p.raceId?.name || 'Cuộc đua'}</td>
-                          <td style={{ fontWeight: 600 }}>{p.horseId?.name || 'Ngựa'}</td>
-                          <td>{p.betAmount?.toLocaleString('vi-VN')} VND</td>
-                          <td style={{ color: '#0ea5e9', fontWeight: 600 }}>
-                            {p.prizeAmount?.toLocaleString('vi-VN')} VND
-                          </td>
-                          <td>
-                            <span className={`badge ${p.status === 'WON' ? 'badge-approved' : p.status === 'LOST' ? 'badge-rejected' : p.status === 'CLOSED' ? 'badge-inactive' : 'badge-pending'}`}>
-                              {p.status}
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ---------------------------------------------------------
+          TAB 4: REFEREE & RESULTS PUBLISHING
+          --------------------------------------------------------- */}
+      {activeTab === 'referee-results' && (
+        <div className="card">
+          <h2>Phân Công Trọng Tài & Công Bố Kết Quả</h2>
+          <p className="muted">Lựa chọn trọng tài điều khiển trận đấu và công bố kết quả chung cuộc kèm tiền thưởng của các cuộc đua.</p>
+
+          {loading ? (
+            <p className="muted">Đang tải...</p>
+          ) : races.length === 0 ? (
+            <p className="muted">Chưa có cuộc đua nào được tạo.</p>
+          ) : (
+            <div className="admin-table-wrapper">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Giải đấu / Cuộc đua</th>
+                    <th>Cự ly</th>
+                    <th>Ngày giờ thi đấu</th>
+                    <th>Trạng thái</th>
+                    <th>Trọng tài phụ trách</th>
+                    <th style={{ textAlign: 'right' }}>Hành động</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {races.map((r) => (
+                    <tr key={r.id}>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{r.name}</div>
+                        <div className="muted" style={{ fontSize: '12px' }}>Giải: {typeof r.tournamentId === 'object' ? r.tournamentId.name : 'Giải đấu'}</div>
+                      </td>
+                      <td>{r.distance}m</td>
+                      <td>{new Date(r.scheduledAt).toLocaleString('vi-VN')}</td>
+                      <td>
+                        <span className={`badge ${r.status === 'COMPLETED' ? 'badge-approved' : r.status === 'ONGOING' ? 'badge-ongoing' : r.status === 'CANCELLED' ? 'badge-rejected' : 'badge-scheduled'}`}>
+                          {r.status === 'COMPLETED' ? 'Kết thúc' : r.status === 'ONGOING' ? 'Đang diễn ra' : r.status === 'CANCELLED' ? 'Đã hủy' : r.status === 'SCHEDULED' ? 'Đã lên lịch' : r.status}
+                        </span>
+                      </td>
+                      <td>
+                        {r.refereeId ? (
+                          <div className="flex items-center gap-1" style={{ fontWeight: 600 }}>
+                            <UserIcon className="w-3.5 h-3.5 text-muted shrink-0" />
+                            <span>{typeof r.refereeId === 'object' ? r.refereeId.fullName : r.refereeId}</span>
+                          </div>
+                        ) : (
+                          <span className="danger-text flex items-center gap-1">
+                            <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                            <span>Chưa có trọng tài</span>
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: 6 }}>
+                          {r.status === 'SCHEDULED' && (
+                            <>
+                              <button type="button" className="btn" style={{ fontSize: '12px', padding: '5px 8px' }} onClick={() => openRefModal(r.id, r.refereeId && typeof r.refereeId === 'object' ? r.refereeId._id : r.refereeId)}>
+                                Phân trọng tài
+                              </button>
+                              <button className="btn btnPrimary" style={{ fontSize: '12px', padding: '5px 8px' }} onClick={() => openSchedModal(r)}>
+                                Lập lịch (Schedule)
+                              </button>
+                            </>
+                          )}
+                          {r.status === 'ONGOING' && (
+                            <button className="btn btnPrimary" style={{ fontSize: '12px', padding: '5px 8px' }} onClick={() => openResultModal(r)}>
+                              Công bố kết quả
+                            </button>
+                          )}
+                          {r.status === 'COMPLETED' && (
+                            <span className="success-text flex items-center gap-1" style={{ fontSize: '12px', fontWeight: 600 }}>
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                              <span>Đã hoàn thành</span>
                             </span>
-                          </td>
-                          <td>{p.createdAt ? new Date(p.createdAt).toLocaleDateString('vi-VN') : ''}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ---------------------------------------------------------
+          TAB 5: PREDICTIONS (BETTING CONTROL)
+          --------------------------------------------------------- */}
+      {activeTab === 'predictions' && (
+        <div className="card">
+          <h2>Thống Kê Dự Đoán Cuộc Đua</h2>
+          <p className="muted">Theo dõi số liệu thống kê dự đoán (tổng cược, trả thưởng, lợi nhuận) của từng cuộc đua. Đóng cổng cược trước khi trận đấu bắt đầu và tiến hành trả thưởng sau khi có kết quả.</p>
+
+          <div style={{ marginTop: 16 }}>
+            <h3 style={{ fontSize: '16px', marginBottom: 12 }}>Thống kê tổng hợp theo cuộc đua:</h3>
+            <PredictionRaceList
+              predictions={predictions}
+              onClosePred={handleClosePredictions}
+              onSettlePred={handleSettlePredictions}
+              onViewStats={handleViewPredictionStats}
+              lastModifiedRaceId={lastModifiedRaceId}
+            />
           </div>
-        )}
 
-        {/* ---------------------------------------------------------
-            MODALS
-            --------------------------------------------------------- */}
-
-        {/* 1. Tournament Modal */}
-        {showTournModal && (
-          <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowTournModal(false) }}>
-            <div className="modal-content">
-              <div className="modal-header">
-                <h3 style={{ color: '#0f172a' }}>🏆 {selectedTourn ? 'Chỉnh sửa Giải đấu' : 'Thêm Giải đấu mới'}</h3>
-                <button className="modal-close" onClick={() => setShowTournModal(false)}>✕</button>
+          <div style={{ marginTop: 36 }}>
+            <h3 style={{ fontSize: '16px', marginBottom: 16 }}>Các giao dịch dự đoán gần đây:</h3>
+            
+            {/* Filter Bar */}
+            <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 24 }}>
+              <div className="form-group" style={{ margin: 0, minWidth: '220px', flex: 1.5 }}>
+                <input
+                  type="text"
+                  placeholder="🔍 Tìm khán giả (tên hoặc email)..."
+                  value={filterPredSearch}
+                  onChange={(e) => setFilterPredSearch(e.target.value)}
+                  style={{ padding: '8px 12px', fontSize: '13px' }}
+                />
               </div>
-              <form onSubmit={handleSaveTourn}>
-                <div className="modal-body">
-                  <div className="form-group">
-                    <label style={{ color: '#475569' }}>Tên giải đấu</label>
-                    <input type="text" required value={tournForm.name} onChange={(e) => setTournForm({ ...tournForm, name: e.target.value })} />
-                  </div>
-                  <div className="form-group">
-                    <label style={{ color: '#475569' }}>Mô tả giải đấu</label>
-                    <input type="text" value={tournForm.description} onChange={(e) => setTournForm({ ...tournForm, description: e.target.value })} />
-                  </div>
-                  <div className="form-group">
-                    <label style={{ color: '#475569' }}>Địa điểm tổ chức (Venue)</label>
-                    <input type="text" required value={tournForm.venue} onChange={(e) => setTournForm({ ...tournForm, venue: e.target.value })} />
-                  </div>
-                  <div className="grid-2">
-                    <div className="form-group">
-                      <label style={{ color: '#475569' }}>Ngày bắt đầu</label>
-                      <input type="date" required value={tournForm.startDate} onChange={(e) => setTournForm({ ...tournForm, startDate: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                      <label style={{ color: '#475569' }}>Ngày kết thúc</label>
-                      <input type="date" required value={tournForm.endDate} onChange={(e) => setTournForm({ ...tournForm, endDate: e.target.value })} />
-                    </div>
-                  </div>
-                  <div className="grid-2">
-                    <div className="form-group">
-                      <label style={{ color: '#475569' }}>Tổng tiền thưởng (VND)</label>
-                      <input type="number" required value={tournForm.prizePool} onChange={(e) => setTournForm({ ...tournForm, prizePool: parseInt(e.target.value) })} />
-                    </div>
-                    <div className="form-group">
-                      <label style={{ color: '#475569' }}>Số ngựa tối đa</label>
-                      <input type="number" required value={tournForm.maxHorses} onChange={(e) => setTournForm({ ...tournForm, maxHorses: parseInt(e.target.value) })} />
-                    </div>
-                  </div>
-                  <div className="form-group">
-                    <label style={{ color: '#475569' }}>Trạng thái giải đấu</label>
-                    <select value={tournForm.status} onChange={(e) => setTournForm({ ...tournForm, status: e.target.value })}>
-                      <option value="DRAFT">📝 Bản nháp (DRAFT)</option>
-                      <option value="PUBLISHED">📢 Đã công bố (PUBLISHED)</option>
-                      <option value="ONGOING">🏁 Đang diễn ra (ONGOING)</option>
-                      <option value="COMPLETED">✅ Đã kết thúc (COMPLETED)</option>
-                      <option value="CANCELLED">❌ Đã hủy (CANCELLED)</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn" onClick={() => setShowTournModal(false)}>Hủy</button>
-                  <button type="submit" className="btn btnPrimary">Lưu</button>
-                </div>
-              </form>
+              <div className="form-group" style={{ margin: 0, minWidth: '160px' }}>
+                <select
+                  value={filterPredStatus}
+                  onChange={(e) => setFilterPredStatus(e.target.value)}
+                  style={{ padding: '8px 12px', fontSize: '13px' }}
+                >
+                  <option value="ALL">Tất cả trạng thái</option>
+                  <option value="PENDING">Chờ xử lý (Pending)</option>
+                  <option value="CLOSED">Đã đóng cổng (Closed)</option>
+                  <option value="WON">Thắng cược (Won)</option>
+                  <option value="LOST">Thua cược (Lost)</option>
+                </select>
+              </div>
+              <div className="form-group" style={{ margin: 0, minWidth: '220px', flex: 1.5 }}>
+                <select
+                  value={filterPredRace}
+                  onChange={(e) => setFilterPredRace(e.target.value)}
+                  style={{ padding: '8px 12px', fontSize: '13px' }}
+                >
+                  <option value="ALL">Tất cả cuộc đua</option>
+                  {races.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name} ({typeof r.tournamentId === 'object' ? r.tournamentId?.name : 'Giải đấu'})
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </div>
-        )}
 
-        {/* 2. Race Modal */}
-        {showRaceModal && (
-          <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowRaceModal(false) }}>
-            <div className="modal-content">
-              <div className="modal-header">
-                <h3 style={{ color: '#0f172a' }}>🏁 {selectedRace ? 'Chỉnh sửa Cuộc đua' : 'Thêm Cuộc đua mới'}</h3>
-                <button className="modal-close" onClick={() => setShowRaceModal(false)}>✕</button>
+            {loading ? (
+              <p className="muted">Đang tải...</p>
+            ) : filteredPredictions.length === 0 ? (
+              <p className="muted">Không tìm thấy lượt dự đoán nào phù hợp.</p>
+            ) : (
+              <div className="admin-table-wrapper">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Khán giả</th>
+                      <th>Cuộc đua</th>
+                      <th>Ngựa lựa chọn</th>
+                      <th>Số tiền đặt cược (VND)</th>
+                      <th>Tiền thưởng có thể nhận</th>
+                      <th>Trạng thái</th>
+                      <th>Ngày đặt</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPredictions.map((p) => (
+                      <tr key={p.id}>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{p.spectatorId?.fullName || p.spectatorId?.name || 'Khán giả'}</div>
+                          <div className="muted" style={{ fontSize: '12px' }}>{p.spectatorId?.email}</div>
+                        </td>
+                        <td>{p.raceId?.name || 'Cuộc đua'}</td>
+                        <td style={{ fontWeight: 600 }}>{p.horseId?.name || 'Ngựa'}</td>
+                        <td>{p.betAmount?.toLocaleString('vi-VN')} VND</td>
+                        <td style={{ color: 'var(--primary)', fontWeight: 600 }}>
+                          {p.prizeAmount?.toLocaleString('vi-VN')} VND
+                        </td>
+                        <td>
+                          <span className={`badge ${p.status === 'WON' ? 'badge-approved' : p.status === 'LOST' ? 'badge-rejected' : p.status === 'CLOSED' ? 'badge-inactive' : 'badge-pending'}`}>
+                            {p.status === 'WON' ? 'Thắng cược' : p.status === 'LOST' ? 'Thua cược' : p.status === 'CLOSED' ? 'Đã đóng' : p.status === 'PENDING' ? 'Chờ xử lý' : p.status}
+                          </span>
+                        </td>
+                        <td>{p.createdAt ? new Date(p.createdAt).toLocaleDateString('vi-VN') : ''}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <form onSubmit={handleSaveRace}>
-                <div className="modal-body">
-                  <div className="form-group">
-                    <label style={{ color: '#475569' }}>Tên cuộc đua (Ví dụ: Vòng 1 — Nội dung 1200m)</label>
-                    <input type="text" required value={raceForm.name} onChange={(e) => setRaceForm({ ...raceForm, name: e.target.value })} />
-                  </div>
-                  <div className="grid-2">
-                    <div className="form-group">
-                      <label style={{ color: '#475569' }}>Cự ly (Meters)</label>
-                      <input type="number" required value={raceForm.distance} onChange={(e) => setRaceForm({ ...raceForm, distance: parseInt(e.target.value) })} />
-                    </div>
-                    <div className="form-group">
-                      <label style={{ color: '#475569' }}>Số ngựa tối đa</label>
-                      <input type="number" required value={raceForm.maxHorses} onChange={(e) => setRaceForm({ ...raceForm, maxHorses: parseInt(e.target.value) })} />
-                    </div>
-                  </div>
-                  <div className="form-group">
-                    <label style={{ color: '#475569' }}>Ngày giờ bắt đầu</label>
-                    <input type="datetime-local" required value={raceForm.scheduledAt} onChange={(e) => setRaceForm({ ...raceForm, scheduledAt: e.target.value })} />
-                  </div>
-                  <div className="form-group">
-                    <label style={{ color: '#475569' }}>Trọng tài điều hành (Tùy chọn)</label>
-                    <select value={raceForm.refereeId || ''} onChange={(e) => setRaceForm({ ...raceForm, refereeId: e.target.value })}>
-                      <option value="">-- Chưa phân công --</option>
-                      {referees.map((ref) => (
-                        <option key={ref.id} value={ref.id}>
-                          {ref.name} ({ref.email})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <h4 style={{ margin: '14px 0 8px', fontSize: '14px', borderBottom: '1px solid var(--border)', paddingBottom: '4px', color: '#0f172a' }}>Cơ cấu giải thưởng (VND)</h4>
-                  <div className="grid-3">
-                    <div className="form-group">
-                      <label style={{ color: '#475569' }}>Giải Nhất</label>
-                      <input type="number" value={raceForm.prizeFirst} onChange={(e) => setRaceForm({ ...raceForm, prizeFirst: parseInt(e.target.value) })} />
-                    </div>
-                    <div className="form-group">
-                      <label style={{ color: '#475569' }}>Giải Nhì</label>
-                      <input type="number" value={raceForm.prizeSecond} onChange={(e) => setRaceForm({ ...raceForm, prizeSecond: parseInt(e.target.value) })} />
-                    </div>
-                    <div className="form-group">
-                      <label style={{ color: '#475569' }}>Giải Ba</label>
-                      <input type="number" value={raceForm.prizeThird} onChange={(e) => setRaceForm({ ...raceForm, prizeThird: parseInt(e.target.value) })} />
-                    </div>
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn" onClick={() => setShowRaceModal(false)}>Hủy</button>
-                  <button type="submit" className="btn btnPrimary">Lưu</button>
-                </div>
-              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ---------------------------------------------------------
+          MODALS
+          --------------------------------------------------------- */}
+
+      {/* 1. Tournament Modal */}
+      {showTournModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3 className="flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-amber-500" />
+                <span>{selectedTourn ? 'Chỉnh sửa Giải đấu' : 'Thêm Giải đấu mới'}</span>
+              </h3>
+              <button className="modal-close" onClick={() => setShowTournModal(false)}>✕</button>
             </div>
-          </div>
-        )}
-
-        {/* 3. Schedule Link Modal */}
-        {showSchedModal && (
-          <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowSchedModal(false) }}>
-            <div className="modal-content">
-              <div className="modal-header">
-                <h3 style={{ color: '#0f172a' }}>📅 Lập Lịch Cuộc Đua</h3>
-                <button className="modal-close" onClick={() => setShowSchedModal(false)}>✕</button>
-              </div>
-              <form onSubmit={handleSaveSched}>
-                <div className="modal-body">
-                  <p className="muted" style={{ marginBottom: 14 }}>Tạo bản ghi lịch trình chung để các Jockey và Chủ ngựa có thể theo dõi và rút/xác nhận ngựa của họ.</p>
-                  <div className="form-group">
-                    <label style={{ color: '#475569' }}>Tên cuộc đua</label>
-                    <input type="text" readOnly value={schedForm.raceName} />
-                  </div>
-                  <div className="grid-2">
-                    <div className="form-group">
-                      <label style={{ color: '#475569' }}>Địa điểm</label>
-                      <input type="text" required value={schedForm.location} onChange={(e) => setSchedForm({ ...schedForm, location: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                      <label style={{ color: '#475569' }}>Thời gian</label>
-                      <input type="text" readOnly value={new Date(schedForm.scheduledTime).toLocaleString('vi-VN')} />
-                    </div>
-                  </div>
-                  <div className="grid-3">
-                    <div className="form-group">
-                      <label style={{ color: '#475569' }}>Cự ly (m)</label>
-                      <input type="number" readOnly value={schedForm.distance} />
-                    </div>
-                    <div className="form-group">
-                      <label style={{ color: '#475569' }}>Số ngựa tối đa</label>
-                      <input type="number" readOnly value={schedForm.maxParticipants} />
-                    </div>
-                    <div className="form-group">
-                      <label style={{ color: '#475569' }}>Quỹ thưởng (VND)</label>
-                      <input type="number" readOnly value={schedForm.prizePool} />
-                    </div>
-                  </div>
-                  <div className="grid-2">
-                    <div className="form-group">
-                      <label style={{ color: '#475569' }}>Loại hình đua</label>
-                      <select value={schedForm.raceType} onChange={(e) => setSchedForm({ ...schedForm, raceType: e.target.value })}>
-                        <option value="SPRINT">Sprint (Đua tốc độ)</option>
-                        <option value="LONG_DISTANCE">Long Distance (Đua đường dài)</option>
-                        <option value="HANDICAP">Handicap (Đua chấp)</option>
-                        <option value="STEEPLECHASE">Steeplechase (Đua vượt chướng ngại vật)</option>
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label style={{ color: '#475569' }}>Tình trạng đường đua</label>
-                      <select value={schedForm.trackCondition} onChange={(e) => setSchedForm({ ...schedForm, trackCondition: e.target.value })}>
-                        <option value="GOOD">Good (Tốt, khô ráo)</option>
-                        <option value="YIELDING">Yielding (Ẩm nhẹ)</option>
-                        <option value="SOFT">Soft (Mềm, trơn nhẹ)</option>
-                        <option value="HEAVY">Heavy (Sũng nước, lầy)</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn" onClick={() => setShowSchedModal(false)}>Hủy</button>
-                  <button type="submit" className="btn btnPrimary">Tạo lịch thi đấu</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* 4. Assign Referee Modal */}
-        {showRefModal && (
-          <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowRefModal(false) }}>
-            <div className="modal-content">
-              <div className="modal-header">
-                <h3 style={{ color: '#0f172a' }}>⚖️ Phân Công Trọng Tài</h3>
-                <button className="modal-close" onClick={() => setShowRefModal(false)}>✕</button>
-              </div>
+            <form onSubmit={handleSaveTourn}>
               <div className="modal-body">
                 <div className="form-group">
-                  <label style={{ color: '#475569' }}>Chọn Trọng tài điều hành trận đấu</label>
-                  <select value={selectedRefId} onChange={(e) => setSelectedRefId(e.target.value)}>
-                    <option value="">-- Lựa chọn trọng tài --</option>
+                  <label>Tên giải đấu</label>
+                  <input type="text" required value={tournForm.name} onChange={(e) => setTournForm({ ...tournForm, name: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>Mô tả giải đấu</label>
+                  <input type="text" value={tournForm.description} onChange={(e) => setTournForm({ ...tournForm, description: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>Địa điểm tổ chức (Venue)</label>
+                  <input type="text" required value={tournForm.venue} onChange={(e) => setTournForm({ ...tournForm, venue: e.target.value })} />
+                </div>
+                <div className="grid-2">
+                  <div className="form-group">
+                    <label>Ngày bắt đầu</label>
+                    <input type="date" required value={tournForm.startDate} onChange={(e) => setTournForm({ ...tournForm, startDate: e.target.value })} />
+                  </div>
+                  <div className="form-group">
+                    <label>Ngày kết thúc</label>
+                    <input type="date" required value={tournForm.endDate} onChange={(e) => setTournForm({ ...tournForm, endDate: e.target.value })} />
+                  </div>
+                </div>
+                <div className="grid-2">
+                  <div className="form-group">
+                    <label>Tổng tiền thưởng (VND)</label>
+                    <input type="number" required value={tournForm.prizePool} onChange={(e) => setTournForm({ ...tournForm, prizePool: parseInt(e.target.value) })} />
+                  </div>
+                  <div className="form-group">
+                    <label>Số ngựa tối đa</label>
+                    <input type="number" required value={tournForm.maxHorses} onChange={(e) => setTournForm({ ...tournForm, maxHorses: parseInt(e.target.value) })} />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Trạng thái giải đấu</label>
+                  <select value={tournForm.status} onChange={(e) => setTournForm({ ...tournForm, status: e.target.value })}>
+                    <option value="DRAFT">Bản nháp (DRAFT)</option>
+                    <option value="PUBLISHED">Đã công bố (PUBLISHED)</option>
+                    <option value="ONGOING">Đang diễn ra (ONGOING)</option>
+                    <option value="COMPLETED">Đã kết thúc (COMPLETED)</option>
+                    <option value="CANCELLED">Đã hủy (CANCELLED)</option>
+                  </select>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn" onClick={() => setShowTournModal(false)}>Hủy</button>
+                <button type="submit" className="btn btnPrimary">Lưu</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Race Modal */}
+      {showRaceModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3 className="flex items-center gap-2">
+                <Flag className="w-5 h-5 text-emerald-500" />
+                <span>{selectedRace ? 'Chỉnh sửa Cuộc đua' : 'Thêm Cuộc đua mới'}</span>
+              </h3>
+              <button className="modal-close" onClick={() => setShowRaceModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleSaveRace}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>Tên cuộc đua (Ví dụ: Vòng 1 — Nội dung 1200m)</label>
+                  <input type="text" required value={raceForm.name} onChange={(e) => setRaceForm({ ...raceForm, name: e.target.value })} />
+                </div>
+                <div className="grid-2">
+                  <div className="form-group">
+                    <label>Cự ly (Meters)</label>
+                    <input type="number" required value={raceForm.distance} onChange={(e) => setRaceForm({ ...raceForm, distance: parseInt(e.target.value) })} />
+                  </div>
+                  <div className="form-group">
+                    <label>Số ngựa tối đa</label>
+                    <input type="number" required value={raceForm.maxHorses} onChange={(e) => setRaceForm({ ...raceForm, maxHorses: parseInt(e.target.value) })} />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Ngày giờ bắt đầu</label>
+                  <input type="datetime-local" required value={raceForm.scheduledAt} onChange={(e) => setRaceForm({ ...raceForm, scheduledAt: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>Trọng tài điều hành (Tùy chọn)</label>
+                  <select value={raceForm.refereeId || ''} onChange={(e) => setRaceForm({ ...raceForm, refereeId: e.target.value })}>
+                    <option value="">-- Chưa phân công --</option>
                     {referees.map((ref) => (
                       <option key={ref.id} value={ref.id}>
                         {ref.name} ({ref.email})
@@ -1398,179 +1663,302 @@ export function AdminSchedulingPage() {
                     ))}
                   </select>
                 </div>
-              </div>
-              <div className="modal-footer">
-                <button className="btn" onClick={() => setShowRefModal(false)}>Hủy</button>
-                <button className="btn btnPrimary" onClick={handleSaveReferee}>Lưu phân công</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 5. Publish Results Modal */}
-        {showResultModal && resultRace && (
-          <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowResultModal(false) }}>
-            <div className="modal-content modal-content-lg">
-              <div className="modal-header">
-                <h3 style={{ color: '#0f172a' }}>🏆 Công bộ Kết quả: {resultRace.name}</h3>
-                <button className="modal-close" onClick={() => setShowResultModal(false)}>✕</button>
-              </div>
-              <div className="modal-body">
-                <p className="muted" style={{ marginBottom: 12 }}>Vui lòng thiết lập vị trí về đích, thời gian hoàn thành và giải thưởng thực tế cho từng chú ngựa tham gia.</p>
-
-                {raceHorses.length === 0 ? (
-                  <p className="danger-text">Cảnh báo: Không có ngựa nào được xác nhận tham gia cuộc đua này!</p>
-                ) : (
-                  <div className="admin-table-wrapper" style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                    <table className="admin-table">
-                      <thead>
-                        <tr>
-                          <th>Tên ngựa</th>
-                          <th style={{ width: '90px' }}>Thứ hạng</th>
-                          <th style={{ width: '120px' }}>Thời gian về đích (s)</th>
-                          <th>Trạng thái</th>
-                          <th>Tiền thưởng (VND)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {resultRankings.map((rank, idx) => {
-                          const horseObj = raceHorses.find(
-                            (rh: any) => (rh.horse?._id || rh.horse?.id) === rank.horseId
-                          )
-                          return (
-                            <tr key={rank.horseId}>
-                              <td style={{ fontWeight: 600 }}>{horseObj?.horse?.name || 'Ngựa thi đấu'}</td>
-                              <td>
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max={raceHorses.length}
-                                  value={rank.position}
-                                  onChange={(e) => {
-                                    const updated = [...resultRankings]
-                                    updated[idx].position = parseInt(e.target.value)
-                                    setResultRankings(updated)
-                                  }}
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  value={rank.finishTime}
-                                  onChange={(e) => {
-                                    const updated = [...resultRankings]
-                                    updated[idx].finishTime = parseFloat(e.target.value)
-                                    setResultRankings(updated)
-                                  }}
-                                />
-                              </td>
-                              <td>
-                                <select
-                                  value={rank.status}
-                                  onChange={(e) => {
-                                    const updated = [...resultRankings]
-                                    updated[idx].status = e.target.value
-                                    setResultRankings(updated)
-                                  }}
-                                >
-                                  <option value="FINISHED">FINISHED</option>
-                                  <option value="DISQUALIFIED">DISQUALIFIED</option>
-                                  <option value="DNF">DNF (Bỏ cuộc)</option>
-                                </select>
-                              </td>
-                              <td>
-                                <input
-                                  type="number"
-                                  value={rank.prizeAmount}
-                                  onChange={(e) => {
-                                    const updated = [...resultRankings]
-                                    updated[idx].prizeAmount = parseInt(e.target.value)
-                                    setResultRankings(updated)
-                                  }}
-                                />
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
+                <h4 style={{ margin: '14px 0 8px', fontSize: '14px', borderBottom: '1px solid var(--border)', paddingBottom: '4px' }}>Cơ cấu giải thưởng (VND)</h4>
+                <div className="grid-3">
+                  <div className="form-group">
+                    <label>Giải Nhất</label>
+                    <input type="number" value={raceForm.prizeFirst} onChange={(e) => setRaceForm({ ...raceForm, prizeFirst: parseInt(e.target.value) })} />
                   </div>
-                )}
-
-                <div className="form-group" style={{ marginTop: 16 }}>
-                  <label style={{ color: '#475569' }}>Ghi chú chung của cuộc đua</label>
-                  <textarea
-                    style={{ width: '100%', height: '70px', padding: '8px', border: '1px solid var(--border)', borderRadius: '8px' }}
-                    placeholder="Ghi chú về thời tiết, sự cố..."
-                    value={resultNotes}
-                    onChange={(e) => setResultNotes(e.target.value)}
-                  />
+                  <div className="form-group">
+                    <label>Giải Nhì</label>
+                    <input type="number" value={raceForm.prizeSecond} onChange={(e) => setRaceForm({ ...raceForm, prizeSecond: parseInt(e.target.value) })} />
+                  </div>
+                  <div className="form-group">
+                    <label>Giải Ba</label>
+                    <input type="number" value={raceForm.prizeThird} onChange={(e) => setRaceForm({ ...raceForm, prizeThird: parseInt(e.target.value) })} />
+                  </div>
                 </div>
               </div>
               <div className="modal-footer">
-                <button className="btn" onClick={() => setShowResultModal(false)}>Hủy</button>
-                <button className="btn btnPrimary" disabled={raceHorses.length === 0} onClick={handleSaveResult}>Công bố kết quả</button>
+                <button type="button" className="btn" onClick={() => setShowRaceModal(false)}>Hủy</button>
+                <button type="submit" className="btn btnPrimary">Lưu</button>
               </div>
-            </div>
+            </form>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* 6. Prediction Stats Modal */}
-        {showPredStatsModal && predStats && (
-          <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowPredStatsModal(false) }}>
-            <div className="modal-content">
-              <div className="modal-header">
-                <h3 style={{ color: '#0f172a' }}>📊 Thống Kê Dự Đoán Cuộc Đua</h3>
-                <button className="modal-close" onClick={() => setShowPredStatsModal(false)}>✕</button>
-              </div>
+      {/* 3. Schedule Link Modal */}
+      {showSchedModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3 className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-blue-500" />
+                <span>Lập Lịch Cuộc Đua</span>
+              </h3>
+              <button className="modal-close" onClick={() => setShowSchedModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleSaveSched}>
               <div className="modal-body">
-                <div className="flex-between" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '12px' }}>
-                  <div>Tổng số lượt dự đoán:</div>
-                  <div style={{ fontWeight: 700, fontSize: '18px' }}>{predStats.totalPredictions || 0}</div>
+                <p className="muted" style={{ marginBottom: 14 }}>Tạo bản ghi lịch trình chung để các Jockey và Chủ ngựa có thể theo dõi và rút/xác nhận ngựa của họ.</p>
+                <div className="form-group">
+                  <label>Tên cuộc đua</label>
+                  <input type="text" readOnly value={schedForm.raceName} />
                 </div>
-                <div className="flex-between" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '12px' }}>
-                  <div>Tổng số tiền đặt cược:</div>
-                  <div style={{ fontWeight: 700, fontSize: '18px', color: '#0ea5e9' }}>
-                    {(predStats.totalPool || 0).toLocaleString('vi-VN')} VND
+                <div className="grid-2">
+                  <div className="form-group">
+                    <label>Địa điểm</label>
+                    <input type="text" required value={schedForm.location} onChange={(e) => setSchedForm({ ...schedForm, location: e.target.value })} />
+                  </div>
+                  <div className="form-group">
+                    <label>Thời gian</label>
+                    <input type="text" readOnly value={new Date(schedForm.scheduledTime).toLocaleString('vi-VN')} />
                   </div>
                 </div>
+                <div className="grid-3">
+                  <div className="form-group">
+                    <label>Cự ly (m)</label>
+                    <input type="number" readOnly value={schedForm.distance} />
+                  </div>
+                  <div className="form-group">
+                    <label>Số ngựa tối đa</label>
+                    <input type="number" readOnly value={schedForm.maxParticipants} />
+                  </div>
+                  <div className="form-group">
+                    <label>Quỹ thưởng (VND)</label>
+                    <input type="number" readOnly value={schedForm.prizePool} />
+                  </div>
+                </div>
+                <div className="grid-2">
+                  <div className="form-group">
+                    <label>Loại hình đua</label>
+                    <select value={schedForm.raceType} onChange={(e) => setSchedForm({ ...schedForm, raceType: e.target.value })}>
+                      <option value="SPRINT">Sprint (Đua tốc độ)</option>
+                      <option value="LONG_DISTANCE">Long Distance (Đua đường dài)</option>
+                      <option value="HANDICAP">Handicap (Đua chấp)</option>
+                      <option value="STEEPLECHASE">Steeplechase (Đua vượt chướng ngại vật)</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Tình trạng đường đua</label>
+                    <select value={schedForm.trackCondition} onChange={(e) => setSchedForm({ ...schedForm, trackCondition: e.target.value })}>
+                      <option value="GOOD">Good (Tốt, khô ráo)</option>
+                      <option value="YIELDING">Yielding (Ẩm nhẹ)</option>
+                      <option value="SOFT">Soft (Mềm, trơn nhẹ)</option>
+                      <option value="HEAVY">Heavy (Sũng nước, lầy)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn" onClick={() => setShowSchedModal(false)}>Hủy</button>
+                <button type="submit" className="btn btnPrimary">Tạo lịch thi đấu</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
-                <h4 style={{ margin: '16px 0 8px', fontSize: '14px', color: '#0f172a' }}>Chi tiết cược theo ngựa đua:</h4>
-                <div className="admin-table-wrapper">
-                  <table className="admin-table" style={{ fontSize: '13px' }}>
+      {/* 4. Assign Referee Modal */}
+      {showRefModal && (
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowRefModal(false) }}>
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3 className="flex items-center gap-2">
+                <Scale className="w-5 h-5 text-blue-500" />
+                <span>Phân Công Trọng Tài</span>
+              </h3>
+              <button className="modal-close" onClick={() => setShowRefModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Chọn Trọng tài điều hành trận đấu</label>
+                <select value={selectedRefId} onChange={(e) => setSelectedRefId(e.target.value)}>
+                  <option value="">-- Lựa chọn trọng tài --</option>
+                  {referees.map((ref) => (
+                    <option key={ref.id} value={ref.id}>
+                      {ref.name} ({ref.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn" onClick={() => setShowRefModal(false)}>Hủy</button>
+              <button className="btn btnPrimary" onClick={handleSaveReferee}>Lưu phân công</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Publish Results Modal */}
+      {showResultModal && resultRace && (
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowResultModal(false) }}>
+          <div className="modal-content modal-content-lg">
+            <div className="modal-header">
+              <h3 className="flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-amber-500" />
+                <span>Công bố Kết quả: {resultRace.name}</span>
+              </h3>
+              <button className="modal-close" onClick={() => setShowResultModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p className="muted" style={{ marginBottom: 12 }}>Vui lòng thiết lập vị trí về đích, thời gian hoàn thành và giải thưởng thực tế cho từng chú ngựa tham gia.</p>
+
+              {raceHorses.length === 0 ? (
+                <p className="danger-text">Cảnh báo: Không có ngựa nào được xác nhận tham gia cuộc đua này!</p>
+              ) : (
+                <div className="admin-table-wrapper" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                  <table className="admin-table">
                     <thead>
                       <tr>
-                        <th>Ngựa đua</th>
-                        <th>Lượt đặt</th>
-                        <th>Tổng tiền cược</th>
-                        <th>Tỉ lệ %</th>
+                        <th>Tên ngựa</th>
+                        <th style={{ width: '90px' }}>Thứ hạng</th>
+                        <th style={{ width: '120px' }}>Thời gian về đích (s)</th>
+                        <th>Trạng thái</th>
+                        <th>Tiền thưởng (VND)</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {(predStats.breakdown || []).map((b: any) => (
-                        <tr key={b.horseId}>
-                          <td style={{ fontWeight: 600 }}>{b.horseName || b.horseId}</td>
-                          <td>{b.count} lượt</td>
-                          <td>{b.amount?.toLocaleString('vi-VN')} VND</td>
-                          <td>{b.percentage}%</td>
-                        </tr>
-                      ))}
-                      {(predStats.breakdown || []).length === 0 && (
-                        <tr>
-                          <td colSpan={4} className="muted" style={{ textAlign: 'center' }}>Chưa có lượt dự đoán nào cho các ngựa đua.</td>
-                        </tr>
-                      )}
+                      {resultRankings.map((rank, idx) => {
+                        const horseObj = raceHorses.find(
+                          (rh: any) => (rh.horse?._id || rh.horse?.id) === rank.horseId
+                        )
+                        return (
+                          <tr key={rank.horseId}>
+                            <td style={{ fontWeight: 600 }}>{horseObj?.horse?.name || 'Ngựa thi đấu'}</td>
+                            <td>
+                              <input
+                                type="number"
+                                min="1"
+                                max={raceHorses.length}
+                                value={rank.position}
+                                onChange={(e) => {
+                                  const updated = [...resultRankings]
+                                  updated[idx].position = parseInt(e.target.value)
+                                  setResultRankings(updated)
+                                }}
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={rank.finishTime}
+                                onChange={(e) => {
+                                  const updated = [...resultRankings]
+                                  updated[idx].finishTime = parseFloat(e.target.value)
+                                  setResultRankings(updated)
+                                }}
+                              />
+                            </td>
+                            <td>
+                              <select
+                                value={rank.status}
+                                onChange={(e) => {
+                                  const updated = [...resultRankings]
+                                  updated[idx].status = e.target.value
+                                  setResultRankings(updated)
+                                }}
+                              >
+                                <option value="FINISHED">FINISHED</option>
+                                <option value="DISQUALIFIED">DISQUALIFIED</option>
+                                <option value="DNF">DNF (Bỏ cuộc)</option>
+                              </select>
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                value={rank.prizeAmount}
+                                onChange={(e) => {
+                                  const updated = [...resultRankings]
+                                  updated[idx].prizeAmount = parseInt(e.target.value)
+                                  setResultRankings(updated)
+                                }}
+                              />
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
-              </div>
-              <div className="modal-footer">
-                <button className="btn btnPrimary" onClick={() => setShowPredStatsModal(false)}>Đóng</button>
+              )}
+
+              <div className="form-group" style={{ marginTop: 16 }}>
+                <label>Ghi chú chung của cuộc đua</label>
+                <textarea
+                  style={{ width: '100%', height: '70px', padding: '8px', border: '1px solid var(--border)', borderRadius: '8px' }}
+                  placeholder="Ghi chú về thời tiết, sự cố..."
+                  value={resultNotes}
+                  onChange={(e) => setResultNotes(e.target.value)}
+                />
               </div>
             </div>
+            <div className="modal-footer">
+              <button className="btn" onClick={() => setShowResultModal(false)}>Hủy</button>
+              <button className="btn btnPrimary" disabled={raceHorses.length === 0} onClick={handleSaveResult}>Công bố kết quả</button>
+            </div>
           </div>
-        )}
+        </div>
+      )}
+
+      {/* 6. Prediction Stats Modal */}
+      {showPredStatsModal && predStats && (
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowPredStatsModal(false) }}>
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>📊 Thống Kê Dự Đoán Cuộc Đua</h3>
+              <button className="modal-close" onClick={() => setShowPredStatsModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="flex-between" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '12px' }}>
+                <div>Tổng số lượt dự đoán:</div>
+                <div style={{ fontWeight: 700, fontSize: '18px' }}>{predStats.totalPredictions || 0}</div>
+              </div>
+              <div className="flex-between" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '12px' }}>
+                <div>Tổng số tiền đặt cược:</div>
+                <div style={{ fontWeight: 700, fontSize: '18px', color: 'var(--primary)' }}>
+                  {(predStats.totalPool || 0).toLocaleString('vi-VN')} VND
+                </div>
+              </div>
+
+              <h4 style={{ margin: '16px 0 8px', fontSize: '14px' }}>Chi tiết cược theo ngựa đua:</h4>
+              <div className="admin-table-wrapper">
+                <table className="admin-table" style={{ fontSize: '13px' }}>
+                  <thead>
+                    <tr>
+                      <th>Ngựa đua</th>
+                      <th>Lượt đặt</th>
+                      <th>Tổng tiền cược</th>
+                      <th>Tỉ lệ %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(predStats.breakdown || []).map((b: any) => (
+                      <tr key={b.horseId}>
+                        <td style={{ fontWeight: 600 }}>{b.horseName || b.horseId}</td>
+                        <td>{b.count} lượt</td>
+                        <td>{b.amount?.toLocaleString('vi-VN')} VND</td>
+                        <td>{b.percentage}%</td>
+                      </tr>
+                    ))}
+                    {(predStats.breakdown || []).length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="muted" style={{ textAlign: 'center' }}>Chưa có lượt dự đoán nào cho các ngựa đua.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btnPrimary" onClick={() => setShowPredStatsModal(false)}>Đóng</button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </>
   )
@@ -1580,40 +1968,40 @@ export function AdminSchedulingPage() {
 // INNER COMPONENT: RACELIST FOR TOURNAMENT
 // ---------------------------------------------------------
 function RaceList({
-  tournamentId,
+  races,
   onEditRace,
   onSchedule,
+  onRefresh,
+  lastModifiedRaceId,
 }: {
-  tournamentId: string
+  races: Race[]
   onEditRace: (race: Race) => void
   onSchedule: (race: Race) => void
+  onRefresh: (highlightRaceId?: string) => void
+  lastModifiedRaceId?: string | null
 }) {
-  const [races, setRaces] = useState<Race[]>([])
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    loadRaces()
-  }, [tournamentId])
-
-  const loadRaces = () => {
-    setLoading(true)
-    getRaces(tournamentId)
-      .then(setRaces)
-      .catch(() => setRaces([]))
-      .finally(() => setLoading(false))
-  }
-
   const handleQuickStatusChange = async (id: string, newStatus: string) => {
     try {
       await updateRace(id, { status: newStatus } as any)
-      loadRaces()
+      onRefresh(id)
     } catch (err: any) {
       alert(err.response?.data?.message || 'Không thể đổi trạng thái cuộc đua')
     }
   }
 
-  if (loading) return <p className="muted" style={{ fontSize: '13px' }}>Đang tải danh sách cuộc đua...</p>
   if (races.length === 0) return <p className="muted" style={{ fontSize: '13px', fontStyle: 'italic' }}>Chưa có cuộc đua nào được thiết lập cho giải đấu này.</p>
+
+  const sortedRaces = [...races].sort((a, b) => {
+    const aId = a.id || a._id
+    const bId = b.id || b._id
+    if (lastModifiedRaceId) {
+      if (aId === lastModifiedRaceId) return -1
+      if (bId === lastModifiedRaceId) return 1
+    }
+    const dateA = a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0
+    const dateB = b.scheduledAt ? new Date(b.scheduledAt).getTime() : 0
+    return dateA - dateB
+  })
 
   return (
     <div className="admin-table-wrapper" style={{ margin: 0 }}>
@@ -1630,7 +2018,7 @@ function RaceList({
           </tr>
         </thead>
         <tbody>
-          {races.map((r) => (
+          {sortedRaces.map((r) => (
             <tr key={r.id}>
               <td style={{ fontWeight: 600 }}>{r.name}</td>
               <td>{r.distance}m</td>
@@ -1665,10 +2053,10 @@ function RaceList({
                       r.status === 'CANCELLED' ? '#dc2626' : '#2563eb',
                   }}
                 >
-                  <option value="SCHEDULED">⏰ Đã lên lịch</option>
-                  <option value="ONGOING">🏁 Đang diễn ra</option>
-                  <option value="COMPLETED">✅ Hoàn thành</option>
-                  <option value="CANCELLED">❌ Đã hủy</option>
+                  <option value="SCHEDULED">Đã lên lịch</option>
+                  <option value="ONGOING">Đang diễn ra</option>
+                  <option value="COMPLETED">Hoàn thành</option>
+                  <option value="CANCELLED">Đã hủy</option>
                 </select>
               </td>
               <td style={{ textAlign: 'right' }}>
@@ -1695,13 +2083,17 @@ function RaceList({
 // INNER COMPONENT: PREDICTION RACE LIST
 // ---------------------------------------------------------
 function PredictionRaceList({
+  predictions,
   onClosePred,
   onSettlePred,
   onViewStats,
+  lastModifiedRaceId,
 }: {
+  predictions: any[]
   onClosePred: (raceId: string) => void
   onSettlePred: (raceId: string) => void
   onViewStats: (raceId: string) => void
+  lastModifiedRaceId?: string | null
 }) {
   const [races, setRaces] = useState<Race[]>([])
   const [loading, setLoading] = useState(false)
@@ -1717,6 +2109,18 @@ function PredictionRaceList({
   if (loading) return <p className="muted">Đang tải danh sách cuộc đua đặt cược...</p>
   if (races.length === 0) return <p className="muted">Không có cuộc đua nào để cược.</p>
 
+  const sortedRaces = [...races].sort((a, b) => {
+    const aId = a.id || a._id
+    const bId = b.id || b._id
+    if (lastModifiedRaceId) {
+      if (aId === lastModifiedRaceId) return -1
+      if (bId === lastModifiedRaceId) return 1
+    }
+    const dateA = a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0
+    const dateB = b.scheduledAt ? new Date(b.scheduledAt).getTime() : 0
+    return dateB - dateA
+  })
+
   return (
     <div className="admin-table-wrapper" style={{ margin: 0 }}>
       <table className="admin-table" style={{ fontSize: '13px' }}>
@@ -1725,39 +2129,65 @@ function PredictionRaceList({
             <th>Cuộc đua / Giải đấu</th>
             <th>Thời gian thi đấu</th>
             <th>Trạng thái đua</th>
-            <th style={{ textAlign: 'right' }}>Cổng dự đoán (Betting Controls)</th>
+            <th>Lượt cược</th>
+            <th>Tổng tiền cược</th>
+            <th>Đã trả thưởng</th>
+            <th>Lợi nhuận</th>
+            <th style={{ textAlign: 'right' }}>Thao tác cổng cược</th>
           </tr>
         </thead>
         <tbody>
-          {races.map((r) => {
+          {sortedRaces.map((r) => {
             const isCompleted = r.status === 'COMPLETED'
+            const racePreds = predictions.filter(p => {
+              const rId = typeof p.raceId === 'object' ? p.raceId?._id || p.raceId?.id : p.raceId
+              return rId === r.id
+            })
+            const betCount = racePreds.length
+            const totalBets = racePreds.reduce((sum, p) => sum + (p.betAmount || 0), 0)
+            const totalPayouts = racePreds.filter(p => p.status === 'WON').reduce((sum, p) => sum + (p.prizeAmount || p.payout || 0), 0)
+            const profit = totalBets - totalPayouts
+
             return (
               <tr key={r.id}>
                 <td>
-                  <div style={{ fontWeight: 600 }}>{r.name}</div>
+                  <div style={{ fontWeight: 600, color: 'var(--text)' }}>{r.name}</div>
                   <div className="muted" style={{ fontSize: '11px' }}>
                     Giải: {typeof r.tournamentId === 'object' ? r.tournamentId.name : 'Giải đua ngựa'}
                   </div>
                 </td>
                 <td>{new Date(r.scheduledAt).toLocaleString('vi-VN')}</td>
                 <td>
-                  <span className={`badge ${r.status === 'COMPLETED' ? 'badge-approved' : r.status === 'ONGOING' ? 'badge-ongoing' : 'badge-scheduled'}`}>
-                    {r.status}
+                  <span className={`badge ${r.status === 'COMPLETED' ? 'badge-approved' : r.status === 'ONGOING' ? 'badge-ongoing' : r.status === 'CANCELLED' ? 'badge-rejected' : 'badge-scheduled'}`}>
+                    {r.status === 'COMPLETED' ? 'Kết thúc' : r.status === 'ONGOING' ? 'Đang diễn ra' : r.status === 'CANCELLED' ? 'Đã hủy' : r.status === 'SCHEDULED' ? 'Đã lên lịch' : r.status}
                   </span>
+                </td>
+                <td style={{ fontWeight: 600 }}>{betCount}</td>
+                <td style={{ fontWeight: 700, color: '#f59e0b' }}>
+                  {totalBets.toLocaleString('vi-VN')} đ
+                </td>
+                <td style={{ fontWeight: 700, color: '#10b981' }}>
+                  {totalPayouts.toLocaleString('vi-VN')} đ
+                </td>
+                <td style={{ fontWeight: 700, color: profit >= 0 ? '#10b981' : '#ef4444' }}>
+                  {profit > 0 ? '+' : ''}{profit.toLocaleString('vi-VN')} đ
                 </td>
                 <td style={{ textAlign: 'right' }}>
                   <div style={{ display: 'inline-flex', gap: 6 }}>
-                    <button className="btn" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onViewStats(r.id)}>
-                      📊 Xem thống kê cược
+                    <button className="btn flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onViewStats(r.id)}>
+                      <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Chi tiết</span>
                     </button>
                     {!isCompleted && (
-                      <button className="btn" style={{ fontSize: '12px', padding: '4px 8px', color: '#d97706' }} onClick={() => onClosePred(r.id)}>
-                        🔒 Đóng cổng cược
+                      <button className="btn flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px', color: '#d97706' }} onClick={() => onClosePred(r.id)}>
+                        <Lock className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Đóng cổng</span>
                       </button>
                     )}
                     {isCompleted && (
-                      <button className="btn btnPrimary" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onSettlePred(r.id)}>
-                        🪙 Trả thưởng (Settle)
+                      <button className="btn btnPrimary flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onSettlePred(r.id)}>
+                        <Coins className="w-3.5 h-3.5 text-white" />
+                        <span>Trả thưởng</span>
                       </button>
                     )}
                   </div>

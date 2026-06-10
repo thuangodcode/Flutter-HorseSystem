@@ -3,14 +3,13 @@ import type { NotificationItem } from '../../types'
 import { getMyNotifications } from '@/api'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { getNotificationTypeLabel } from '@/lib/status'
 import { NumberCounter } from '@/components/ui/number-counter'
 import { ScrollReveal } from '@/components/ui/scroll-text'
-import { Magnetic } from '@/components/ui/magnetic'
-import { BellRing, Clock3, RefreshCw } from 'lucide-react'
+import { BellRing, Clock3, RefreshCw, Search } from 'lucide-react'
+import '@/styles/spectator.css'
 
 function formatDate(d: string) {
   const date = new Date(d)
@@ -74,19 +73,17 @@ export function NotificationsPage() {
       .finally(() => setLoading(false))
   }, [reloadKey])
 
-  const unreadCount = items.filter((notification) => !notification.isRead).length
+  const unreadCount = items.filter((n) => !n.isRead).length
 
   const filteredItems = [...items]
-    .filter((notification) => {
-      if (filter === 'unread' && notification.isRead) return false
-      if (filter === 'read' && !notification.isRead) return false
-
+    .filter((n) => {
+      if (filter === 'unread' && n.isRead) return false
+      if (filter === 'read' && !n.isRead) return false
       if (searchQuery.trim() !== '') {
         const query = searchQuery.toLowerCase()
-        if (!notification.message?.toLowerCase().includes(query)) return false
+        if (!n.message?.toLowerCase().includes(query)) return false
       }
-
-      return isWithinWindow(notification.createdAt, timeFilter)
+      return isWithinWindow(n.createdAt, timeFilter)
     })
     .sort((a, b) => {
       const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
@@ -94,138 +91,135 @@ export function NotificationsPage() {
     })
 
   return (
-    <div className="space-y-6">
-      <ScrollReveal direction="up" distance={60} duration={0.8} delay={0.1}>
-        <Card className="border-border bg-(--surface) shadow-2xl">
-          <CardHeader className="gap-4 md:flex-row md:items-end md:justify-between">
-            <div className="space-y-3">
-              <div className="flex items-start gap-4">
-                <div className="rounded-2xl bg-blue-500/10 p-3 ring-1 ring-blue-500/20">
-                   <BellRing className="h-7 w-7 text-blue-300" />
+    <div className="space-y-8">
+
+      {/* ══ Hero Header ══ */}
+      <ScrollReveal direction="up" distance={40} duration={0.7} delay={0.05}>
+        <div className="spectator-hero">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-4 relative z-10">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-blue-500/15 ring-1 ring-blue-500/25 flex items-center justify-center">
+                  <BellRing className="w-7 h-7 text-blue-400" />
                 </div>
-                <div className="space-y-1">
-                  <CardTitle className="text-3xl text-(--text) font-black">Thông báo</CardTitle>
-                  <CardDescription className="max-w-2xl text-muted font-bold">
-                    Lọc theo trạng thái đọc, thời gian và thứ tự để cập nhật thông báo nhanh hơn.
-                  </CardDescription>
+                <div>
+                  <h1 className="text-3xl font-black text-[var(--text)] tracking-tight m-0">Thông báo</h1>
+                  <p className="text-sm text-[var(--muted)] font-medium mt-1">
+                    Cập nhật tin tức, kết quả dự đoán và thông báo hệ thống.
+                  </p>
                 </div>
               </div>
+
               <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="font-black border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-200">Tổng <NumberCounter value={items.length} duration={1.2} easing="easeOut" /></Badge>
-                <Badge variant="outline" className="font-black border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-200"><NumberCounter value={unreadCount} duration={1.2} delay={0.1} easing="easeOut" /> chưa đọc</Badge>
-                <Badge variant="outline" className="font-black border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-200">Đã đọc <NumberCounter value={items.length - unreadCount} duration={1.2} delay={0.2} easing="easeOut" /></Badge>
+                <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-blue-400 font-bold">
+                  Tổng <NumberCounter value={items.length} duration={1} easing="easeOut" />
+                </Badge>
+                <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-400 font-bold">
+                  <NumberCounter value={unreadCount} duration={1} delay={0.1} easing="easeOut" /> chưa đọc
+                </Badge>
               </div>
             </div>
 
-            <div className="flex w-full flex-wrap items-center gap-3 md:justify-end">
-              <Input
-                type="text"
-                placeholder="Tìm kiếm thông báo..."
-                value={searchQuery}
-                onChange={(e: any) => setSearchQuery(e.target.value)}
-                className="h-11 w-56 border-border bg-(--bg2) text-(--text) font-bold placeholder:text-(--muted)/50 focus:border-blue-500/50"
-              />
+            {/* Controls */}
+            <div className="flex flex-wrap items-center gap-2 relative z-10">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted)]" />
+                <Input
+                  type="text"
+                  placeholder="Tìm kiếm..."
+                  value={searchQuery}
+                  onChange={(e: any) => setSearchQuery(e.target.value)}
+                  className="h-9 w-48 pl-9 border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] font-medium placeholder:text-[var(--muted)]/40 text-sm"
+                />
+              </div>
+              <Select value={timeFilter} onValueChange={(value: any) => setTimeFilter(value ?? 'all')}>
+                <SelectTrigger className="h-9 w-40 border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] font-semibold text-sm">
+                  {getOptionLabel(TIME_OPTIONS, timeFilter)}
+                </SelectTrigger>
+                <SelectContent>
+                  {TIME_OPTIONS.map((option: any) => (
+                    <SelectItem key={option.value} value={option.value} className="font-semibold">{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value ?? 'newest')}>
+                <SelectTrigger className="h-9 w-32 border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] font-semibold text-sm">
+                  {getOptionLabel(SORT_OPTIONS, sortOrder)}
+                </SelectTrigger>
+                <SelectContent>
+                  {SORT_OPTIONS.map((option: any) => (
+                    <SelectItem key={option.value} value={option.value} className="font-semibold">{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
-                variant={filter === 'all' ? 'default' : 'outline'}
-                className={`h-11 min-w-30 whitespace-nowrap font-bold ${filter === 'all' ? 'bg-amber-500 text-slate-950 hover:bg-amber-400' : 'border-border bg-(--bg2) text-(--text) hover:bg-(--surface-strong)/50'}`}
-                onClick={() => setFilter('all')}
+                variant="outline"
+                className="h-9 font-semibold border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] hover:bg-[var(--surface-3)] gap-2 text-sm"
+                onClick={() => setReloadKey(reloadKey + 1)}
               >
-                Tất cả
+                <RefreshCw className="h-3.5 w-3.5" />
+                Làm mới
               </Button>
-              <Button
-                variant={filter === 'unread' ? 'default' : 'outline'}
-              className={`h-11 min-w-30 whitespace-nowrap font-bold ${filter === 'unread' ? 'bg-amber-500 text-slate-950 hover:bg-amber-400' : 'border-border bg-(--bg2) text-(--text) hover:bg-(--surface-strong)/50'}`}
-              onClick={() => setFilter('unread')}
-            >
-              Chưa đọc
-            </Button>
-            <Button
-              variant={filter === 'read' ? 'default' : 'outline'}
-              className={`h-11 min-w-30 whitespace-nowrap font-bold ${filter === 'read' ? 'bg-amber-500 text-slate-950 hover:bg-amber-400' : 'border-border bg-(--bg2) text-(--text) hover:bg-(--surface-strong)/50'}`}
-              onClick={() => setFilter('read')}
-            >
-              Đã đọc
-            </Button>
-
-            <Select value={timeFilter} onValueChange={(value: any) => setTimeFilter(value ?? 'all')}>
-              <SelectTrigger className="h-11 w-45 shrink-0 border-border bg-(--bg2) text-(--text) font-bold">
-                {getOptionLabel(TIME_OPTIONS, timeFilter)}
-              </SelectTrigger>
-              <SelectContent>
-                {TIME_OPTIONS.map((option: any) => (
-                  <SelectItem key={option.value} value={option.value} className="font-bold">{option.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value ?? 'newest')}>
-              <SelectTrigger className="h-11 w-45 shrink-0 border-border bg-(--bg2) text-(--text) font-bold">
-                {getOptionLabel(SORT_OPTIONS, sortOrder)}
-              </SelectTrigger>
-              <SelectContent>
-                {SORT_OPTIONS.map((option: any) => (
-                  <SelectItem key={option.value} value={option.value} className="font-bold">{option.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Button
-              variant="outline"
-              className="h-11 min-w-30 whitespace-nowrap font-bold border-border bg-(--bg2) text-(--text) hover:bg-(--surface-strong)/50"
-              onClick={() => setReloadKey(reloadKey + 1)}
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Làm mới
-            </Button>
+            </div>
           </div>
-        </CardHeader>
-      </Card>
+
+          {/* Filter Pills */}
+          <div className="flex flex-wrap gap-2 mt-5">
+            <button className={`spectator-filter-pill ${filter === 'all' ? 'spectator-filter-pill-active' : ''}`} onClick={() => setFilter('all')}>
+              Tất cả
+            </button>
+            <button className={`spectator-filter-pill ${filter === 'unread' ? 'spectator-filter-pill-active' : ''}`} onClick={() => setFilter('unread')}>
+              Chưa đọc ({unreadCount})
+            </button>
+            <button className={`spectator-filter-pill ${filter === 'read' ? 'spectator-filter-pill-active' : ''}`} onClick={() => setFilter('read')}>
+              Đã đọc
+            </button>
+          </div>
+        </div>
       </ScrollReveal>
 
+      {/* ══ Notification List ══ */}
       {loading ? (
-        <div className="loading"><div className="spinner" /></div>
+        <div className="space-y-3">
+          {[...Array(5)].map((_, i) => <div key={i} className="spectator-shimmer h-20 w-full" />)}
+        </div>
       ) : filteredItems.length === 0 ? (
-        <Card className="border-border bg-(--surface)">
-          <CardContent className="py-14 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/10 text-3xl">🔔</div>
-            <div className="text-lg font-black text-(--text)">
-              {filter === 'unread' ? 'Không có thông báo chưa đọc' : filter === 'read' ? 'Không có thông báo đã đọc' : 'Chưa có thông báo nào'}
-            </div>
-            <p className="mt-2 text-sm text-muted font-bold">Hãy thay đổi bộ lọc hoặc kiểm tra lại sau.</p>
-          </CardContent>
-        </Card>
+        <div className="spectator-empty">
+          <div className="spectator-empty-icon">🔔</div>
+          <div className="text-lg font-bold text-[var(--text)]">
+            {filter === 'unread' ? 'Không có thông báo chưa đọc' : filter === 'read' ? 'Không có thông báo đã đọc' : 'Chưa có thông báo nào'}
+          </div>
+          <p className="mt-2 text-sm text-[var(--muted)] font-medium">Hãy thay đổi bộ lọc hoặc kiểm tra lại sau.</p>
+        </div>
       ) : (
         <div className="space-y-3">
           {filteredItems.map((notification, index) => (
-            <ScrollReveal key={notification._id} direction="up" distance={60} duration={0.7} delay={index * 0.1}>
-              <Magnetic intensity={0.3} range={120}>
-                <Card
-                  className={`border-border bg-(--surface) transition-all duration-300 hover:-translate-y-0.5 hover:border-blue-500/40 cursor-pointer ${!notification.isRead ? 'ring-1 ring-amber-500/20' : ''}`}
-                >
-                  <CardContent className="flex items-start gap-4 p-4">
-                    <div className={`mt-1.5 h-3 w-3 rounded-full ${notification.isRead ? 'bg-slate-500' : 'bg-amber-400'}`} />
-                    <div className="min-w-0 flex-1 space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="text-sm font-bold text-(--text)">{notification.message}</div>
-                        <Badge variant="outline" className={notification.isRead ? 'font-bold border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-200' : 'font-bold border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-200'}>
-                          {notification.isRead ? 'Đã đọc' : 'Chưa đọc'}
-                        </Badge>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-muted font-bold">
-                        <span className="flex items-center gap-1 font-bold">
-                          <Clock3 className="h-3.5 w-3.5" />
-                          {formatDate(notification.createdAt)}
-                        </span>
-                        {notification.type && (
-                          <Badge variant="outline" className="font-bold border-border bg-(--bg2)/60 text-(--text)">
-                            {getNotificationTypeLabel(notification.type)}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Magnetic>
+            <ScrollReveal key={notification._id} direction="up" distance={30} duration={0.5} delay={index * 0.04}>
+              <div className={`spectator-notification ${!notification.isRead ? 'spectator-notification-unread' : ''}`}>
+                <div className={`spectator-notification-dot ${notification.isRead ? 'spectator-notification-dot-read' : 'spectator-notification-dot-unread'}`} />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="flex flex-wrap items-start gap-2">
+                    <p className="text-sm font-semibold text-[var(--text)] flex-1">{notification.message}</p>
+                    <Badge variant="outline" className={notification.isRead
+                      ? 'font-semibold border-slate-500/20 bg-slate-500/8 text-slate-400 text-[10px]'
+                      : 'font-semibold border-amber-500/25 bg-amber-500/10 text-amber-400 text-[10px]'
+                    }>
+                      {notification.isRead ? 'Đã đọc' : 'Mới'}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--muted)]">
+                    <span className="flex items-center gap-1 font-medium">
+                      <Clock3 className="h-3 w-3" />
+                      {formatDate(notification.createdAt)}
+                    </span>
+                    {notification.type && (
+                      <Badge variant="outline" className="font-medium border-[var(--border)] bg-transparent text-[var(--muted)] text-[10px]">
+                        {getNotificationTypeLabel(notification.type)}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
             </ScrollReveal>
           ))}
         </div>

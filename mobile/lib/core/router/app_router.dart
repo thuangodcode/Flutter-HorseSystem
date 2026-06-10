@@ -17,26 +17,28 @@ import '../../screens/referee_races_screen.dart';
 import '../../screens/referee_report_screen.dart';
 import '../../screens/register_screen.dart';
 import '../../screens/tournaments_screen.dart';
+import '../../screens/welcome_screen.dart';
 
 typedef AppRouter = GoRouter;
 
 AppRouter createAppRouter(AuthController auth) {
   return GoRouter(
-    initialLocation: auth.isAuthenticated ? '/home' : '/login',
+    initialLocation: auth.isAuthenticated ? '/home' : '/',
     refreshListenable: auth,
     redirect: (context, state) {
       final path = state.uri.path;
-      final isAuthRoute = path == '/login' || path == '/register';
+      final isPublicRoute = path == '/' || path == '/login' || path == '/register';
 
       if (!auth.booted) return null;
-      if (!auth.isAuthenticated && !isAuthRoute) return '/login';
-      if (auth.isAuthenticated && isAuthRoute) return '/home';
+      if (!auth.isAuthenticated && !isPublicRoute) return '/';
+      if (auth.isAuthenticated && isPublicRoute) return '/home';
       return null;
     },
     routes: [
       GoRoute(
         path: '/',
-        redirect: (context, state) => auth.isAuthenticated ? '/home' : '/login',
+        name: 'Welcome',
+        builder: (context, state) => const WelcomeScreen(),
       ),
       GoRoute(
         path: '/login',

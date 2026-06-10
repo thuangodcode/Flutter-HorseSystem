@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState, startTransition } from 'react'
+import { useEffect, useRef, useState, startTransition, useMemo } from 'react'
 import type { Role, User } from '../../types'
 import { getAdminUsers, updateUserRole, toggleUserStatus, deleteUser } from '@/api'
+import { AnimatedTable, type ColumnDef, type SortDirection } from '@/components/ui/animated-table'
+import { Users, CheckCircle, Lock, Search, Key, Trash2, Unlock, MoreHorizontal, AlertTriangle } from 'lucide-react'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -94,32 +96,44 @@ function ActionMenu({
   return (
     <div className="dropdown-wrapper" ref={ref}>
       <button
-        className="btn btn-sm btn-ghost btn-icon"
+        className="btn btn-sm btn-ghost btn-icon flex items-center justify-center p-0"
         onClick={() => setOpen((o) => !o)}
         title="Tác vụ"
       >
-        ⋯
+        <MoreHorizontal className="w-4 h-4" />
       </button>
       {open && (
         <div className="dropdown-menu">
           <button
-            className="dropdown-item"
+            className="dropdown-item flex items-center gap-2"
             onClick={() => { setOpen(false); onEditRole() }}
           >
-            🔑 Phân quyền
+            <Key className="w-3.5 h-3.5 text-blue-400" />
+            <span>Phân quyền</span>
           </button>
           <button
-            className="dropdown-item"
+            className="dropdown-item flex items-center gap-2"
             onClick={() => { setOpen(false); onToggle() }}
           >
-            {user.status === 'ACTIVE' ? '🔒 Khóa tài khoản' : '🔓 Mở khóa'}
+            {user.status === 'ACTIVE' ? (
+              <>
+                <Lock className="w-3.5 h-3.5 text-amber-500" />
+                <span>Khóa tài khoản</span>
+              </>
+            ) : (
+              <>
+                <Unlock className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Mở khóa</span>
+              </>
+            )}
           </button>
           <div className="dropdown-divider" />
           <button
-            className="dropdown-item dropdown-item-danger"
+            className="dropdown-item dropdown-item-danger flex items-center gap-2"
             onClick={() => { setOpen(false); onDelete() }}
           >
-            🗑️ Xóa tài khoản
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Xóa tài khoản</span>
           </button>
         </div>
       )}
@@ -145,16 +159,46 @@ export function AdminUsersPage() {
 
   // Toast
   const { toasts, show: showToast } = useToast()
+  const [lastModifiedUserId, setLastModifiedUserId] = useState<string | null>(null)
 
-  const fetchUsers = () => {
+  // Sorting state
+  const [sortColumn, setSortColumn] = useState<string | undefined>()
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null)
+
+  // Pagination state
+  const [page, setPage] = useState<number>(1)
+  const [pageSize, setPageSize] = useState<number>(10)
+
+  const handleSort = (columnId: string, direction: SortDirection) => {
+    setSortColumn(columnId)
+    setSortDirection(direction)
+  }
+
+  const fetchUsers = (highlightId?: string) => {
     setLoading(true)
     setError(null)
+    const targetId = highlightId || lastModifiedUserId
     getAdminUsers({
       search: search || undefined,
       role: roleFilter || undefined,
       status: statusFilter || undefined,
+      limit: 100
     })
-      .then((data) => { setUsers(data); setLoading(false) })
+      .then((data) => { 
+        const sorted = [...data].sort((a, b) => {
+          const aId = a.id || a._id
+          const bId = b.id || b._id
+          if (targetId) {
+            if (aId === targetId) return -1
+            if (bId === targetId) return 1
+          }
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+          return dateB - dateA
+        })
+        setUsers(sorted)
+        setLoading(false) 
+      })
       .catch((err) => {
         setError(err.response?.data?.message || err.message || 'Lỗi khi tải danh sách người dùng')
         setLoading(false)
@@ -171,8 +215,9 @@ export function AdminUsersPage() {
     if (!window.confirm(`${isActive ? 'Khóa' : 'Mở khóa'} tài khoản của ${user.name}?`)) return
     try {
       await toggleUserStatus(user.id, !isActive)
+      setLastModifiedUserId(user.id)
       showToast(`Đã ${isActive ? 'khóa' : 'mở khóa'} tài khoản ${user.name}`)
-      fetchUsers()
+      fetchUsers(user.id)
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Có lỗi xảy ra', 'error')
     }
@@ -194,13 +239,126 @@ export function AdminUsersPage() {
     if (!editingUser || !selectedRole) return
     try {
       await updateUserRole(editingUser.id, selectedRole)
+      setLastModifiedUserId(editingUser.id)
       showToast(`Đã phân quyền ${roleLabel(selectedRole)} cho ${editingUser.name}`)
       setEditingUser(null)
-      fetchUsers()
+      fetchUsers(editingUser.id)
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Có lỗi xảy ra', 'error')
     }
   }
+
+  // Memoized columns definition for AnimatedTable
+  const columns = useMemo<ColumnDef<User>[]>(() => [
+    {
+      id: 'name',
+      header: 'Người dùng',
+      sortable: true,
+      cell: (row) => (
+        <div className="flex-gap-8 items-center" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div className={`avatar ${avatarColorClass(row.role)}`}>
+            {getInitials(row.name)}
+          </div>
+          <div>
+            <div className="font-semibold text-[var(--text)]">{row.name}</div>
+            <div className="muted text-xs">{row.email}</div>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'role',
+      header: 'Vai trò',
+      sortable: true,
+      cell: (row) => (
+        <span className={`badge ${roleBadgeClass(row.role)}`}>
+          {roleLabel(row.role)}
+        </span>
+      )
+    },
+    {
+      id: 'status',
+      header: 'Trạng thái',
+      sortable: true,
+      cell: (row) => (
+        <span className={`badge ${row.status === 'ACTIVE' ? 'badge-approved' : 'badge-rejected'}`}>
+          {row.status === 'ACTIVE' ? '● Hoạt động' : '○ Đã khóa'}
+        </span>
+      )
+    },
+    // {
+    //   id: 'phone',
+    //   header: 'Số điện thoại',
+    //   sortable: true,
+    //   cell: (row) => <span className="muted text-sm">{row.phone || '—'}</span>
+    // },
+    {
+      id: 'createdAt',
+      header: 'Ngày tạo',
+      sortable: true,
+      cell: (row) => (
+        <span className="muted text-sm">
+          {row.createdAt ? new Date(row.createdAt).toLocaleDateString('vi-VN') : '—'}
+        </span>
+      )
+    },
+    {
+      id: 'actions',
+      header: '',
+      align: 'right',
+      cell: (row) => (
+        <ActionMenu
+          user={row}
+          onEditRole={() => { setEditingUser(row); setSelectedRole(row.role) }}
+          onToggle={() => handleToggleStatus(row)}
+          onDelete={() => handleDeleteUser(row)}
+        />
+      )
+    }
+  ], [setEditingUser, setSelectedRole, handleToggleStatus, handleDeleteUser])
+
+  // Memoized sorted users list
+  const sortedUsers = useMemo(() => {
+    if (!users) return null
+    if (!sortColumn || !sortDirection) return users
+
+    return [...users].sort((a, b) => {
+      let aVal: any = a[sortColumn as keyof User]
+      let bVal: any = b[sortColumn as keyof User]
+
+      if (sortColumn === 'name') {
+        aVal = a.name
+        bVal = b.name
+      } else if (sortColumn === 'createdAt') {
+        aVal = a.createdAt ? new Date(a.createdAt).getTime() : 0
+        bVal = b.createdAt ? new Date(b.createdAt).getTime() : 0
+      }
+
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return sortDirection === 'asc'
+          ? aVal.localeCompare(bVal, 'vi')
+          : bVal.localeCompare(aVal, 'vi')
+      }
+
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        return sortDirection === 'asc' ? aVal - bVal : bVal - aVal
+      }
+
+      return 0
+    })
+  }, [users, sortColumn, sortDirection])
+
+  // Memoized paginated users list
+  const paginatedUsers = useMemo(() => {
+    if (!sortedUsers) return []
+    const start = (page - 1) * pageSize
+    return sortedUsers.slice(start, start + pageSize)
+  }, [sortedUsers, page, pageSize])
+
+  // Reset pagination page when data source changes
+  useEffect(() => {
+    setPage(1)
+  }, [users])
 
   // Stats
   const total = users?.length ?? 0
@@ -219,7 +377,7 @@ export function AdminUsersPage() {
         ))}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
         {/* Header */}
         <div className="flex-between">
           <div>
@@ -230,26 +388,37 @@ export function AdminUsersPage() {
 
         {/* Stat Cards */}
         <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-          <div className="stat-card stat-card-primary">
-            <div className="stat-icon">👥</div>
-            <div className="stat-value">{loading ? '—' : total}</div>
-            <div className="stat-label">Tổng tài khoản</div>
+          <div className="stat-card flex items-center gap-4">
+            <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
+              <Users className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="stat-value" style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>{loading ? '—' : total}</div>
+              <div className="stat-label" style={{ fontSize: 11, fontWeight: 700 }}>Tổng tài khoản</div>
+            </div>
           </div>
-          <div className="stat-card stat-card-info">
-            <div className="stat-icon">✅</div>
-            <div className="stat-value">{loading ? '—' : activeCount}</div>
-            <div className="stat-label">Đang hoạt động</div>
+          <div className="stat-card flex items-center gap-4">
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+              <CheckCircle className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="stat-value" style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>{loading ? '—' : activeCount}</div>
+              <div className="stat-label" style={{ fontSize: 11, fontWeight: 700 }}>Đang hoạt động</div>
+            </div>
           </div>
-          <div className="stat-card stat-card-danger">
-            <div className="stat-icon">🔒</div>
-            <div className="stat-value">{loading ? '—' : inactiveCount}</div>
-            <div className="stat-label">Đã khóa</div>
+          <div className="stat-card flex items-center gap-4">
+            <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+              <Lock className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="stat-value" style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>{loading ? '—' : inactiveCount}</div>
+              <div className="stat-label" style={{ fontSize: 11, fontWeight: 700 }}>Đã khóa</div>
+            </div>
           </div>
         </div>
 
-        {/* Filter bar */}
-        <div className="card" style={{ padding: '14px 18px' }}>
-          <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <div className="card w-full" style={{ padding: '20px 24px' }}>
+          <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div style={{ flex: '2 1 260px' }}>
               <label style={{ marginBottom: 4 }}>Tìm kiếm</label>
               <input
@@ -278,8 +447,9 @@ export function AdminUsersPage() {
                 <option value="INACTIVE">Đã khóa</option>
               </select>
             </div>
-            <button type="submit" className="btn btnPrimary" style={{ height: 40, alignSelf: 'flex-end' }}>
-              🔍 Tìm kiếm
+            <button type="submit" className="btn btnPrimary flex items-center gap-1.5" style={{ height: 40, alignSelf: 'flex-end' }}>
+              <Search className="w-4 h-4" />
+              <span>Tìm kiếm</span>
             </button>
           </form>
         </div>
@@ -291,85 +461,29 @@ export function AdminUsersPage() {
           </div>
         )}
 
-        {/* Table */}
-        <div className="card" style={{ padding: 0 }}>
-          {loading ? (
-            <div style={{ padding: '8px 0' }}>
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
-                  <div className="skeleton" style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0 }} />
-                  <div style={{ flex: 1 }}>
-                    <div className="skeleton skeleton-text" style={{ width: '40%' }} />
-                    <div className="skeleton skeleton-text-sm" style={{ width: '60%' }} />
-                  </div>
-                  <div className="skeleton" style={{ width: 72, height: 22, borderRadius: 99 }} />
-                  <div className="skeleton" style={{ width: 72, height: 22, borderRadius: 99 }} />
-                  <div className="skeleton" style={{ width: 32, height: 32, borderRadius: 8 }} />
-                </div>
-              ))}
-            </div>
-          ) : !users || users.length === 0 ? (
-            <div className="empty-state">
+        {/* Modern Animated Table */}
+        <AnimatedTable
+          data={paginatedUsers}
+          columns={columns}
+          loading={loading}
+          sortColumn={sortColumn}
+          sortDirection={sortDirection}
+          onSort={handleSort}
+          emptyMessage={
+            <div className="empty-state" style={{ padding: '20px 0' }}>
               <span className="empty-state-icon">👤</span>
               <div className="empty-state-title">Không tìm thấy người dùng</div>
               <p className="empty-state-desc">Thử thay đổi bộ lọc tìm kiếm</p>
             </div>
-          ) : (
-            <div className="admin-table-wrapper" style={{ border: 'none', borderRadius: 0, boxShadow: 'none' }}>
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Người dùng</th>
-                    <th>Vai trò</th>
-                    <th>Trạng thái</th>
-                    <th>Số điện thoại</th>
-                    <th>Ngày tạo</th>
-                    <th style={{ textAlign: 'right' }}>Tác vụ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((u) => (
-                    <tr key={u.id}>
-                      <td>
-                        <div className="flex-gap-8">
-                          <div className={`avatar ${avatarColorClass(u.role)}`}>
-                            {getInitials(u.name)}
-                          </div>
-                          <div>
-                            <div className="font-semibold" style={{ color: 'var(--text)' }}>{u.name}</div>
-                            <div className="muted text-xs">{u.email}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`badge ${roleBadgeClass(u.role)}`}>
-                          {roleLabel(u.role)}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`badge ${u.status === 'ACTIVE' ? 'badge-approved' : 'badge-rejected'}`}>
-                          {u.status === 'ACTIVE' ? '● Hoạt động' : '○ Đã khóa'}
-                        </span>
-                      </td>
-                      <td className="muted text-sm">{u.phone || '—'}</td>
-                      <td className="muted text-sm">
-                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : '—'}
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <ActionMenu
-                          user={u}
-                          onEditRole={() => { setEditingUser(u); setSelectedRole(u.role) }}
-                          onToggle={() => handleToggleStatus(u)}
-                          onDelete={() => handleDeleteUser(u)}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+          }
+          pagination={{
+            page,
+            pageSize,
+            totalItems: sortedUsers?.length || 0,
+            onPageChange: setPage,
+            onPageSizeChange: (size) => { setPageSize(size); setPage(1); }
+          }}
+        />
 
         {/* Row count */}
         {users && users.length > 0 && (
@@ -407,16 +521,17 @@ export function AdminUsersPage() {
               <div className="form-group">
                 <label>Chọn vai trò mới</label>
                 <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value as Role)}>
-                  <option value="SPECTATOR">👁️ Spectator — Xem & Dự đoán</option>
-                  <option value="OWNER">🐎 Horse Owner — Quản lý ngựa</option>
-                  <option value="JOCKEY">🏇 Jockey — Kỵ sĩ thi đấu</option>
-                  <option value="REFEREE">⚖️ Referee — Trọng tài</option>
+                  <option value="SPECTATOR">Spectator (Khán giả) — Xem & Dự đoán</option>
+                  <option value="OWNER">Horse Owner (Chủ ngựa) — Quản lý ngựa</option>
+                  <option value="JOCKEY">Jockey (Nài ngựa) — Kỵ sĩ thi đấu</option>
+                  <option value="REFEREE">Referee (Trọng tài) — Trọng tài</option>
                 </select>
               </div>
 
               {selectedRole && selectedRole !== editingUser.role && (
-                <div style={{ padding: '10px 14px', background: 'var(--warning-light)', borderRadius: 'var(--radius)', fontSize: 13, color: '#92400e' }}>
-                  ⚠️ Đang thay đổi từ <strong>{roleLabel(editingUser.role)}</strong> → <strong>{roleLabel(selectedRole)}</strong>
+                <div className="flex items-center gap-2" style={{ padding: '10px 14px', background: 'var(--warning-light)', borderRadius: 'var(--radius)', fontSize: 13, color: '#92400e' }}>
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Đang thay đổi từ <strong>{roleLabel(editingUser.role)}</strong> → <strong>{roleLabel(selectedRole)}</strong></span>
                 </div>
               )}
             </div>

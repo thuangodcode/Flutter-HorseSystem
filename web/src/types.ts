@@ -59,6 +59,7 @@ export type Horse = {
   healthCertUrl?: string
   status?: 'PENDING' | 'APPROVED' | 'REJECTED'
   ownerId?: any
+  createdAt?: string
 }
 
 export type Jockey = {
@@ -74,6 +75,7 @@ export type Jockey = {
   specialties: string[]
   wins: number
   races: number
+  createdAt?: string
 }
 
 export type Invite = {
@@ -87,7 +89,9 @@ export type Invite = {
   raceId?: any
   raceName?: string
   raceDistance?: number
+  raceScheduledAt?: string
   ownerId?: any
+  ownerName?: string
   message?: string
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'DECLINED'
   sentAt?: string
@@ -98,10 +102,15 @@ export type RaceRegistration = {
   id: string
   _id?: string
   horseId: any
+  horseName?: string
+  horseBreed?: string
   raceId: any
+  raceName?: string
+  ownerName?: string
   status: 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'CONFIRMED'
   confirmedByOwner: boolean
   createdAt?: string
+  rejectionReason?: string
 }
 
 export type Prediction = {
@@ -155,6 +164,9 @@ export type LeaderboardEntry = {
 export type RaceHorseRegistration = RaceRegistration & {
   horse?: Horse
   registrationStatus?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CONFIRMED'
+  jockeyId?: any
+  jockey?: any
+  jockeyName?: string
 }
 
 export type Violation = {

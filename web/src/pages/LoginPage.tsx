@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useSession } from '../auth/SessionContext'
+import type { Role } from '../types'
 import axios from 'axios'
 
 export function LoginPage() {
@@ -18,7 +19,8 @@ export function LoginPage() {
     setLoading(true)
     setError(null)
     try {
-      await login({ email, password })
+      const defaultRole: Role = 'SPECTATOR'
+      await login({ email, password, role: defaultRole })
       navigate('/app')
     } catch (err: any) {
       if (axios.isAxiosError(err) && err.response) {
@@ -86,10 +88,10 @@ export function LoginPage() {
       <div className="glow-sphere-1"></div>
       <div className="glow-sphere-2"></div>
 
-      <div className="glass-darker w-full max-w-5xl rounded-[2rem] overflow-hidden grid grid-cols-1 lg:grid-cols-12 relative z-10">
+      <div className="glass-darker w-full max-w-6xl rounded-4xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 relative z-10">
         
         {/* Left Side Info Panel */}
-        <div className="lg:col-span-5 bg-gradient-to-br from-sky-600 via-sky-800 to-slate-900 p-8 md:p-12 text-white flex flex-col justify-between relative overflow-hidden">
+        <div className="lg:col-span-4 bg-linear-to-br from-sky-600 via-sky-800 to-slate-900 p-8 md:p-12 text-white flex flex-col justify-between relative overflow-hidden">
           {/* Subtle details */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl pointer-events-none"></div>
           
@@ -130,68 +132,63 @@ export function LoginPage() {
         </div>
 
         {/* Right Side Form Panel */}
-        <div className="lg:col-span-7 bg-white p-8 md:p-12 flex flex-col justify-center" style={{ backgroundColor: '#ffffff' }}>
+        <div className="lg:col-span-8 bg-white p-10 md:p-14 flex flex-col justify-center" style={{ backgroundColor: '#ffffff' }}>
           <div className="mb-8">
-            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2" style={{ color: '#0f172a' }}>Đăng Nhập</h2>
-            <p className="text-slate-500 text-sm font-medium" style={{ color: '#64748b' }}>Điền thông tin tài khoản của bạn để đăng nhập</p>
+            <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-3" style={{ color: '#0f172a', letterSpacing: '-0.01em' }}>Đăng Nhập</h2>
+            <p className="text-slate-500 text-base font-medium" style={{ color: '#64748b' }}>Điền thông tin tài khoản của bạn để đăng nhập</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-8">
 
             {/* Email */}
             <div className="space-y-1.5">
               <span className="block text-xs font-bold text-slate-700 uppercase tracking-wider" style={{ color: '#475569' }}>
                 Email
               </span>
-              <div className="relative rounded-xl shadow-sm">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400" style={{ color: '#94a3b8' }}>
+              <div className="flex items-center rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                <div className="flex h-14 w-14 items-center justify-center text-slate-500 border-r border-slate-200 bg-slate-50" style={{ color: '#94a3b8' }}>
                   <span className="material-symbols-outlined text-lg" data-icon="mail">mail</span>
-                </span>
+                </div>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@domain.com"
-                  className="block w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all text-sm font-medium text-slate-900"
+                  className="flex-1 min-w-0 px-4 py-4 text-base font-normal text-slate-900 focus:outline-none"
                   style={{
                     color: '#0f172a',
-                    backgroundColor: '#f8fafc',
-                    borderColor: '#e2e8f0',
-                    paddingLeft: '40px',
+                    backgroundColor: '#ffffff',
                   }}
                 />
               </div>
             </div>
 
-            {/* Password */}
             <div className="space-y-1.5">
               <span className="block text-xs font-bold text-slate-700 uppercase tracking-wider" style={{ color: '#475569' }}>
                 Mật Khẩu
               </span>
-              <div className="relative rounded-xl shadow-sm">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400" style={{ color: '#94a3b8' }}>
+              <div className="flex items-center rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                <div className="flex h-14 w-14 items-center justify-center text-slate-500 border-r border-slate-200 bg-slate-50" style={{ color: '#94a3b8' }}>
                   <span className="material-symbols-outlined text-lg" data-icon="lock">lock</span>
-                </span>
+                </div>
                 <input
                   type={showPass ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="block w-full pl-10 pr-12 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 transition-all text-sm font-medium text-slate-900"
+                  className="flex-1 min-w-0 px-4 py-4 text-base font-normal text-slate-900 focus:outline-none"
                   style={{
                     color: '#0f172a',
-                    backgroundColor: '#f8fafc',
-                    borderColor: '#e2e8f0',
-                    paddingLeft: '40px',
+                    backgroundColor: '#ffffff',
                   }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPass(!showPass)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                  style={{ color: '#94a3b8', background: 'transparent', border: 'none' }}
+                  className="h-14 w-14 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+                  style={{ background: 'transparent', border: 'none' }}
                 >
                   <span className="material-symbols-outlined text-lg">
                     {showPass ? 'visibility_off' : 'visibility'}
@@ -202,17 +199,18 @@ export function LoginPage() {
 
             {/* Error Message */}
             {error && (
-              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-semibold animate-shake">
+              <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm font-semibold animate-shake">
                 <span className="material-symbols-outlined text-lg" data-icon="error">error</span>
                 <span>{error}</span>
               </div>
             )}
 
             {/* Submit Button */}
+            <div>
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 px-4 bg-sky-500 hover:bg-sky-600 active:scale-[0.98] text-white rounded-xl font-bold transition-all shadow-lg shadow-sky-500/20 flex items-center justify-center gap-2 disabled:bg-slate-300 disabled:shadow-none disabled:cursor-not-allowed"
+              className="w-full py-4 px-4 bg-sky-500 hover:bg-sky-600 active:scale-[0.98] text-white rounded-2xl font-semibold transition-all shadow-lg shadow-sky-500/20 flex items-center justify-center gap-3 disabled:bg-slate-300 disabled:shadow-none disabled:cursor-not-allowed mb-4"
               style={{
                 color: '#ffffff',
                 border: 'none',
@@ -231,9 +229,10 @@ export function LoginPage() {
                 </>
               )}
             </button>
-          </form>
+              </div>
+            </form>
 
-          <p className="text-center text-xs font-semibold text-slate-500 mt-8" style={{ color: '#64748b' }}>
+            <p className="text-center text-sm font-semibold text-slate-500 mt-6" style={{ color: '#64748b' }}>
             Chưa có tài khoản?{' '}
             <Link to="/register" className="text-sky-500 hover:text-sky-600 no-underline font-bold transition-colors">Đăng ký ngay →</Link>
           </p>

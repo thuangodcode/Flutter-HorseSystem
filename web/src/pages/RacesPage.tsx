@@ -4,15 +4,15 @@ import { getPublicRaces } from '@/api'
 import { Badge } from '@/components/ui/badge'
 import type { DateRange } from '@/components/ui/calendar'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import SpotlightCard from '@/components/ui/spotlight-card'
+import { Card, CardContent } from '@/components/ui/card'
+import { SpotlightCard } from '@/components/ui/spotlight-card'
 import { DropdownMenu, DropdownMenuItem } from '@/components/ui/dropdown'
 import { Input } from '@/components/ui/input'
 import { getStatusClassName, getStatusLabel, RACE_STATUS_OPTIONS } from '@/lib/status'
 import { NumberCounter } from '@/components/ui/number-counter'
 import { ScrollReveal } from '@/components/ui/scroll-text'
 import { Magnetic } from '@/components/ui/magnetic'
-import { Clock3, Filter, RefreshCw, Route } from 'lucide-react'
+import { Clock3, RefreshCw, Search, ChevronDown, Ruler, Users, Award, Trophy } from 'lucide-react'
 const TIME_OPTIONS = [
   { value: 'all', label: 'Tất cả thời gian' },
   { value: 'upcoming', label: 'Sắp diễn ra' },
@@ -39,6 +39,11 @@ function statusBadge(s: string) {
 
 function formatDateTime(d: string) {
   return new Date(d).toLocaleString('vi-VN')
+}
+
+function formatMoney(n?: number) {
+  if (n === undefined || n === null) return '—'
+  return n.toLocaleString('vi-VN') + ' VND'
 }
 
 export function RacesPage() {
@@ -121,49 +126,52 @@ export function RacesPage() {
   return (
     <div className="space-y-6">
       <ScrollReveal direction="up" distance={60} duration={0.8} delay={0.1}>
-        <SpotlightCard className="card-hover">
-          <CardHeader className="gap-5 md:flex-row md:items-end md:justify-between">
-            <div className="space-y-3">
+        <SpotlightCard>
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between p-6">
+            <div className="space-y-4">
               <div className="flex items-start gap-4">
-                <div className="rounded-2xl bg-amber-500/10 p-3 ring-1 ring-amber-500/20">
-                  <Route className="h-7 w-7 text-amber-500" />
+                <div className="rounded-2xl bg-amber-500/10 p-3 ring-1 ring-amber-500/20 shrink-0">
+                  <img src="/race.gif" className="h-7 w-7 object-contain" alt="Cuộc đua" />
                 </div>
                 <div className="space-y-1">
-                  <CardTitle className="text-3xl text-[var(--text)]">Cuộc đua</CardTitle>
-                  <CardDescription className="max-w-2xl text-[var(--muted)]">
-                  </CardDescription>
+                  <div className="text-3xl font-black text-[var(--text)] tracking-tight">Cuộc đua</div>
+                  <div className="max-w-2xl text-sm font-semibold text-[var(--muted)]">Theo dõi các cuộc đua theo trạng thái và thời gian diễn ra.</div>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-300">
+                <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-300 font-semibold px-2.5 py-1 text-xs">
                   Tổng <NumberCounter value={items.length} duration={1.2} easing="easeOut" />
                 </Badge>
-                <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300">
+                <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 font-semibold px-2.5 py-1 text-xs">
                   Đang diễn ra <NumberCounter value={liveCount} duration={1.2} delay={0.1} easing="easeOut" />
                 </Badge>
-                <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-300">
+                <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-300 font-semibold px-2.5 py-1 text-xs">
                   Sắp diễn ra <NumberCounter value={upcomingCount} duration={1.2} delay={0.2} easing="easeOut" />
                 </Badge>
-                <Badge variant="outline" className="border-[var(--border)] bg-[var(--bg2)] text-[var(--muted)]">
+                <Badge variant="outline" className="border-[var(--border)] bg-[var(--bg2)] text-[var(--muted)] font-semibold px-2.5 py-1 text-xs">
                   Đã hoàn tất <NumberCounter value={completedCount} duration={1.2} delay={0.3} easing="easeOut" />
                 </Badge>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <Input
-                type="text"
-                placeholder="Tìm kiếm cuộc đua..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-11 w-56 border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] font-semibold placeholder:text-[var(--muted)]/50 focus:border-amber-500/50"
-              />
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--muted)]/50 pointer-events-none" />
+                <Input
+                  type="text"
+                  placeholder="Tìm kiếm cuộc đua..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-11 w-60 pl-10 border border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] text-sm font-semibold placeholder:text-[var(--muted)]/40 focus:border-amber-500/50 rounded-xl"
+                />
+              </div>
 
               <DropdownMenu
                 trigger={
-                  <div className="h-11 w-[180px] flex items-center px-3 border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] rounded-md">
-                    {getOptionLabel(RACE_STATUS_OPTIONS, statusFilter)}
-                  </div>
+                  <button className="h-11 w-[180px] flex items-center justify-between px-4 border border-[var(--border)] bg-[var(--bg2)] hover:bg-[var(--surface-strong)] text-[var(--text)] text-sm font-semibold rounded-xl transition-all cursor-pointer">
+                    <span className="truncate">{getOptionLabel(RACE_STATUS_OPTIONS, statusFilter)}</span>
+                    <ChevronDown className="h-4 w-4 text-[var(--muted)]/60 shrink-0 ml-2" />
+                  </button>
                 }
               >
                 {RACE_STATUS_OPTIONS.map((option) => (
@@ -175,9 +183,10 @@ export function RacesPage() {
 
               <DropdownMenu
                 trigger={
-                  <div className="h-11 w-[180px] flex items-center px-3 border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] rounded-md">
-                    {getOptionLabel(TIME_OPTIONS, timeFilter)}
-                  </div>
+                  <button className="h-11 w-[180px] flex items-center justify-between px-4 border border-[var(--border)] bg-[var(--bg2)] hover:bg-[var(--surface-strong)] text-[var(--text)] text-sm font-semibold rounded-xl transition-all cursor-pointer">
+                    <span className="truncate">{getOptionLabel(TIME_OPTIONS, timeFilter)}</span>
+                    <ChevronDown className="h-4 w-4 text-[var(--muted)]/60 shrink-0 ml-2" />
+                  </button>
                 }
               >
                 {TIME_OPTIONS.map((option) => (
@@ -187,31 +196,12 @@ export function RacesPage() {
                   ))}
                 </DropdownMenu>
 
-                {/* <AnimatedCalendar
-                  mode="single"
-                  value={selectedDate}
-                  onChange={(d) => {
-                    setSelectedDate(d as Date | undefined)
-                    setDateRange(undefined)
-                  }}
-                  placeholder="Chọn ngày"
-                  className="h-11 w-[200px] border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] rounded-md"
-                />
-                {selectedDate && (
-                  <Button
-                    variant="ghost"
-                    className="ml-2 h-11 px-3"
-                    onClick={() => setSelectedDate(undefined)}
-                  >
-                    Bỏ chọn
-                  </Button>
-                )} */}
-
               <DropdownMenu
                 trigger={
-                  <div className="h-11 w-[180px] flex items-center px-3 border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] rounded-md">
-                    {getOptionLabel(SORT_OPTIONS, sortOrder)}
-                  </div>
+                  <button className="h-11 w-[180px] flex items-center justify-between px-4 border border-[var(--border)] bg-[var(--bg2)] hover:bg-[var(--surface-strong)] text-[var(--text)] text-sm font-semibold rounded-xl transition-all cursor-pointer">
+                    <span className="truncate">{getOptionLabel(SORT_OPTIONS, sortOrder)}</span>
+                    <ChevronDown className="h-4 w-4 text-[var(--muted)]/60 shrink-0 ml-2" />
+                  </button>
                 }
               >
                 {SORT_OPTIONS.map((option) => (
@@ -223,7 +213,7 @@ export function RacesPage() {
 
               <Button
                 variant="outline"
-                className="h-11 border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] hover:bg-[var(--surface-strong)]"
+                className="h-11 border border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] hover:bg-[var(--surface-strong)] rounded-xl font-semibold px-4 cursor-pointer"
                 onClick={() => {
                   setReloadKey((value) => value + 1);
                   setDateRange(undefined);
@@ -233,7 +223,7 @@ export function RacesPage() {
                 Làm mới
               </Button>
             </div>
-          </CardHeader>
+          </div>
         </SpotlightCard>
       </ScrollReveal>
 
@@ -244,7 +234,7 @@ export function RacesPage() {
           <div className="spinner" />
         </div>
       ) : filteredItems.length === 0 ? (
-        <Card className="border-[var(--border)] bg-[var(--surface)]">
+        <Card className="border-[var(--border)] bg-[var(--surface)] rounded-2xl">
           <CardContent className="py-14 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-3xl">
               🏇
@@ -259,40 +249,69 @@ export function RacesPage() {
             <ScrollReveal key={race._id} direction="up" distance={60} duration={0.7} delay={index * 0.1}>
               <Link to={`/races/${race._id}`} className="group block">
                 <Magnetic intensity={0.3} range={120}>
-                  <SpotlightCard className="card-hover">
-                    <Card className="h-full border-[var(--border)] bg-[var(--surface)] transition-all duration-300 group-hover:-translate-y-1 group-hover:border-amber-500/40 group-hover:shadow-xl group-hover:shadow-amber-500/10 cursor-pointer">
-                      <CardHeader className="space-y-3 border-b border-[var(--border)] pb-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <CardTitle className="text-xl text-[var(--text)] group-hover:text-amber-500">{race.name}</CardTitle>
-                      <CardDescription className="text-[var(--muted)]">
-                        {race.tournamentId?.name || 'Giải đấu độc lập'}
-                      </CardDescription>
+                  <SpotlightCard className="group-hover:-translate-y-1.5 transition-all duration-300">
+                    <div className="p-6 space-y-5">
+                      <div className="border-b border-white/[0.06] pb-4 flex items-start justify-between gap-4">
+                        <div className="space-y-1.5 min-w-0 flex-1">
+                          <div className="text-lg font-black text-[var(--text)] group-hover:text-amber-400 transition-colors duration-200 truncate leading-snug">
+                            {race.name}
+                          </div>
+                          <div className="text-xs text-[var(--muted)]/70 font-bold flex items-center gap-1.5">
+                            <Trophy className="h-3.5 w-3.5 text-amber-500/80 shrink-0" />
+                            <span className="truncate">{race.tournamentId?.name || 'Giải đấu độc lập'}</span>
+                          </div>
+                        </div>
+                        <div className="shrink-0 pt-0.5">
+                          {statusBadge(race.status)}
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+                        {/* Widget 1: Thời gian */}
+                        <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] border border-white/[0.04] p-3 transition-all hover:bg-white/[0.04] hover:border-white/[0.08]">
+                          <div className="h-9 w-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                            <Clock3 className="h-4.5 w-4.5 text-amber-400" />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-[10px] uppercase font-extrabold tracking-wider text-[var(--muted)]/40 leading-none mb-1">Thời gian</span>
+                            <span className="text-xs font-bold text-[var(--text)] truncate leading-normal">{formatDateTime(race.scheduledAt)}</span>
+                          </div>
+                        </div>
+
+                        {/* Widget 2: Cự ly */}
+                        <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] border border-white/[0.04] p-3 transition-all hover:bg-white/[0.04] hover:border-white/[0.08]">
+                          <div className="h-9 w-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+                            <Ruler className="h-4.5 w-4.5 text-blue-400" />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-[10px] uppercase font-extrabold tracking-wider text-[var(--muted)]/40 leading-none mb-1">Cự ly</span>
+                            <span className="text-xs font-bold text-[var(--text)] truncate leading-normal">{race.distance ? `${race.distance}m` : 'Chưa xác định'}</span>
+                          </div>
+                        </div>
+
+                        {/* Widget 3: Giới hạn ngựa */}
+                        <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] border border-white/[0.04] p-3 transition-all hover:bg-white/[0.04] hover:border-white/[0.08]">
+                          <div className="h-9 w-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                            <Users className="h-4.5 w-4.5 text-emerald-400" />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-[10px] uppercase font-extrabold tracking-wider text-[var(--muted)]/40 leading-none mb-1">Giới hạn ngựa</span>
+                            <span className="text-xs font-bold text-[var(--text)] truncate leading-normal">{race.maxHorses ? `Tối đa ${race.maxHorses} ngựa` : 'Không giới hạn'}</span>
+                          </div>
+                        </div>
+
+                        {/* Widget 4: Giải thưởng nhất */}
+                        <div className="flex items-center gap-3 rounded-xl bg-white/[0.02] border border-white/[0.04] p-3 transition-all hover:bg-white/[0.04] hover:border-white/[0.08]">
+                          <div className="h-9 w-9 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
+                            <Award className="h-4.5 w-4.5 text-purple-400" />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-[10px] uppercase font-extrabold tracking-wider text-[var(--muted)]/40 leading-none mb-1">Giải nhất</span>
+                            <span className="text-xs font-bold text-amber-400 truncate leading-normal">{race.prizeFirst ? formatMoney(race.prizeFirst) : 'Chưa cập nhật'}</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    {statusBadge(race.status)}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-4">
-                  <div className="grid gap-2 text-sm text-[var(--muted)] sm:grid-cols-2">
-                    <div className="flex items-center gap-2 rounded-lg bg-[var(--bg2)] px-3 py-2">
-                      <Clock3 className="h-4 w-4 text-amber-500" />
-                      <span>{formatDateTime(race.scheduledAt)}</span>
-                    </div>
-                    <div className="flex items-center gap-2 rounded-lg bg-[var(--bg2)] px-3 py-2">
-                      <Filter className="h-4 w-4 text-blue-500" />
-                      <span>{race.distance ? `${race.distance}m` : 'Chưa có cự ly'}</span>
-                    </div>
-                    <div className="flex items-center gap-2 rounded-lg bg-[var(--bg2)] px-3 py-2">
-                      <span className="text-amber-500">🏆</span>
-                      <span>{race.tournamentId?.name || 'Không thuộc giải đấu'}</span>
-                    </div>
-                    <div className="flex items-center gap-2 rounded-lg bg-[var(--bg2)] px-3 py-2">
-                      <span className="text-emerald-500">🐴</span>
-                      <span>{race.maxHorses ? `Tối đa ${race.maxHorses} ngựa` : 'Chưa giới hạn'}</span>
-                    </div>
-                  </div>
-                </CardContent>
-                      </Card>
                   </SpotlightCard>
                 </Magnetic>
               </Link>
