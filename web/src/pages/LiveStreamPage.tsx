@@ -127,12 +127,12 @@ export function LiveStreamPage() {
           </div>
         ) : liveRaces.length === 0 ? (
           <SpotlightCard>
-            <div className="py-16 text-center space-y-3">
-              <div className="mx-auto h-16 w-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-3xl">
+            <div className="py-16 flex flex-col items-center justify-center text-center gap-3">
+              <div className="h-16 w-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-3xl">
                 📺
               </div>
               <div className="text-lg font-black text-[var(--text)]">Chưa có cuộc đua nào đang live</div>
-              <p className="text-sm font-semibold text-[var(--muted)] max-w-sm mx-auto">
+              <p className="text-sm font-semibold text-[var(--muted)] max-w-sm">
                 Các cuộc đua đang diễn ra sẽ xuất hiện ở đây. Trang sẽ tự động cập nhật sau 30 giây.
               </p>
             </div>
