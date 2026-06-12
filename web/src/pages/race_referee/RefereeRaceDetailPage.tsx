@@ -5,7 +5,7 @@ import {
   getPublicRace, getRefereeRaceHorses, getRefereeViolations,
   createViolation, resolveViolation, confirmRaceResult, getRaceResults,
 } from '@/api'
-import { AnimatedTable, type ColumnDef, type SortDirection } from '../../components/ui/animated-table'
+import { AnimatedTable, type SortDirection } from '../../components/ui/animated-table'
 import { FileText, Clock3, Ruler, Users, AlertTriangle, ClipboardCheck, Eye, ShieldAlert, Trophy, ChevronLeft, Plus, Scale } from 'lucide-react'
 import { getStatusClassName, getStatusLabel } from '@/lib/status'
 
@@ -72,10 +72,6 @@ export function RefereeRaceDetailPage() {
   const [horsesFilters, setHorsesFilters] = useState<Record<string, string>>({})
   const [horsesPage, setHorsesPage] = useState(1)
 
-  const [resultsSortColumn, setResultsSortColumn] = useState<string | undefined>()
-  const [resultsSortDirection, setResultsSortDirection] = useState<SortDirection>(null)
-  const [resultsFilters, setResultsFilters] = useState<Record<string, string>>({})
-  const [resultsPage, setResultsPage] = useState(1)
 
   const [violationsSortColumn, setViolationsSortColumn] = useState<string | undefined>()
   const [violationsSortDirection, setViolationsSortDirection] = useState<SortDirection>(null)
@@ -266,7 +262,7 @@ export function RefereeRaceDetailPage() {
       header: 'Tên ngựa',
       sortable: true,
       filterable: true,
-      filterType: 'text',
+      filterType: 'text' as const,
       cell: (h: RaceHorseRegistration) => {
         const horse = (h.horse || h) as any
         return <span className="fw-700">{horse.name}</span>
@@ -277,7 +273,7 @@ export function RefereeRaceDetailPage() {
       header: 'Giống',
       sortable: true,
       filterable: true,
-      filterType: 'text',
+      filterType: 'text' as const,
       cell: (h: RaceHorseRegistration) => {
         const horse = (h.horse || h) as any
         return horse.breed || '—'
@@ -333,7 +329,7 @@ export function RefereeRaceDetailPage() {
       header: 'Trạng thái ĐK',
       sortable: true,
       filterable: true,
-      filterType: 'select',
+      filterType: 'select' as const,
       filterOptions: [
         { label: 'Chờ duyệt', value: 'PENDING' },
         { label: 'Đã duyệt', value: 'APPROVED' },
@@ -389,7 +385,7 @@ export function RefereeRaceDetailPage() {
       header: 'Ngựa',
       sortable: true,
       filterable: true,
-      filterType: 'text',
+      filterType: 'text' as const,
       cell: (r: RaceResult) => <span className="fw-600">{r.horseId?.name || '—'}</span>,
     },
     {
@@ -397,7 +393,7 @@ export function RefereeRaceDetailPage() {
       header: 'Nài ngựa',
       sortable: true,
       filterable: true,
-      filterType: 'text',
+      filterType: 'text' as const,
       cell: (r: RaceResult) => r.jockeyId?.fullName || r.jockeyId?.name || '—',
     },
     {
@@ -420,7 +416,7 @@ export function RefereeRaceDetailPage() {
       header: 'Loại',
       sortable: true,
       filterable: true,
-      filterType: 'select',
+      filterType: 'select' as const,
       filterOptions: [
         { label: 'Xuất phát lỗi', value: 'FALSE_START' },
         { label: 'Cản trở', value: 'INTERFERENCE' },
@@ -455,7 +451,7 @@ export function RefereeRaceDetailPage() {
       header: 'Hình phạt',
       sortable: true,
       filterable: true,
-      filterType: 'select',
+      filterType: 'select' as const,
       filterOptions: [
         { label: 'Cảnh cáo', value: 'WARNING' },
         { label: 'Truất quyền', value: 'DISQUALIFY' },
@@ -485,7 +481,7 @@ export function RefereeRaceDetailPage() {
       header: 'Trạng thái',
       sortable: true,
       filterable: true,
-      filterType: 'select',
+      filterType: 'select' as const,
       filterOptions: [
         { label: 'Mở', value: 'OPEN' },
         { label: 'Đã giải quyết', value: 'RESOLVED' },

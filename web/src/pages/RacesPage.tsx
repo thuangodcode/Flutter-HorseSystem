@@ -121,8 +121,7 @@ export function RacesPage() {
       return true
     })
     .sort((a, b) => {
-      const now = Date.now()
-      // "nearest" = upcoming first (sorted by how close to now), then live, then completed
+      // "nearest" = LIVE first, then upcoming, then completed
       if (sortOrder === 'nearest') {
         const statusOrder = (r: any) => {
           if (['ONGOING', 'LIVE'].includes(r.status)) return 0

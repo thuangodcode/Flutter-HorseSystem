@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollReveal } from '@/components/ui/scroll-text'
 import { Magnetic } from '@/components/ui/magnetic'
 import { useAnimatedToast } from '@/components/ui/animated-toast'
-import { AnimatedTable, type ColumnDef, type SortDirection } from '@/components/ui/animated-table'
+import { AnimatedTable, type SortDirection } from '@/components/ui/animated-table'
 import { CalendarRange, Search, Trophy, Activity, FileCheck, Check, X, Users, History, TrendingUp, AlertTriangle, Edit, Trash2, Plus, ShieldCheck } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
