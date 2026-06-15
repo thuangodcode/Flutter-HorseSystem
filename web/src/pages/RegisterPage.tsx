@@ -4,12 +4,6 @@ import type { Role } from '../types'
 import { useSession } from '../auth/SessionContext'
 import axios from 'axios'
 
-const roleOptions: Array<{ value: Role; label: string; icon: string; desc: string }> = [
-  { value: 'OWNER', label: 'Chủ Ngựa', icon: '👑', desc: 'Quản lý chiến mã' },
-  { value: 'JOCKEY', label: 'Jockey', icon: '🏇', desc: 'Vận động viên' },
-  { value: 'REFEREE', label: 'Trọng Tài', icon: '⚖️', desc: 'Giám sát cuộc đua' },
-  { value: 'SPECTATOR', label: 'Người Xem', icon: '👀', desc: 'Theo dõi' },
-]
 
 export function RegisterPage() {
   const { register } = useSession()
@@ -19,7 +13,7 @@ export function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [role, setRole] = useState<Role>('SPECTATOR')
+  const role: Role = 'SPECTATOR'
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 

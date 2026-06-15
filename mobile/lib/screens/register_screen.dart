@@ -146,9 +146,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
-
-
+          const SizedBox(height: 24),
 
           AppButton(
             label: 'Tạo tài khoản',
@@ -160,7 +158,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
-
 
 
   Future<void> _handleRegister() async {
