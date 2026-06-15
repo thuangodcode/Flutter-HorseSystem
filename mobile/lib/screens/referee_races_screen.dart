@@ -4,6 +4,7 @@ import '../core/api/api_service.dart';
 import '../core/models/app_models.dart';
 import '../ui/app_theme.dart';
 import '../ui/app_widgets.dart';
+import 'referee_report_screen.dart';
 
 class RefereeRacesScreen extends StatefulWidget {
   const RefereeRacesScreen({super.key, required this.api});
@@ -83,48 +84,58 @@ class _RefereeRacesScreenState extends State<RefereeRacesScreen> {
         final variant = StatusBadge.fromStatus(race.status);
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: GlassCard(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: context.colors.infoLight,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(Icons.gavel,
-                          size: 20, color: context.colors.info),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(race.name, style: context.typography.h3),
-                          const SizedBox(height: 5),
-                          StatusBadge(label: _translateStatus(race.status), variant: variant),
-                        ],
-                      ),
-                    ),
-                  ],
+          child: GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => RefereeReportScreen(api: widget.api, race: race),
                 ),
-                const SizedBox(height: 12),
-                Container(height: 1, color: context.colors.border),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Icon(Icons.schedule_outlined,
-                        size: 13, color: context.colors.muted),
-                    const SizedBox(width: 6),
-                    Text(_formatDate(race.scheduledAt), style: context.typography.caption),
-                  ],
-                ),
-              ],
+              );
+            },
+            child: GlassCard(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: context.colors.infoLight,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(Icons.gavel,
+                            size: 20, color: context.colors.info),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(race.name, style: context.typography.h3),
+                            const SizedBox(height: 5),
+                            StatusBadge(label: _translateStatus(race.status), variant: variant),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(height: 1, color: context.colors.border),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Icon(Icons.schedule_outlined,
+                          size: 13, color: context.colors.muted),
+                      const SizedBox(width: 6),
+                      Text(_formatDate(race.scheduledAt), style: context.typography.caption),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );

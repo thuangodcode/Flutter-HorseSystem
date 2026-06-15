@@ -170,7 +170,11 @@ export function RefereeRacesPage() {
         </h1>
       </div>
 
-      {error && <div className="alert alert-error">⚠️ {error}</div>}
+      {error && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 font-semibold flex items-center gap-2">
+          <span>⚠️</span> {error}
+        </div>
+      )}
 
       <Card className="mb-6">
         <CardHeader>

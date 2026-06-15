@@ -23,6 +23,7 @@ class _PlacePredictionScreenState extends State<PlacePredictionScreen> {
   bool? _isOpen;
   List<RaceHorse> _horses = [];
   String? _selectedHorseId;
+  int? _predictedPosition;
   bool _loading = false;
   bool _loadingHorses = false;
 
@@ -71,9 +72,17 @@ class _PlacePredictionScreenState extends State<PlacePredictionScreen> {
               title: 'Chọn chiến mã',
               child: _buildHorseList(),
             ),
+            if (_selectedHorseId != null) ...[
+              const SizedBox(height: 16),
+              _buildStepCard(
+                step: 3,
+                title: 'Dự đoán vị trí về đích',
+                child: _buildPositionList(),
+              ),
+            ],
             const SizedBox(height: 16),
             _buildStepCard(
-              step: 3,
+              step: _selectedHorseId != null ? 4 : 3,
               title: 'Số tiền đặt cược',
               child: _buildBetInput(),
             ),
@@ -179,6 +188,38 @@ class _PlacePredictionScreenState extends State<PlacePredictionScreen> {
     );
   }
 
+  Widget _buildPositionList() {
+    return DropdownButtonFormField<int>(
+      initialValue: _predictedPosition,
+      decoration: InputDecoration(
+        hintText: 'Chọn vị trí',
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        filled: true,
+        fillColor: context.colors.surface,
+        border: OutlineInputBorder(
+          borderRadius: context.radii.base,
+          borderSide: BorderSide(color: context.colors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: context.radii.base,
+          borderSide: BorderSide(color: context.colors.border),
+        ),
+      ),
+      dropdownColor: context.colors.surface,
+      items: List.generate(10, (index) {
+        final pos = index + 1;
+        return DropdownMenuItem(
+          value: pos,
+          child: Text(
+            'Vị trí thứ $pos',
+            style: context.typography.body.copyWith(fontWeight: FontWeight.w600),
+          ),
+        );
+      }),
+      onChanged: (val) => setState(() => _predictedPosition = val),
+    );
+  }
+
   Widget _buildBetInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -231,6 +272,7 @@ class _PlacePredictionScreenState extends State<PlacePredictionScreen> {
   Widget _buildSubmitButton() {
     final canSubmit = !_loading &&
         _selectedHorseId != null &&
+        _predictedPosition != null &&
         _betController.text.isNotEmpty;
 
     return AppButton(
@@ -247,6 +289,7 @@ class _PlacePredictionScreenState extends State<PlacePredictionScreen> {
       _isOpen = null;
       _horses = [];
       _selectedHorseId = null;
+      _predictedPosition = null;
       _loadingHorses = true;
     });
 
@@ -273,6 +316,7 @@ class _PlacePredictionScreenState extends State<PlacePredictionScreen> {
   Future<void> _handlePlace() async {
     if (_selectedRaceId == null ||
         _selectedHorseId == null ||
+        _predictedPosition == null ||
         _betController.text.isEmpty) {
       await showAppAlert(context, 'Thiếu thông tin', 'Vui lòng điền đầy đủ các thông tin.', isError: true);
       return;
@@ -284,12 +328,14 @@ class _PlacePredictionScreenState extends State<PlacePredictionScreen> {
         raceId: _selectedRaceId!,
         horseId: _selectedHorseId!,
         betAmount: int.tryParse(_betController.text) ?? 0,
+        predictedPosition: _predictedPosition,
       );
       if (!mounted) return;
       await showAppAlert(context, 'Thành công! 🎉', 'Dự đoán của bạn đã được đặt.');
       setState(() {
         _selectedRaceId = null;
         _selectedHorseId = null;
+        _predictedPosition = null;
         _isOpen = null;
         _horses = [];
         _betController.clear();

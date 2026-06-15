@@ -104,14 +104,17 @@ export function PredictionsPage() {
   const [horses, setHorses] = useState<any[]>([])
   const [horsesLoading, setHorsesLoading] = useState(false)
   const [selectedHorse, setSelectedHorse] = useState('')
+  const [predictedPosition, setPredictedPosition] = useState('')
   const [betAmount, setBetAmount] = useState('')
   const [predLoading, setPredLoading] = useState(false)
   const [predMsg, setPredMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [isPredOpen, setIsPredOpen] = useState(false)
+  const [historyError, setHistoryError] = useState<string | null>(null)
 
   // Load prediction history
   useEffect(() => {
     setHistoryLoading(true)
+    setHistoryError(null)
     getMyPredictions()
       .then((data: any) => {
         const list = Array.isArray(data) ? data : (data?.predictions || data?.data || [])
@@ -131,7 +134,11 @@ export function PredictionsPage() {
         }))
         setPredictions(mapped)
       })
-      .catch(() => setPredictions([]))
+      .catch((err) => {
+        console.error(err)
+        setHistoryError('Không thể tải lịch sử dự đoán. Vui lòng thử lại.')
+        setPredictions([])
+      })
       .finally(() => setHistoryLoading(false))
   }, [historyReloadKey])
 
@@ -139,8 +146,8 @@ export function PredictionsPage() {
   useEffect(() => {
     setRacesLoading(true)
     Promise.all([
-      getPublicRaces({ status: 'SCHEDULED' }).catch((): any[] => []),
-      getPublicRaces({ status: 'ONGOING' }).catch((): any[] => []),
+      getPublicRaces({ status: 'SCHEDULED' }).catch((err) => { console.error(err); return [] }),
+      getPublicRaces({ status: 'ONGOING' }).catch((err) => { console.error(err); return [] }),
     ])
       .then(([scheduled, ongoing]: [any, any]) => {
         const scheduledList: any[] = Array.isArray(scheduled) ? scheduled : (scheduled?.races || scheduled?.data || [])
@@ -155,7 +162,11 @@ export function PredictionsPage() {
         })
         setRaces(unique)
       })
-      .catch(() => setRaces([]))
+      .catch((err) => {
+        console.error(err)
+        setRaces([])
+        setPredMsg({ type: 'error', text: 'Không thể tải danh sách cuộc đua.' })
+      })
       .finally(() => setRacesLoading(false))
   }, [])
 
@@ -181,9 +192,14 @@ export function PredictionsPage() {
 
   async function handleSubmit() {
     const betValue = parseMoneyInput(betAmount)
-    if (!selectedRace || !selectedHorse || !betValue) return
+    const positionValue = parseInt(predictedPosition, 10)
+    if (!selectedRace || !selectedHorse || !betValue || !positionValue) return
     if (betValue < 100000 || betValue > 10000000) {
       setPredMsg({ type: 'error', text: 'Số tiền đặt cược phải từ 100,000 đến 10,000,000 VND' })
+      return
+    }
+    if (betValue % 1000 !== 0) {
+      setPredMsg({ type: 'error', text: 'Số tiền đặt cược phải là bội số của 1,000 VND' })
       return
     }
     if (balance < betValue) {
@@ -193,11 +209,12 @@ export function PredictionsPage() {
     setPredLoading(true)
     setPredMsg(null)
     try {
-      await placePrediction(selectedRace, selectedHorse, betValue)
+      await placePrediction(selectedRace, selectedHorse, betValue, positionValue)
       updateBalance(balance - betValue)
       setPredMsg({ type: 'success', text: 'Dự đoán thành công! 🎉' })
       setSelectedRace('')
       setSelectedHorse('')
+      setPredictedPosition('')
       setBetAmount('')
       setHistoryReloadKey((value) => value + 1)
     } catch (error: any) {
@@ -248,6 +265,15 @@ export function PredictionsPage() {
       cell: (prediction: any) => (
         <span className="font-bold text-[var(--text)]">
           {prediction.horseId?.name || '—'}
+        </span>
+      ),
+    },
+    {
+      id: 'predictedPosition',
+      header: 'Vị trí',
+      cell: (prediction: any) => (
+        <span className="font-bold text-amber-400">
+          {prediction.predictedPosition ? `#${prediction.predictedPosition}` : '—'}
         </span>
       ),
     },
@@ -464,6 +490,25 @@ export function PredictionsPage() {
                 </div>
               )}
 
+              {/* Predicted Position */}
+              {selectedRace && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-[var(--text)]">Dự đoán vị trí về đích</label>
+                  <Select value={predictedPosition} onValueChange={(value) => setPredictedPosition(value ?? '')}>
+                    <SelectTrigger className="h-11 w-full border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] font-semibold">
+                      {predictedPosition ? `Vị trí thứ ${predictedPosition}` : '— Chọn vị trí —'}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 10 }, (_, i) => i + 1).map((pos) => (
+                        <SelectItem key={pos} value={String(pos)} className="font-semibold">
+                          Vị trí thứ {pos}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               {/* Bet Amount */}
               {selectedRace && (
                 <div className="space-y-2">
@@ -489,7 +534,7 @@ export function PredictionsPage() {
                       </button>
                     ))}
                   </div>
-                  <p className="text-xs text-[var(--muted)] font-medium mt-1">Giới hạn: 100,000 — 10,000,000 VND</p>
+                  <p className="text-xs text-[var(--muted)] font-medium mt-1">Giới hạn: 100,000 — 10,000,000 VND. Chỉ nhập bội số của 1,000 VND.</p>
                 </div>
               )}
 
@@ -497,7 +542,7 @@ export function PredictionsPage() {
               {selectedRace && (
                 <button
                   className="spectator-submit-btn"
-                  disabled={!selectedHorse || !betAmount || predLoading || !isPredOpen}
+                  disabled={!selectedHorse || !predictedPosition || !betAmount || predLoading || !isPredOpen}
                   onClick={handleSubmit}
                 >
                   {predLoading ? (
@@ -614,6 +659,11 @@ export function PredictionsPage() {
             {historyLoading ? (
               <div className="space-y-3 py-6">
                 {[...Array(4)].map((_, i) => <div key={i} className="spectator-shimmer h-14 w-full" />)}
+              </div>
+            ) : historyError ? (
+              <div className="spectator-empty">
+                <div className="text-4xl mb-3">⚠️</div>
+                <div className="text-lg font-bold text-red-400">{historyError}</div>
               </div>
             ) : filteredHistory.length === 0 ? (
               <div className="spectator-empty">

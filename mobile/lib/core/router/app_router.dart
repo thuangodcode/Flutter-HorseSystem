@@ -14,7 +14,6 @@ import '../../screens/predictions_screen.dart';
 import '../../screens/race_results_screen.dart';
 import '../../screens/races_screen.dart';
 import '../../screens/referee_races_screen.dart';
-import '../../screens/referee_report_screen.dart';
 import '../../screens/register_screen.dart';
 import '../../screens/tournaments_screen.dart';
 import '../../screens/welcome_screen.dart';
@@ -114,11 +113,6 @@ AppRouter createAppRouter(AuthController auth) {
         path: '/referee-races',
         name: 'RefereeRaces',
         builder: (context, state) => RefereeRacesScreen(api: auth.apiService),
-      ),
-      GoRoute(
-        path: '/referee-report',
-        name: 'RefereeReport',
-        builder: (context, state) => const RefereeReportScreen(),
       ),
     ],
   );

@@ -12,11 +12,15 @@ enum Role {
   final String value;
 
   static Role fromString(Object? value) {
-    final normalized = value?.toString().toUpperCase();
-    return Role.values.firstWhere(
-      (role) => role.value == normalized,
-      orElse: () => Role.spectator,
-    );
+    if (value == null) return Role.spectator;
+    final normalized = value.toString().toUpperCase();
+    
+    if (normalized.contains('ADMIN')) return Role.admin;
+    if (normalized.contains('OWNER')) return Role.owner;
+    if (normalized.contains('JOCKEY') || normalized.contains('JOKEY')) return Role.jockey;
+    if (normalized.contains('REFEREE')) return Role.referee;
+    
+    return Role.spectator;
   }
 }
 

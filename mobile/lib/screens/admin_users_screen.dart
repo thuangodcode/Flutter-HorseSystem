@@ -124,11 +124,72 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                     ],
                   ),
                 ),
+                IconButton(
+                  icon: Icon(Icons.more_vert, color: context.colors.muted),
+                  onPressed: () => _showChangeRoleDialog(user),
+                ),
               ],
             ),
           ),
         );
       },
     );
+  }
+
+  void _showChangeRoleDialog(AdminUser user) {
+    if (user.role == Role.admin) {
+      showAppAlert(context, 'Cảnh báo', 'Không thể thay đổi quyền Admin.', isError: true);
+      return;
+    }
+    
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: context.isDark ? const Color(0xFF1E293B) : Colors.white,
+          title: Text('Chọn vai trò mới', style: context.typography.h3),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: Role.values.where((r) => r != Role.admin).map((r) {
+              return ListTile(
+                title: Text(r.value, style: context.typography.body),
+                trailing: r == user.role
+                    ? Icon(Icons.check, color: context.colors.primary)
+                    : null,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  if (r != user.role) {
+                    _changeRole(user, r);
+                  }
+                },
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _changeRole(AdminUser user, Role newRole) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+      await widget.api.updateUserRole(user.id, newRole.value);
+      if (!mounted) return;
+      Navigator.pop(context); // close progress
+      
+      final items = await widget.api.getAdminUsers();
+      if (!mounted) return;
+      
+      setState(() => _items = items);
+      await showAppAlert(context, 'Thành công', 'Đã cấp quyền ${newRole.value} cho ${user.name}');
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // close progress
+      await showAppAlert(context, 'Thất bại', 'Không thể đổi quyền', isError: true);
+    }
   }
 }

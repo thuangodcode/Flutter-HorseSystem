@@ -71,6 +71,21 @@ class ApiService {
     ).map(Invite.fromDirect).toList();
   }
 
+  Future<dynamic> acceptInvitation(String inviteId) async {
+    final response = await _client.patch('/jockeys/me/invitations/$inviteId/accept');
+    return response.data;
+  }
+
+  Future<dynamic> rejectInvitation(String inviteId) async {
+    final response = await _client.patch('/jockeys/me/invitations/$inviteId/reject');
+    return response.data;
+  }
+
+  Future<List<Race>> getJockeyRaces() async {
+    final response = await _client.get('/jockeys/me/races');
+    return _extractList(response.data, null).map(Race.fromDirect).toList();
+  }
+
   Future<List<Prediction>> getPredictions() async {
     final response = await _client.get('/prediction/me/predictions');
     return _extractList(
@@ -87,9 +102,32 @@ class ApiService {
     ).map(AdminUser.fromDirect).toList();
   }
 
+  Future<dynamic> updateUserRole(String userId, String role) async {
+    final response = await _client.patch('/admin/users/$userId/role', {'role': role});
+    return response.data;
+  }
+
   Future<List<Race>> getRefereeRaces() async {
     final response = await _client.get('/referee/races');
     return _extractList(response.data, null).map(Race.fromDirect).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> getRefereeRaceHorses(String raceId) async {
+    final response = await _client.get('/referee/races/$raceId/horses');
+    return _extractList(response.data, 'horses');
+  }
+
+  Future<dynamic> createViolation(String raceId, Map<String, dynamic> data) async {
+    final response = await _client.post('/referee/races/$raceId/violations', data);
+    return response.data;
+  }
+
+  Future<dynamic> confirmRaceResult(String raceId, List<dynamic> rankings, String notes) async {
+    final response = await _client.post('/referee/races/$raceId/confirm-result', {
+      'rankings': rankings,
+      'notes': notes,
+    });
+    return response.data;
   }
 
   Future<Map<String, dynamic>> checkRaceOpenForPrediction(String raceId) async {
@@ -101,10 +139,19 @@ class ApiService {
     required String raceId,
     required String horseId,
     required int betAmount,
+    int? predictedPosition,
   }) async {
+    final body = {
+      'horseId': horseId,
+      'betAmount': betAmount,
+    };
+    if (predictedPosition != null && predictedPosition > 0) {
+      body['predictedPosition'] = predictedPosition;
+    }
+    
     final response = await _client.post(
       '/prediction/races/$raceId/predictions',
-      {'horseId': horseId, 'betAmount': betAmount},
+      body,
     );
     return response.data;
   }

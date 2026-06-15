@@ -664,8 +664,12 @@ export async function getRefereeRaceHorses(raceId: string): Promise<{ horses: Ra
   }
 }
 
-export async function placePrediction(raceId: string, horseId: string, betAmount: number): Promise<any> {
-  const res = await http.post(`${BE_BASE_URL}/prediction/races/${raceId}/predictions`, { horseId, betAmount })
+export async function placePrediction(raceId: string, horseId: string, betAmount: number, predictedPosition?: number): Promise<any> {
+  const body: Record<string, any> = { horseId, betAmount }
+  if (predictedPosition !== undefined && predictedPosition > 0) {
+    body.predictedPosition = predictedPosition
+  }
+  const res = await http.post(`${BE_BASE_URL}/prediction/races/${raceId}/predictions`, body)
   return res.data
 }
 

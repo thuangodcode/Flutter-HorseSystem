@@ -124,12 +124,12 @@ class GlassCard extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: isDark
-                  ? [const Color(0x14FFFFFF), const Color(0x07FFFFFF)]
+                  ? [const Color(0x33FFFFFF), const Color(0x1AFFFFFF)] // Sáng hơn một chút
                   : [const Color(0xF2FFFFFF), const Color(0xD9FFFFFF)], // Solid frosted white in light mode
               ),
               border: Border.all(
                 color: isDark 
-                  ? const Color(0x1AFFFFFF) 
+                  ? const Color(0x26FFFFFF) 
                   : const Color(0x40FFFFFF), // bright crisp white border in light mode for glass reflection
                 width: 1.5,
               ),
@@ -1241,4 +1241,157 @@ void showRaceResultsModal(
       onFetchResults: onFetchResults,
     ),
   );
+}
+
+// ──────────────────────────────────────────────────────────
+// APP BOTTOM SHEET — generic reusable bottom sheet
+// ──────────────────────────────────────────────────────────
+
+void showAppBottomSheet(
+  BuildContext context, {
+  required String title,
+  String? subtitle,
+  required Widget child,
+}) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) {
+      final isDark = context.isDark;
+      return Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0D1626) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border.all(
+            color: isDark ? const Color(0x1AFFFFFF) : const Color(0x1F000000),
+            width: 1,
+          ),
+        ),
+        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: context.typography.h2,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            if (subtitle != null) ...[
+              Text(
+                subtitle,
+                style: context.typography.bodyMuted,
+              ),
+              const SizedBox(height: 20),
+            ] else ...[
+              const SizedBox(height: 16),
+            ],
+            child,
+          ],
+        ),
+      );
+    },
+  );
+}
+
+// ──────────────────────────────────────────────────────────
+// SWIPEABLE CARD — generic swipeable card for actions
+// ──────────────────────────────────────────────────────────
+
+class SwipeableCard extends StatelessWidget {
+  const SwipeableCard({
+    super.key,
+    required this.child,
+    required this.onSwipeRight,
+    required this.onSwipeLeft,
+    required this.id,
+    this.rightIcon = Icons.check_circle_outline,
+    this.leftIcon = Icons.cancel_outlined,
+    this.rightLabel = 'Chấp nhận',
+    this.leftLabel = 'Từ chối',
+  });
+
+  final Widget child;
+  final VoidCallback onSwipeRight;
+  final VoidCallback onSwipeLeft;
+  final String id;
+  final IconData rightIcon;
+  final IconData leftIcon;
+  final String rightLabel;
+  final String leftLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dismissible(
+      key: Key(id),
+      background: _buildBackground(
+        context: context,
+        color: context.colors.successLight,
+        iconColor: context.colors.success,
+        icon: rightIcon,
+        label: rightLabel,
+        alignment: Alignment.centerLeft,
+      ),
+      secondaryBackground: _buildBackground(
+        context: context,
+        color: context.colors.dangerLight,
+        iconColor: context.colors.danger,
+        icon: leftIcon,
+        label: leftLabel,
+        alignment: Alignment.centerRight,
+      ),
+      onDismissed: (direction) {
+        if (direction == DismissDirection.startToEnd) {
+          onSwipeRight();
+        } else {
+          onSwipeLeft();
+        }
+      },
+      child: child,
+    );
+  }
+
+  Widget _buildBackground({
+    required BuildContext context,
+    required Color color,
+    required Color iconColor,
+    required IconData icon,
+    required String label,
+    required Alignment alignment,
+  }) {
+    final isLeft = alignment == Alignment.centerLeft;
+    return Container(
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      alignment: alignment,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        textDirection: isLeft ? TextDirection.ltr : TextDirection.rtl,
+        children: [
+          Icon(icon, color: iconColor, size: 28),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: context.typography.h3.copyWith(color: iconColor),
+          ),
+        ],
+      ),
+    );
+  }
 }

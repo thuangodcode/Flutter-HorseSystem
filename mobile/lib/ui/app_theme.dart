@@ -181,12 +181,12 @@ const _radius = AppRadiusExtension(
 
 // Role avatars (static as they don't change by theme mode)
 class AppRoleColors {
-  static const avatarAdmin     = [Color(0xFF7C3AED), Color(0xFF5B21B6)];
-  static const avatarOwner     = [Color(0xFF059669), Color(0xFF047857)];
-  static const avatarJockey    = [Color(0xFFF97316), Color(0xFFEA580C)];
-  static const avatarReferee   = [Color(0xFF3B82F6), Color(0xFF1D4ED8)];
-  static const avatarSpectator = [Color(0xFF64748B), Color(0xFF475569)];
-  static const avatarDefault   = [Color(0xFF6366F1), Color(0xFF4F46E5)];
+  static const avatarAdmin     = [Color(0xFFA78BFA), Color(0xFF8B5CF6)]; // Sáng hơn
+  static const avatarOwner     = [Color(0xFF34D399), Color(0xFF10B981)]; // Sáng hơn
+  static const avatarJockey    = [Color(0xFFFBBF24), Color(0xFFF59E0B)]; // Vàng cam sáng hơn
+  static const avatarReferee   = [Color(0xFF60A5FA), Color(0xFF3B82F6)]; // Xanh dương sáng hơn
+  static const avatarSpectator = [Color(0xFF94A3B8), Color(0xFF64748B)]; // Xám bạc sáng hơn
+  static const avatarDefault   = [Color(0xFF818CF8), Color(0xFF6366F1)]; // Sáng hơn
 }
 
 // Dark Mode Colors

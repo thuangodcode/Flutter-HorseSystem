@@ -143,11 +143,12 @@ export function HorsesPage() {
   const loadData = async () => {
     setLoading(true)
     setError(null)
+    const partialErrors: string[] = []
     try {
-      const hList = await getHorses()
+      const hList = await getHorses().catch(e => { partialErrors.push('Không tải được danh sách ngựa'); return [] })
       setHorses(hList)
       
-      const rList = await getRaces()
+      const rList = await getRaces().catch(e => { partialErrors.push('Không tải được danh sách giải đấu'); return [] })
       
       // Load registrations for our horses in all races for synchronization
       const myHorseIds = new Set(hList.map((h) => String(h.id || h._id)))
@@ -172,7 +173,10 @@ export function HorsesPage() {
                 })
               }
             })
-          } catch { /* skip races with errors */ }
+          } catch (e: any) {
+            console.warn(`Error loading horses for race ${race.id}:`, e)
+            partialErrors.push(`Lỗi tải dữ liệu cho giải đấu: ${race.name}`)
+          }
         })
       )
       setRegistrations(regs)
@@ -196,8 +200,13 @@ export function HorsesPage() {
           setInviteRaceId(String(availableRaces[0].id || availableRaces[0]._id))
         }
       } else if (activeTab === 'invitations' && selectedHorseId) {
-        const iList = await getHorseJockeys(selectedHorseId)
+        const iList = await getHorseJockeys(selectedHorseId).catch(e => { partialErrors.push('Không tải được lời mời'); return [] })
         setInvitations(iList)
+      }
+
+      if (partialErrors.length > 0) {
+        const uniqueErrors = Array.from(new Set(partialErrors))
+        setError(`Đã xảy ra một số lỗi: ${uniqueErrors.join(', ')}`)
       }
     } catch (err: any) {
       setError(err.response?.data?.message || err.message)
@@ -207,8 +216,11 @@ export function HorsesPage() {
   }
 
   // ── Horse CRUD ──────────────────────────────────────────────────────────────
+  const [formError, setFormError] = useState<string | null>(null)
+
   const openHorseModal = (h: Horse | null) => {
     setSelectedHorse(h)
+    setFormError(null)
     setHorseForm(
       h
         ? { name: h.name, breed: h.breed || '', age: h.age || 0, weight: h.weight || 0, color: h.color || '', gender: h.gender || 'MALE', origin: h.origin || '', healthCertUrl: h.healthCertUrl || '' }
@@ -219,6 +231,21 @@ export function HorsesPage() {
 
   const handleSaveHorse = async (e: React.FormEvent) => {
     e.preventDefault()
+    setFormError(null)
+
+    if (horseForm.name.trim().length < 2) {
+      setFormError('Tên ngựa phải có ít nhất 2 ký tự')
+      return
+    }
+    if (horseForm.age < 1 || horseForm.age > 30) {
+      setFormError('Tuổi ngựa phải từ 1 đến 30')
+      return
+    }
+    if (horseForm.weight < 200 || horseForm.weight > 700) {
+      setFormError('Cân nặng phải từ 200kg đến 700kg')
+      return
+    }
+
     try {
       if (selectedHorse) {
         await updateHorse(selectedHorse.id, horseForm)
@@ -1051,6 +1078,12 @@ export function HorsesPage() {
               <button className="text-[var(--muted)] hover:text-white rounded-full p-1.5 hover:bg-[var(--surface-2)] transition-colors" onClick={() => setShowHorseModal(false)}><X className="w-5 h-5" /></button>
             </div>
             <form onSubmit={handleSaveHorse} className="p-6 space-y-4">
+              {formError && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400 font-semibold flex items-center gap-2">
+                  <X className="w-4 h-4 shrink-0" />
+                  {formError}
+                </div>
+              )}
               <div>
                 <label className="text-xs font-bold text-[var(--muted)] uppercase mb-1.5 tracking-wider block">Tên ngựa <span className="text-red-400">*</span></label>
                 <input required placeholder="Nhập tên chú ngựa..." className="w-full h-10 bg-[var(--bg2)]/80 border border-[var(--border)] rounded-xl px-3 text-sm font-semibold text-white outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] transition-all placeholder:text-slate-600" value={horseForm.name} onChange={(e) => setHorseForm({ ...horseForm, name: e.target.value })} />
@@ -1068,11 +1101,11 @@ export function HorsesPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-bold text-[var(--muted)] uppercase mb-1.5 tracking-wider block">Tuổi</label>
-                  <input type="number" min="0" className="w-full h-10 bg-[var(--bg2)]/80 border border-[var(--border)] rounded-xl px-3 text-sm font-semibold text-white outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] transition-all" value={horseForm.age} onChange={(e) => setHorseForm({ ...horseForm, age: Number(e.target.value) })} />
+                  <input type="number" min="1" max="30" className="w-full h-10 bg-[var(--bg2)]/80 border border-[var(--border)] rounded-xl px-3 text-sm font-semibold text-white outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] transition-all" value={horseForm.age} onChange={(e) => setHorseForm({ ...horseForm, age: Number(e.target.value) })} />
                 </div>
                 <div>
                   <label className="text-xs font-bold text-[var(--muted)] uppercase mb-1.5 tracking-wider block">Cân nặng (kg)</label>
-                  <input type="number" min="0" className="w-full h-10 bg-[var(--bg2)]/80 border border-[var(--border)] rounded-xl px-3 text-sm font-semibold text-white outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] transition-all" value={horseForm.weight} onChange={(e) => setHorseForm({ ...horseForm, weight: Number(e.target.value) })} />
+                  <input type="number" min="200" max="700" className="w-full h-10 bg-[var(--bg2)]/80 border border-[var(--border)] rounded-xl px-3 text-sm font-semibold text-white outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-ring)] transition-all" value={horseForm.weight} onChange={(e) => setHorseForm({ ...horseForm, weight: Number(e.target.value) })} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">

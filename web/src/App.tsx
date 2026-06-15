@@ -20,6 +20,7 @@ import { AdminSchedulingPage } from './pages/admin/AdminSchedulingPage.tsx'
 import { RefereeRacesPage } from './pages/race_referee/RefereeRacesPage.tsx'
 import { RefereeRaceDetailPage } from './pages/race_referee/RefereeRaceDetailPage.tsx'
 import { RefereeReportPage } from './pages/race_referee/RefereeReportPage.tsx'
+import { LeaderboardPage } from './pages/LeaderboardPage.tsx'
 import { NotFoundPage } from './pages/NotFoundPage.tsx'
 import { JockeyRacesPage } from './pages/jockey/JockeyRacesPage'
 import { JockeyRaceDetailPage } from './pages/jockey/JockeyRaceDetailPage'
@@ -87,6 +88,7 @@ const router = createBrowserRouter([
       { path: 'jockey/profile', element: <JockeyProfilePage /> },
       { path: 'predictions', element: <PredictionsPage /> },
       { path: 'notifications', element: <NotificationsPage /> },
+      { path: 'leaderboard', element: <LeaderboardPage /> },
       { path: 'livestream', element: <LiveStreamPage /> },
       { path: 'admin/users', element: <AdminUsersPage /> },
       {

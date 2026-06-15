@@ -19,7 +19,8 @@ import {
   X,
   ChevronDown,
   ClipboardList,
-  Tv2
+  Tv2,
+  Medal
 } from 'lucide-react'
 import { useState as useStateReact, useEffect as useEffectReact } from 'react'
 import { getPublicRaces } from '@/api'
@@ -70,6 +71,7 @@ function getRoleNav(role: string): NavItem[] {
     { to: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/app/tournaments', label: 'Giải đấu', icon: Trophy },
     { to: '/app/races', label: 'Cuộc đua', icon: Zap },
+    { to: '/app/leaderboard', label: 'Bảng xếp hạng', icon: Medal },
     { to: '/app/livestream', label: 'Livestream', icon: Tv2 },
   ]
 
