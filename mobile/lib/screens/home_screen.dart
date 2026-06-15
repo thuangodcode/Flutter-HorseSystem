@@ -5,9 +5,11 @@ import '../core/api/api_client.dart';
 import '../core/api/api_service.dart';
 import '../core/auth/auth_controller.dart';
 import '../core/models/app_models.dart';
+import '../core/services/wallet_service.dart';
 import '../main.dart'; // To access themeNotifier
 import '../ui/app_theme.dart';
 import '../ui/app_widgets.dart';
+import 'package:intl/intl.dart';
 
 // Import sub-screens to embed dynamically
 import 'admin_users_screen.dart';
@@ -78,9 +80,10 @@ List<_NavItem> _navItemsForRole(Role role) => switch (role) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.auth});
+  const HomeScreen({super.key, required this.auth, required this.walletService});
 
   final AuthController auth;
+  final WalletService walletService;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -97,6 +100,29 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _fetchData();
+    if (widget.auth.session?.user.role == Role.spectator) {
+      _runAutoClaim();
+    }
+  }
+
+  void _runAutoClaim() async {
+    try {
+      final predictions = await widget.auth.apiService.getPredictions();
+      final settledIds = await widget.walletService.getSettledPredictionIds();
+      
+      for (final p in predictions) {
+        if (p.status.toUpperCase() == 'WON') {
+          if (!settledIds.contains(p.id)) {
+            final bet = (p.betAmount ?? 0).toDouble();
+            if (bet > 0) {
+              final winnings = (bet * 1.8).toInt();
+              await widget.walletService.addBalance(winnings);
+              await widget.walletService.markPredictionAsSettled(p.id);
+            }
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   void _fetchData() {
@@ -281,6 +307,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (user.role == Role.spectator) _buildWalletCard(context),
         _buildSearchBar(context),
         Expanded(
           child: RefreshIndicator(
@@ -289,6 +316,56 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildWalletCard(BuildContext context) {
+    return ListenableBuilder(
+      listenable: widget.walletService,
+      builder: (context, _) {
+        final balanceFormatter = NumberFormat.currency(locale: 'vi_VN', symbol: 'Điểm');
+        return Container(
+          margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [context.colors.primary, context.colors.primaryDark],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: context.colors.primary.withValues(alpha: 0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('SỐ DƯ ĐIỂM ẢO', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                  const SizedBox(height: 4),
+                  Text(
+                    balanceFormatter.format(widget.walletService.balance),
+                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 28),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -589,6 +666,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return _QuickPredictionBottomSheet(
           api: widget.auth.apiService,
           race: race,
+          walletService: widget.walletService,
         );
       },
     );
@@ -598,10 +676,11 @@ class _HomeScreenState extends State<HomeScreen> {
 // ── Quick Prediction Bottom Sheet State ───────────────────────
 
 class _QuickPredictionBottomSheet extends StatefulWidget {
-  const _QuickPredictionBottomSheet({required this.api, required this.race});
+  const _QuickPredictionBottomSheet({required this.api, required this.race, required this.walletService});
 
   final ApiService api;
   final Race race;
+  final WalletService walletService;
 
   @override
   State<_QuickPredictionBottomSheet> createState() => _QuickPredictionBottomSheetState();
@@ -802,6 +881,11 @@ class _QuickPredictionBottomSheetState extends State<_QuickPredictionBottomSheet
       return;
     }
 
+    if (bet > widget.walletService.balance) {
+      await showAppAlert(context, 'Số dư không đủ', 'Bạn chỉ còn ${NumberFormat.currency(locale: 'vi_VN', symbol: 'Điểm').format(widget.walletService.balance)} trong ví.', isError: true);
+      return;
+    }
+
     setState(() => _submitting = true);
     try {
       await widget.api.placePrediction(
@@ -809,6 +893,10 @@ class _QuickPredictionBottomSheetState extends State<_QuickPredictionBottomSheet
         horseId: _selectedHorseId!,
         betAmount: bet,
       );
+      
+      // Deduct balance locally
+      await widget.walletService.deductBalance(bet);
+      
       if (!mounted) return;
       Navigator.pop(context);
       await showAppAlert(context, 'Thành công 🎉', 'Dự đoán của bạn đã được đặt.');

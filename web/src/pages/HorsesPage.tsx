@@ -145,10 +145,10 @@ export function HorsesPage() {
     setError(null)
     const partialErrors: string[] = []
     try {
-      const hList = await getHorses().catch(e => { partialErrors.push('Không tải được danh sách ngựa'); return [] })
+      const hList = await getHorses().catch(() => { partialErrors.push('Không tải được danh sách ngựa'); return [] })
       setHorses(hList)
       
-      const rList = await getRaces().catch(e => { partialErrors.push('Không tải được danh sách giải đấu'); return [] })
+      const rList = await getRaces().catch(() => { partialErrors.push('Không tải được danh sách giải đấu'); return [] })
       
       // Load registrations for our horses in all races for synchronization
       const myHorseIds = new Set(hList.map((h) => String(h.id || h._id)))
@@ -173,8 +173,8 @@ export function HorsesPage() {
                 })
               }
             })
-          } catch (e: any) {
-            console.warn(`Error loading horses for race ${race.id}:`, e)
+          } catch {
+            console.warn(`Error loading horses for race ${race.id}`)
             partialErrors.push(`Lỗi tải dữ liệu cho giải đấu: ${race.name}`)
           }
         })
@@ -200,7 +200,7 @@ export function HorsesPage() {
           setInviteRaceId(String(availableRaces[0].id || availableRaces[0]._id))
         }
       } else if (activeTab === 'invitations' && selectedHorseId) {
-        const iList = await getHorseJockeys(selectedHorseId).catch(e => { partialErrors.push('Không tải được lời mời'); return [] })
+        const iList = await getHorseJockeys(selectedHorseId).catch(() => { partialErrors.push('Không tải được lời mời'); return [] })
         setInvitations(iList)
       }
 
@@ -295,25 +295,16 @@ export function HorsesPage() {
     const cleanJockeyId = String(jockeyId).trim()
 
     const horse = horses.find((h) => String(h.id || h._id).trim() === cleanHorseId)
-    // Look in both races (all races) and horseRegisteredRaces (filtered for this horse in hire-jockey tab)
     const race = races.find((r) => String(r.id || r._id).trim() === cleanRaceId)
     const registeredRace = horseRegisteredRaces.find((r) => r.raceId === cleanRaceId)
     
     if (!horse) return showToast('Ngựa không hợp lệ. Vui lòng chọn ngựa khác.', 'error')
     if (!race && !registeredRace) return showToast('Cuộc đua không hợp lệ. Vui lòng chọn lại cuộc đua.', 'error')
 
-    const raceName = race?.name || registeredRace?.raceName || cleanRaceId
-    console.log('Validating registration for:', { horseName: horse.name, raceName, raceId: cleanRaceId })
-
-    // Validate that the selected horse is registered for the invited race.
-    // registeredEntry declared in outer scope so it's accessible after the try block.
     let registeredEntry: any = undefined
     try {
       const raceHorses = await getRaceHorses(cleanRaceId)
       const entries = Array.isArray(raceHorses) ? raceHorses : (raceHorses.horses || [])
-
-      console.log('[DEBUG] raceHorses entries:', entries.map((e: any) => ({ horseId: e.horseId, status: e.status })))
-      console.log('[DEBUG] looking for cleanHorseId:', cleanHorseId)
 
       registeredEntry = entries.find((entry: any) => {
         const entryHorseId = String(
@@ -323,14 +314,10 @@ export function HorsesPage() {
           entry.id ||
           ''
         ).trim()
-        console.log('[DEBUG] comparing entryHorseId:', entryHorseId, '=== cleanHorseId:', cleanHorseId, '->', entryHorseId === cleanHorseId)
         return entryHorseId === cleanHorseId
       })
 
-      console.log('[DEBUG] registeredEntry found:', !!registeredEntry, registeredEntry)
-
       if (!registeredEntry) {
-        console.warn('Horse not found in race entries:', { entries, horseId: cleanHorseId })
         return showToast('Ngựa chưa đăng ký cuộc đua này. Vui lòng đăng ký (tab Đăng Ký Đua) trước khi mời Jockey.', 'warning')
       }
 
@@ -342,22 +329,18 @@ export function HorsesPage() {
         return showToast('Đăng ký đã bị từ chối. Bạn không thể mời Jockey cho cuộc đua này.', 'error')
       }
     } catch (error: any) {
-      console.error('Validation error:', error)
       if (error?.response?.status === 401) {
-        return // Stop if 401 - interceptor will redirect
+        return 
       }
-      // For any other error, block the invitation with a clear message
       const errMsg = error?.response?.data?.message || error?.message || 'Lỗi kiểm tra đăng ký'
       return showToast(`Không thể xác minh trạng thái đăng ký: ${errMsg}. Vui lòng đăng ký ngựa vào cuộc đua trước.`, 'error')
     }
 
     try {
       const regId = registeredEntry?.registrationId || registeredEntry?.id || ''
-      console.log('Sending invitation:', { cleanHorseId, cleanJockeyId, cleanRaceId, regId })
       await sendJockeyInvitation(cleanHorseId, cleanJockeyId, cleanRaceId, 'Mời bạn cưỡi ngựa của tôi', regId)
       showToast(`Đã gửi lời mời đến Jockey ${jockeyName}`)
     } catch (err: any) {
-      console.error('sendJockeyInvitation error:', err?.response?.data || err?.message)
       const msg = err.response?.data?.message || err.response?.data?.error || 'Không thể gửi lời mời. Vui lòng kiểm tra lại trạng thái ngựa và cuộc đua.'
       showToast(msg, 'error')
     }
@@ -407,12 +390,9 @@ export function HorsesPage() {
       return name.includes(jockeySearch.toLowerCase())
     })
     .sort((a, b) => {
-      // Sort by createdAt descending (newest first)
       const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
       const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
       if (dateA !== dateB) return dateB - dateA
-      
-      // Fallback to ID sorting if createdAt is missing or same
       return String(b.id).localeCompare(String(a.id))
     })
   const selectedHorseObj = horses.find((h) => String(h.id || h._id) === selectedHorseId)
@@ -596,6 +576,7 @@ export function HorsesPage() {
               </div>
             ) : races.length === 0 ? (
               <div className="text-center p-12 border border-dashed border-[var(--border)]/30 rounded-2xl bg-[var(--bg2)]/20">
+                {error && <div className="text-red-500 mb-4">{error}</div>}
                 <div className="text-4xl mb-3">🏁</div>
                 <h3 className="text-lg font-bold text-slate-300">Không có cuộc đua nào khả dụng</h3>
                 <p className="text-xs text-[var(--muted)] mt-1 font-medium">Hiện không có cuộc đua nào đang trong trạng thái mở đăng ký.</p>
@@ -631,7 +612,6 @@ export function HorsesPage() {
                             🥇 Giải nhất: {r.prizeFirst?.toLocaleString('vi-VN')} đ
                           </div>
                           
-                          {/* Dynamic button / status based on synchronization logic */}
                           <div className="shrink-0">
                             {!selectedHorseId ? (
                               <Button disabled className="opacity-40 font-bold bg-slate-800 text-slate-400 border border-slate-700 rounded-xl px-4 py-2 text-xs">
@@ -661,7 +641,7 @@ export function HorsesPage() {
                                   ✓ Xác nhận đua
                                 </Button>
                               </div>
-                            ) : (status === 'CONFIRMED' || (status === 'APPROVED' && reg.confirmedByOwner)) ? (
+                            ) : status === 'CONFIRMED' || (status === 'APPROVED' && reg.confirmedByOwner) ? (
                               <div className="flex flex-col items-end gap-1">
                                 <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-bold py-1 px-3 rounded-full flex items-center gap-1 text-[10px]">
                                   <Check className="w-3.5 h-3.5" /> Đã chốt đua

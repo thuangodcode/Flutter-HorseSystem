@@ -3,13 +3,16 @@ import 'package:flutter/material.dart';
 import '../core/api/api_client.dart';
 import '../core/api/api_service.dart';
 import '../core/models/app_models.dart';
+import '../core/services/wallet_service.dart';
 import '../ui/app_theme.dart';
+import 'package:intl/intl.dart';
 import '../ui/app_widgets.dart';
 
 class PlacePredictionScreen extends StatefulWidget {
-  const PlacePredictionScreen({super.key, required this.api});
+  const PlacePredictionScreen({super.key, required this.api, required this.walletService});
 
   final ApiService api;
+  final WalletService walletService;
 
   @override
   State<PlacePredictionScreen> createState() => _PlacePredictionScreenState();
@@ -224,7 +227,19 @@ class _PlacePredictionScreenState extends State<PlacePredictionScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Hạn mức (100.000 – 10.000,000)', style: context.typography.bodyMuted),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Hạn mức (100.000 – 10.000,000)', style: context.typography.bodyMuted),
+            ListenableBuilder(
+              listenable: widget.walletService,
+              builder: (context, _) => Text(
+                'Ví: ${NumberFormat.compact().format(widget.walletService.balance)}',
+                style: context.typography.bodyMuted.copyWith(color: context.colors.primary, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 10),
         TextField(
           controller: _betController,
@@ -322,14 +337,28 @@ class _PlacePredictionScreenState extends State<PlacePredictionScreen> {
       return;
     }
 
+    final bet = int.tryParse(_betController.text) ?? 0;
+    if (bet < 100000 || bet > 10000000) {
+      await showAppAlert(context, 'Sai hạn mức', 'Tiền cược phải nằm trong khoảng từ 100k đến 10M.', isError: true);
+      return;
+    }
+
+    if (bet > widget.walletService.balance) {
+      await showAppAlert(context, 'Số dư không đủ', 'Bạn chỉ còn ${NumberFormat.currency(locale: 'vi_VN', symbol: 'Điểm').format(widget.walletService.balance)} trong ví.', isError: true);
+      return;
+    }
+
     setState(() => _loading = true);
     try {
       await widget.api.placePrediction(
         raceId: _selectedRaceId!,
         horseId: _selectedHorseId!,
-        betAmount: int.tryParse(_betController.text) ?? 0,
+        betAmount: bet,
         predictedPosition: _predictedPosition,
       );
+      
+      await widget.walletService.deductBalance(bet);
+      
       if (!mounted) return;
       await showAppAlert(context, 'Thành công! 🎉', 'Dự đoán của bạn đã được đặt.');
       setState(() {

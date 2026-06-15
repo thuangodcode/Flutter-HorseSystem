@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 
 import '../auth/auth_controller.dart';
+import '../services/wallet_service.dart';
 import '../../screens/admin_scheduling_screen.dart';
 import '../../screens/admin_users_screen.dart';
 import '../../screens/home_screen.dart';
@@ -20,7 +21,7 @@ import '../../screens/welcome_screen.dart';
 
 typedef AppRouter = GoRouter;
 
-AppRouter createAppRouter(AuthController auth) {
+AppRouter createAppRouter(AuthController auth, WalletService walletService) {
   return GoRouter(
     initialLocation: auth.isAuthenticated ? '/home' : '/',
     refreshListenable: auth,
@@ -52,7 +53,7 @@ AppRouter createAppRouter(AuthController auth) {
       GoRoute(
         path: '/home',
         name: 'Home',
-        builder: (context, state) => HomeScreen(auth: auth),
+        builder: (context, state) => HomeScreen(auth: auth, walletService: walletService),
       ),
       GoRoute(
         path: '/tournaments',
@@ -82,7 +83,7 @@ AppRouter createAppRouter(AuthController auth) {
       GoRoute(
         path: '/place-prediction',
         name: 'PlacePrediction',
-        builder: (context, state) => PlacePredictionScreen(api: auth.apiService),
+        builder: (context, state) => PlacePredictionScreen(api: auth.apiService, walletService: walletService),
       ),
       GoRoute(
         path: '/race-results',
@@ -107,7 +108,7 @@ AppRouter createAppRouter(AuthController auth) {
       GoRoute(
         path: '/admin-scheduling',
         name: 'AdminScheduling',
-        builder: (context, state) => const AdminSchedulingScreen(),
+        builder: (context, state) => AdminSchedulingScreen(api: auth.apiService),
       ),
       GoRoute(
         path: '/referee-races',

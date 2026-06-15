@@ -5,6 +5,7 @@ import 'core/api/api_service.dart';
 import 'core/auth/auth_controller.dart';
 import 'core/router/app_router.dart';
 import 'core/storage/session_storage.dart';
+import 'core/services/wallet_service.dart';
 import 'ui/app_theme.dart';
 
 Future<void> main() async {
@@ -28,17 +29,24 @@ Future<void> main() async {
   );
   await authController.bootstrap();
 
-  runApp(HorseRacingApp(authController: authController));
+  final walletService = WalletService();
+  await walletService.init();
+
+  runApp(HorseRacingApp(
+    authController: authController,
+    walletService: walletService,
+  ));
 }
 
 // Global theme mode notifier
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
 
 class HorseRacingApp extends StatelessWidget {
-  HorseRacingApp({super.key, required this.authController})
-    : router = createAppRouter(authController);
+  HorseRacingApp({super.key, required this.authController, required this.walletService})
+    : router = createAppRouter(authController, walletService);
 
   final AuthController authController;
+  final WalletService walletService;
   final AppRouter router;
 
   @override

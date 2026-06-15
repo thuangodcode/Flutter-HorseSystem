@@ -156,6 +156,16 @@ class ApiService {
     return response.data;
   }
 
+  Future<dynamic> closePredictions(String raceId) async {
+    final response = await _client.patch('/prediction/admin/races/$raceId/close');
+    return response.data;
+  }
+
+  Future<dynamic> settlePredictions(String raceId) async {
+    final response = await _client.post('/prediction/admin/races/$raceId/settle', {});
+    return response.data;
+  }
+
   Future<List<RaceHorse>> getRaceHorses(String raceId) async {
     final response = await _client.get('/races/$raceId/horses');
     return _extractList(
