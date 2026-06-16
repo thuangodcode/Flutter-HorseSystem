@@ -9,6 +9,7 @@ export const TOURNAMENT_STATUS_OPTIONS = [
 
 export const RACE_STATUS_OPTIONS = [
   { value: 'all', label: 'Tất cả trạng thái' },
+  { value: 'PENDING', label: 'Chưa có lịch' },
   { value: 'SCHEDULED', label: 'Đã lên lịch' },
   { value: 'ONGOING', label: 'Đang diễn ra' },
   { value: 'RUNNING', label: 'Đang chạy' },
@@ -19,7 +20,8 @@ export const RACE_STATUS_OPTIONS = [
 
 export const PREDICTION_STATUS_OPTIONS = [
   { value: 'all', label: 'Tất cả dự đoán' },
-  { value: 'PENDING', label: 'Đang chờ' },
+  { value: 'OPEN', label: 'Đang mở' },
+  { value: 'CLOSED', label: 'Đã đóng' },
   { value: 'WON', label: 'Thắng' },
   { value: 'LOST', label: 'Thua' }
 ]
@@ -42,6 +44,7 @@ export function getStatusLabel(status: string | undefined, type: 'tournament' | 
 
   if (type === 'race') {
     switch (s) {
+      case 'PENDING': return 'Chưa có lịch'
       case 'SCHEDULED': return 'Đã lên lịch'
       case 'ONGOING':
       case 'RUNNING': return 'Đang diễn ra'
@@ -55,11 +58,11 @@ export function getStatusLabel(status: string | undefined, type: 'tournament' | 
 
   if (type === 'prediction') {
     switch (s) {
-      case 'PENDING':
-      case 'OPEN': return 'Đang chờ'
+      case 'OPEN': return 'Đang mở'
+      case 'CLOSED': return 'Đã đóng'
+      case 'PENDING': return 'Đang chờ'
       case 'WON': return 'Thắng'
       case 'LOST': return 'Thua'
-      case 'CLOSED': return 'Đã đóng'
       default: return status
     }
   }

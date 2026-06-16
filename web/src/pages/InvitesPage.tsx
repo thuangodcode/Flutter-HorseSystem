@@ -41,15 +41,56 @@ export function InvitesPage() {
           
         if (!targetHorseId) return inv
         
+        let extractedRaceId = '';
+        let displayMessage = inv.message || '';
+        
+        if (displayMessage.includes('|RACE_ID:')) {
+          const parts = displayMessage.split('|RACE_ID:');
+          displayMessage = parts[0];
+          extractedRaceId = parts[1]?.trim();
+        }
+        
+        // We override invAny.message for the UI
+        const invAny = inv as any;
+        invAny.message = displayMessage;
+
         let matchedReg: any = null
         let matchedRace: any = null
         
         for (const reg of registrations) {
           const found = reg.horses.find((h: any) => String(h.horseId) === String(targetHorseId))
-          if (found) {
+          const inviteRaceId = extractedRaceId || String(invAny.raceId?._id || invAny.raceId?.id || invAny.raceId || invAny.race?._id || invAny.race?.id || invAny.race || '');
+          
+          if (found && (!inviteRaceId || String(reg.race.id || reg.race._id) === inviteRaceId)) {
             matchedReg = found
             matchedRace = reg.race
             break
+          }
+        }
+
+        // Fallback: If inviteRaceId was actually a registrationId
+        if (!matchedReg || !matchedRace) {
+          for (const reg of registrations) {
+            const invAny = inv as any;
+            const inviteRaceId = String(invAny.raceId?._id || invAny.raceId?.id || invAny.raceId || invAny.race?._id || invAny.race?.id || invAny.race || '');
+            const found = reg.horses.find((h: any) => String(h.horseId) === String(targetHorseId) && String(h.registrationId || h.id || h._id) === inviteRaceId)
+            if (found) {
+              matchedReg = found
+              matchedRace = reg.race
+              break
+            }
+          }
+        }
+
+        // Absolute fallback: Just find the horse (can cause wrong race name if horse registered in multiple races)
+        if (!matchedReg || !matchedRace) {
+          for (const reg of registrations) {
+            const found = reg.horses.find((h: any) => String(h.horseId) === String(targetHorseId))
+            if (found) {
+              matchedReg = found
+              matchedRace = reg.race
+              break
+            }
           }
         }
         

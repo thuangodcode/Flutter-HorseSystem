@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { getStatusClassName, getStatusLabel, PREDICTION_STATUS_OPTIONS } from '@/lib/status'
 import { useSession } from '../../auth/SessionContext'
 import { NumberCounter } from '@/components/ui/number-counter'
@@ -106,12 +107,12 @@ export function PredictionsPage() {
   const [horses, setHorses] = useState<any[]>([])
   const [horsesLoading, setHorsesLoading] = useState(false)
   const [selectedHorse, setSelectedHorse] = useState('')
-  const [predictedPosition, setPredictedPosition] = useState('')
   const [betAmount, setBetAmount] = useState('')
   const [predLoading, setPredLoading] = useState(false)
   const [predMsg, setPredMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [isPredOpen, setIsPredOpen] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
+  const [successPredictionData, setSuccessPredictionData] = useState<any>(null)
 
   // Load prediction history
   useEffect(() => {
@@ -214,8 +215,7 @@ export function PredictionsPage() {
 
   async function handleSubmit() {
     const betValue = parseMoneyInput(betAmount)
-    const positionValue = parseInt(predictedPosition, 10)
-    if (!selectedRace || !selectedHorse || !betValue || !positionValue) return
+    if (!selectedRace || !selectedHorse || !betValue) return
     if (betValue < 100000 || betValue > 10000000) {
       setPredMsg({ type: 'error', text: 'Số tiền đặt cược phải từ 100,000 đến 10,000,000 VND' })
       return
@@ -231,12 +231,21 @@ export function PredictionsPage() {
     setPredLoading(true)
     setPredMsg(null)
     try {
-      await placePrediction(selectedRace, selectedHorse, betValue, positionValue)
+      await placePrediction(selectedRace, selectedHorse, betValue)
       updateBalance(balance - betValue)
-      setPredMsg({ type: 'success', text: 'Dự đoán thành công! 🎉' })
+      
+      const raceName = races.find((r: any) => (r._id || r.id) === selectedRace)?.name || 'Cuộc đua'
+      const horseName = findHorseById(horses, selectedHorse)?.name || 'Ngựa thi đấu'
+      
+      setSuccessPredictionData({
+        raceName,
+        horseName,
+        betAmount: betValue,
+        prize: betValue * 1.8
+      })
+      
       setSelectedRace('')
       setSelectedHorse('')
-      setPredictedPosition('')
       setBetAmount('')
       setHistoryReloadKey((value) => value + 1)
     } catch (error: any) {
@@ -283,19 +292,10 @@ export function PredictionsPage() {
     },
     {
       id: 'horse',
-      header: 'Ngựa',
+      header: 'Ngựa dự đoán thắng',
       cell: (prediction: any) => (
         <span className="font-bold text-[var(--text)]">
-          {prediction.horseId?.name || '—'}
-        </span>
-      ),
-    },
-    {
-      id: 'predictedPosition',
-      header: 'Vị trí',
-      cell: (prediction: any) => (
-        <span className="font-bold text-amber-400">
-          {prediction.predictedPosition ? `#${prediction.predictedPosition}` : '—'}
+          {prediction.pickedHorseName || prediction.horseId?.name || 'Ngựa thi đấu'}
         </span>
       ),
     },
@@ -314,11 +314,15 @@ export function PredictionsPage() {
     {
       id: 'payout',
       header: 'Tiền thưởng',
-      cell: (prediction: any) => (
-        <span className={prediction.status === 'WON' ? 'text-emerald-400 font-black' : 'text-[var(--muted)] font-bold'}>
-          {prediction.status === 'WON' ? formatMoney(prediction.payout) : '—'}
-        </span>
-      ),
+      cell: (prediction: any) => {
+        if (prediction.status === 'WON') {
+          return <span className="text-emerald-400 font-black">{formatMoney(prediction.prizeAmount || prediction.payout)}</span>
+        }
+        if (prediction.status === 'PENDING') {
+          return <span className="text-amber-500/80 font-bold text-xs leading-tight block">Dự kiến: <br/><span className="text-sm">{formatMoney((prediction.betAmount || 0) * 1.8)}</span></span>
+        }
+        return <span className="text-[var(--muted)] font-bold">—</span>
+      },
     },
     {
       id: 'createdAt',
@@ -550,24 +554,7 @@ export function PredictionsPage() {
                 </div>
               )}
 
-              {/* Predicted Position */}
-              {selectedRace && (
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-[var(--text)]">Dự đoán vị trí về đích</label>
-                  <Select value={predictedPosition} onValueChange={(value) => setPredictedPosition(value ?? '')}>
-                    <SelectTrigger className="h-11 w-full border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] font-semibold">
-                      {predictedPosition ? `Vị trí thứ ${predictedPosition}` : '— Chọn vị trí —'}
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 10 }, (_, i) => i + 1).map((pos) => (
-                        <SelectItem key={pos} value={String(pos)} className="font-semibold">
-                          Vị trí thứ {pos}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              {/* Predicted Position logic removed. Spectator always bets for position #1 */}
 
               {/* Bet Amount */}
               {selectedRace && (
@@ -594,7 +581,14 @@ export function PredictionsPage() {
                       </button>
                     ))}
                   </div>
-                  <p className="text-xs text-[var(--muted)] font-medium mt-1">Giới hạn: 100,000 — 10,000,000 VND. Chỉ nhập bội số của 1,000 VND.</p>
+                  <div className="flex justify-between items-center mt-1">
+                    <p className="text-xs text-[var(--muted)] font-medium">Giới hạn: 100,000 — 10,000,000 VND. Bội số của 1,000 VND.</p>
+                    {betAmount && (
+                      <p className="text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
+                        Thưởng nếu thắng: {formatMoney(parseMoneyInput(betAmount) * 1.8)}
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -602,7 +596,7 @@ export function PredictionsPage() {
               {selectedRace && (
                 <button
                   className="spectator-submit-btn"
-                  disabled={!selectedHorse || !predictedPosition || !betAmount || predLoading || !isPredOpen}
+                  disabled={!selectedHorse || !betAmount || predLoading || !isPredOpen}
                   onClick={handleSubmit}
                 >
                   {predLoading ? (
@@ -741,6 +735,53 @@ export function PredictionsPage() {
           </div>
         </ScrollReveal>
       </div>
+
+      <Dialog open={!!successPredictionData} onOpenChange={(open) => !open && setSuccessPredictionData(null)}>
+        <DialogContent className="sm:max-w-md bg-[var(--surface)] border-[var(--border)] overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent pointer-events-none" />
+          <DialogHeader className="pt-4 pb-2 relative z-10">
+            <div className="mx-auto w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mb-4 ring-8 ring-emerald-500/10">
+              <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+            </div>
+            <DialogTitle className="text-2xl font-black text-center text-[var(--text)] m-0">
+              Dự đoán thành công!
+            </DialogTitle>
+            <DialogDescription className="text-center text-[var(--muted)]">
+              Dự đoán của bạn đã được ghi nhận. Chúc bạn may mắn!
+            </DialogDescription>
+          </DialogHeader>
+          
+          {successPredictionData && (
+            <div className="bg-[var(--bg2)] rounded-xl p-4 my-4 space-y-3 relative z-10 border border-[var(--border)] shadow-inner">
+              <div className="flex justify-between items-center pb-3 border-b border-[var(--border)]/50">
+                <span className="text-[var(--muted)] font-medium text-sm">Cuộc đua</span>
+                <span className="font-bold text-[var(--text)]">{successPredictionData.raceName}</span>
+              </div>
+              <div className="flex justify-between items-center pb-3 border-b border-[var(--border)]/50">
+                <span className="text-[var(--muted)] font-medium text-sm">Ngựa dự đoán</span>
+                <span className="font-bold text-[var(--text)]">{successPredictionData.horseName}</span>
+              </div>
+              <div className="flex justify-between items-center pb-3 border-b border-[var(--border)]/50">
+                <span className="text-[var(--muted)] font-medium text-sm">Số tiền cược</span>
+                <span className="font-bold text-amber-400">{formatMoney(successPredictionData.betAmount)}</span>
+              </div>
+              <div className="flex justify-between items-center pt-1">
+                <span className="text-[var(--muted)] font-medium text-sm">Tiền thưởng dự kiến</span>
+                <span className="font-black text-emerald-400 text-lg drop-shadow-sm">{formatMoney(successPredictionData.prize)}</span>
+              </div>
+            </div>
+          )}
+          
+          <div className="flex justify-center pb-2 relative z-10">
+            <Button 
+              className="w-full sm:w-auto px-10 bg-emerald-500 hover:bg-emerald-600 text-white font-bold h-11 transition-transform active:scale-95"
+              onClick={() => setSuccessPredictionData(null)}
+            >
+              Đóng
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

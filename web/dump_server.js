@@ -1,0 +1,1 @@
+const http = require('http'); http.createServer((req, res) => { let body = ''; req.on('data', chunk => { body += chunk.toString(); }); req.on('end', () => { console.log('DUMP:', body); res.end('ok'); }); }).listen(3001);

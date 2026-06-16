@@ -24,7 +24,7 @@ import { ScrollReveal } from '@/components/ui/scroll-text'
 import { Magnetic } from '@/components/ui/magnetic'
 import { useAnimatedToast } from '@/components/ui/animated-toast'
 import { AnimatedTable, type SortDirection } from '@/components/ui/animated-table'
-import { CalendarRange, Search, Trophy, Activity, FileCheck, Check, X, Users, History, TrendingUp, AlertTriangle, Edit, Trash2, Plus, ShieldCheck } from 'lucide-react'
+import { CalendarRange, Search, Trophy, Activity, FileCheck, Check, X, Users, History, TrendingUp, AlertTriangle, Edit, Trash2, Plus, ShieldCheck, RefreshCw } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Tab = 'my-horses' | 'race-registration' | 'hire-jockey' | 'invitations' | 'my-registrations'
@@ -68,7 +68,7 @@ export function HorsesPage() {
   const [selectedHorseId, setSelectedHorseId] = useState<string>('')
   const [jockeySearch, setJockeySearch] = useState<string>('')
   const [inviteRaceId, setInviteRaceId] = useState<string>('')
-  const [registrations, setRegistrations] = useState<{ race: Race; horseId: string; horseName: string; status: string; rejectionReason?: string; confirmedByOwner?: boolean }[]>([])
+  const [registrations, setRegistrations] = useState<{ race: Race; horseId: string; horseName: string; status: string; rejectionReason?: string; confirmedByOwner?: boolean; registrationId?: string; jockeyId?: any; raceId?: string; id?: string; _id?: string }[]>([])
   // Races that the selected horse has APPROVED registration for (used in hire-jockey tab)
   const [horseRegisteredRaces, setHorseRegisteredRaces] = useState<{ raceId: string; raceName: string; status: string }[]>([])
 
@@ -149,10 +149,12 @@ export function HorsesPage() {
       setHorses(hList)
       
       const rList = await getRaces().catch(() => { partialErrors.push('Không tải được danh sách giải đấu'); return [] })
+      const jList = await searchJockeys({ limit: 100 }).catch(() => { partialErrors.push('Không tải được danh sách nài ngựa'); return [] })
+      setJockeys(jList)
       
       // Load registrations for our horses in all races for synchronization
       const myHorseIds = new Set(hList.map((h) => String(h.id || h._id)))
-      const regs: { race: Race; horseId: string; horseName: string; status: string; rejectionReason?: string; confirmedByOwner?: boolean; registrationId?: string }[] = []
+      const regs: { race: Race; horseId: string; horseName: string; status: string; rejectionReason?: string; confirmedByOwner?: boolean; registrationId?: string; jockeyId?: any }[] = []
       
       await Promise.all(
         rList.map(async (race) => {
@@ -170,6 +172,7 @@ export function HorsesPage() {
                   confirmedByOwner: entry.confirmedByOwner,
                   rejectionReason: entry.rejectionReason,
                   registrationId: entry.registrationId || entry.id || entry._id,
+                  jockeyId: entry.jockeyId || entry.jockey?._id || entry.jockey?.id || entry.jockey
                 })
               }
             })
@@ -192,8 +195,6 @@ export function HorsesPage() {
       if (activeTab === 'race-registration') {
         setRaces(rList.filter((r) => r.status === 'SCHEDULED'))
       } else if (activeTab === 'hire-jockey') {
-        const jList = await searchJockeys({ limit: 100 })
-        setJockeys(jList)
         const availableRaces = rList.filter((race) => ['SCHEDULED', 'CONFIRMED', 'UPCOMING'].includes(race.status?.toUpperCase() || ''))
         setRaces(availableRaces)
         if (availableRaces.length > 0 && !inviteRaceId) {
@@ -202,6 +203,11 @@ export function HorsesPage() {
       } else if (activeTab === 'invitations' && selectedHorseId) {
         const iList = await getHorseJockeys(selectedHorseId).catch(() => { partialErrors.push('Không tải được lời mời'); return [] })
         setInvitations(iList)
+        setRaces(rList)
+        console.log('[DEBUG] invitations fetched:', iList)
+        console.log('[DEBUG] registrations fetched:', regs)
+      } else {
+        setRaces(rList)
       }
 
       if (partialErrors.length > 0) {
@@ -338,7 +344,9 @@ export function HorsesPage() {
 
     try {
       const regId = registeredEntry?.registrationId || registeredEntry?.id || ''
-      await sendJockeyInvitation(cleanHorseId, cleanJockeyId, cleanRaceId, 'Mời bạn cưỡi ngựa của tôi', regId)
+      const raceNameStr = race?.name || registeredEntry?.raceName || ''
+      const fullMessage = `Mời bạn cưỡi ngựa của tôi|RACE_ID:${cleanRaceId}`
+      await sendJockeyInvitation(cleanHorseId, cleanJockeyId, cleanRaceId, fullMessage, regId, raceNameStr)
       showToast(`Đã gửi lời mời đến Jockey ${jockeyName}`)
     } catch (err: any) {
       const msg = err.response?.data?.message || err.response?.data?.error || 'Không thể gửi lời mời. Vui lòng kiểm tra lại trạng thái ngựa và cuộc đua.'
@@ -346,12 +354,44 @@ export function HorsesPage() {
     }
   }
 
-  const handleConfirmJockey = async (jockeyId: string, raceId: string, jockeyName: string) => {
+  const handleConfirmJockey = async (jockeyId: string, raceId: string, jockeyName: string, inviteId: string) => {
     if (!selectedHorseId) return
     try {
       await confirmJockey(selectedHorseId, jockeyId, raceId)
       showToast(`Đã chốt Jockey ${jockeyName} thành công!`)
-      loadData()
+      
+      // OPTIMISTIC UPDATE: Update UI instantly without waiting for backend cache
+      setInvitations(prev => prev.map(inv => {
+        if (String(inv.id || inv._id) === String(inviteId)) {
+          return { ...inv, status: 'CONFIRMED' }
+        }
+        return inv
+      }))
+      
+      setRegistrations(prev => prev.map(reg => {
+        if (String(reg.horseId).trim() === String(selectedHorseId).trim() && 
+            (String(reg.race?.id || reg.race?._id || reg.raceId || '').trim() === raceId || 
+             String(reg.registrationId || reg.id || reg._id).trim() === raceId)) {
+          return { ...reg, jockeyId: jockeyId }
+        }
+        return reg
+      }))
+
+      // Wait briefly to allow backend DB transactions and hooks to finish
+      await new Promise(resolve => setTimeout(resolve, 500))
+      await loadData()
+      const newInvites = await getHorseJockeys(selectedHorseId)
+      
+      // Merge optimistic status into fresh data in case of backend cache delay
+      setInvitations(prevOpt => {
+        return newInvites.map(newInv => {
+          const oldInv = prevOpt.find(i => i.id === newInv.id)
+          if (oldInv && oldInv.status === 'CONFIRMED' && newInv.status !== 'CONFIRMED') {
+            return { ...newInv, status: 'CONFIRMED' }
+          }
+          return newInv
+        })
+      })
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Không thể chốt Jockey', 'error')
     }
@@ -423,21 +463,22 @@ export function HorsesPage() {
         </div>
       </ScrollReveal>
 
-      {error && (
-        <div className="rounded-lg bg-red-500/10 border border-red-500/30 text-red-500 p-4 font-semibold text-sm flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5" /> {error}
-        </div>
-      )}
 
       <Tabs value={activeTab} onValueChange={(v: any) => startTransition(() => setActiveTab(v))}>
         <ScrollReveal direction="up" distance={20} duration={0.5} delay={0.1}>
-          <TabsList className="!bg-[var(--surface-2)] border border-[var(--border)]/45 p-1.5 rounded-2xl shadow-inner mb-8 flex flex-wrap gap-1 h-auto w-fit">
-            <TabsTrigger value="my-horses" className="py-2.5 px-4 rounded-xl font-bold transition-all"><Trophy className="w-4 h-4 mr-2" /> Hồ Sơ Ngựa</TabsTrigger>
-            <TabsTrigger value="race-registration" className="py-2.5 px-4 rounded-xl font-bold transition-all"><Activity className="w-4 h-4 mr-2" /> Đăng Ký Đua</TabsTrigger>
-            <TabsTrigger value="my-registrations" className="py-2.5 px-4 rounded-xl font-bold transition-all"><FileCheck className="w-4 h-4 mr-2" /> Đã Đăng Ký</TabsTrigger>
-            <TabsTrigger value="hire-jockey" className="py-2.5 px-4 rounded-xl font-bold transition-all"><Users className="w-4 h-4 mr-2" /> Tuyển Jockey</TabsTrigger>
-            <TabsTrigger value="invitations" className="py-2.5 px-4 rounded-xl font-bold transition-all"><History className="w-4 h-4 mr-2" /> Lời Mời Jockey</TabsTrigger>
-          </TabsList>
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+            <TabsList className="!bg-[var(--surface-2)] border border-[var(--border)]/45 p-1.5 rounded-2xl shadow-inner flex flex-wrap gap-1 h-auto w-fit m-0">
+              <TabsTrigger value="my-horses" className="py-2.5 px-4 rounded-xl font-bold transition-all"><Trophy className="w-4 h-4 mr-2" /> Hồ Sơ Ngựa</TabsTrigger>
+              <TabsTrigger value="race-registration" className="py-2.5 px-4 rounded-xl font-bold transition-all"><Activity className="w-4 h-4 mr-2" /> Đăng Ký Đua</TabsTrigger>
+              <TabsTrigger value="my-registrations" className="py-2.5 px-4 rounded-xl font-bold transition-all"><FileCheck className="w-4 h-4 mr-2" /> Đã Đăng Ký</TabsTrigger>
+              <TabsTrigger value="hire-jockey" className="py-2.5 px-4 rounded-xl font-bold transition-all"><Users className="w-4 h-4 mr-2" /> Tuyển Jockey</TabsTrigger>
+              <TabsTrigger value="invitations" className="py-2.5 px-4 rounded-xl font-bold transition-all"><History className="w-4 h-4 mr-2" /> Lời Mời Jockey</TabsTrigger>
+            </TabsList>
+            <Button onClick={loadData} disabled={loading} variant="outline" className="h-11 rounded-xl bg-gradient-to-r from-[var(--surface-3)] to-[var(--surface-2)] border-[var(--border)] hover:border-[var(--primary)]/50 text-[var(--text)] transition-all shadow-sm font-bold px-5 flex items-center gap-2">
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              Làm mới dữ liệu
+            </Button>
+          </div>
         </ScrollReveal>
 
         {/* ── TAB 1: My Horses ── */}
@@ -892,22 +933,117 @@ export function HorsesPage() {
             ) : (
               <div className="grid gap-4">
                 {invitations.map((inv, idx) => {
-                  const jockeyName = inv.jockeyId?.fullName || inv.jockeyId?.name || 'Jockey'
+                  // Calculate actualJockeyId from inv.jockeyId, inv.jockey, etc.
+                  let actualJockeyId = '';
+                  if (typeof inv.jockeyId === 'string') {
+                    actualJockeyId = inv.jockeyId.trim();
+                  } else if (typeof inv.jockeyId?._id) {
+                    actualJockeyId = String(inv.jockeyId._id).trim();
+                  } else if (typeof inv.jockeyId?.id) {
+                    actualJockeyId = String(inv.jockeyId.id).trim();
+                  } else if (typeof inv.jockey === 'string') {
+                    actualJockeyId = inv.jockey.trim();
+                  } else if (typeof inv.jockey?._id) {
+                    actualJockeyId = String(inv.jockey._id).trim();
+                  } else if (typeof inv.jockey?.id) {
+                    actualJockeyId = String(inv.jockey.id).trim();
+                  }
+                  const matchedJockey = jockeys.find(j => String(j.id || j._id).trim() === actualJockeyId);
+                  const jockeyName = matchedJockey?.userId?.fullName || matchedJockey?.userId?.name || inv.jockeyId?.fullName || inv.jockeyId?.name || inv.jockey?.fullName || inv.jockey?.name || 'Jockey';
+                  const winRate = matchedJockey?.winRate ?? inv.jockeyId?.winRate ?? 0;
+
                   const statusMap: Record<string, { cls: string; label: string; icon: any }> = {
                     PENDING:   { cls: 'border-amber-500/30 text-amber-400 bg-amber-500/10', label: 'Chờ phản hồi', icon: <AlertTriangle className="w-3.5 h-3.5 mr-1" /> },
                     ACCEPTED:  { cls: 'border-blue-500/30 text-blue-400 bg-blue-500/10', label: 'Đã chấp nhận', icon: <Check className="w-3.5 h-3.5 mr-1" /> },
                     REJECTED:  { cls: 'border-red-500/30 text-red-400 bg-red-500/10', label: 'Từ chối', icon: <X className="w-3.5 h-3.5 mr-1" /> },
                     CONFIRMED: { cls: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10', label: 'Chốt thành công', icon: <Check className="w-3.5 h-3.5 mr-1" /> },
+                    OTHER_CONFIRMED: { cls: 'border-slate-500/30 text-slate-400 bg-slate-500/10', label: 'Đã chốt Jockey khác', icon: <X className="w-3.5 h-3.5 mr-1" /> },
                   }
                   
-                  const inviteRaceId = String(inv.raceId?._id || inv.raceId?.id || inv.raceId || '').trim()
-                  const isConfirmed = registrations.some(
-                    (reg) =>
+                  let inviteRaceId = '';
+                  if (inv.raceId) inviteRaceId = String(inv.raceId?._id || inv.raceId?.id || inv.raceId || '').trim();
+                  else if (inv.race) inviteRaceId = String(inv.race?._id || inv.race?.id || inv.race || '').trim();
+                  
+                  // Check if inviteRaceId is actually a registrationId (due to fallback)
+                  if (inviteRaceId) {
+                    const regFallback = registrations.find((r: any) => String(r.registrationId || r.id || r._id) === inviteRaceId);
+                    if (regFallback && regFallback.race) {
+                      inviteRaceId = String(regFallback.race.id || regFallback.race._id).trim();
+                    }
+                  } else if (inv.registrationId) {
+                    const matchedReg = registrations.find((r: any) => String(r.registrationId || r.id || r._id) === String(inv.registrationId));
+                    if (matchedReg?.race) inviteRaceId = String(matchedReg.race.id || matchedReg.race._id).trim();
+                  }
+
+                  const matchedRace = races.find(r => String(r.id || r._id).trim() === inviteRaceId)
+                  
+                  let displayRaceName = matchedRace?.name || inv.raceId?.name || inv.race?.name;
+                  if (!displayRaceName) {
+                    const horseRegistrations = registrations.filter(r => String(r.horseId) === String(selectedHorseId));
+                    displayRaceName = horseRegistrations.length > 0 ? horseRegistrations.map(r => r.race?.name).join(', ') : '—';
+                    if (!inviteRaceId && horseRegistrations.length > 0) {
+                      inviteRaceId = String(horseRegistrations[0].race?.id || horseRegistrations[0].race?._id || '').trim();
+                    }
+                  }
+                  
+                  const matchedReg = registrations.find(
+                    (reg: any) =>
                       String(reg.horseId).trim() === String(selectedHorseId).trim() &&
-                      String(reg.race?.id || reg.race?._id || '').trim() === inviteRaceId &&
-                      reg.status === 'CONFIRMED'
-                  )
-                  const displayStatus = isConfirmed ? 'CONFIRMED' : inv.status
+                      String(reg.race?.id || reg.race?._id || reg.raceId || '').trim() === inviteRaceId
+                  ) as any
+                  
+                  const rawJockeyId = matchedReg ? (matchedReg.jockeyId || '') : '';
+                  const regJockeyId = typeof rawJockeyId === 'object' ? String(rawJockeyId?._id || rawJockeyId?.id || '').trim() : String(rawJockeyId).trim();
+                  
+                  const currentJockeyUserId = matchedJockey ? String(matchedJockey.userId?._id || matchedJockey.userId?.id || matchedJockey.userId || '').trim() : ''
+                  const jockeyIdentifiers = new Set<string>();
+                  if (actualJockeyId) jockeyIdentifiers.add(actualJockeyId);
+                  if (currentJockeyUserId) jockeyIdentifiers.add(currentJockeyUserId);
+                  if (matchedJockey?.id) jockeyIdentifiers.add(String(matchedJockey.id).trim());
+                  if (matchedJockey?._id) jockeyIdentifiers.add(String(matchedJockey._id).trim());
+
+                  const isThisJockeyConfirmed = (regJockeyId && jockeyIdentifiers.has(regJockeyId)) || inv.status === 'CONFIRMED'
+                  
+                  const hasConfirmedInvite = invitations.some(i => {
+                    let iRaceId = '';
+                    if (i.raceId) iRaceId = String(i.raceId?._id || i.raceId?.id || i.raceId || '').trim();
+                    else if (i.race) iRaceId = String(i.race?._id || i.race?.id || i.race || '').trim();
+                    else if (i.registrationId) {
+                      const mReg = registrations.find((r: any) => String(r.registrationId || r.id || r._id) === String(i.registrationId));
+                      if (mReg?.race) iRaceId = String(mReg.race.id || mReg.race._id).trim();
+                    }
+                    
+                    if (!iRaceId) {
+                      // Fallback for old invitations missing race data: Try to match the exact fallback logic used for rendering
+                      const horseRegistrations = registrations.filter(r => String(r.horseId) === String(selectedHorseId));
+                      if (horseRegistrations.length > 0) {
+                        iRaceId = String(horseRegistrations[0].race?.id || horseRegistrations[0].race?._id || '').trim();
+                      }
+                    }
+                    
+                    return iRaceId === inviteRaceId && i.status === 'CONFIRMED';
+                  });
+
+                  const isRaceAlreadyConfirmed = !!regJockeyId || hasConfirmedInvite
+
+                  let displayStatus = inv.status || 'PENDING'
+                  if (isThisJockeyConfirmed) {
+                    displayStatus = 'CONFIRMED'
+                  } else if (isRaceAlreadyConfirmed && displayStatus !== 'REJECTED') {
+                    displayStatus = 'OTHER_CONFIRMED'
+                  }
+                  console.log('[DEBUG] mapping invite:', {
+                    jockeyName,
+                    inviteRaceId,
+                    matchedReg,
+                    regJockeyId,
+                    isRaceAlreadyConfirmed,
+                    actualJockeyId,
+                    currentJockeyUserId,
+                    isThisJockeyConfirmed,
+                    displayStatus
+                  })
+                  
                   const sc = statusMap[displayStatus] ?? { cls: 'border-slate-500/30 text-slate-300', label: displayStatus, icon: null }
 
                   return (
@@ -917,9 +1053,9 @@ export function HorsesPage() {
                           <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-500/20 to-teal-500/10 text-blue-400 flex items-center justify-center font-extrabold text-base shrink-0 border border-blue-500/20 shadow-inner">{jockeyName.slice(0, 2).toUpperCase()}</div>
                           <div className="space-y-1">
                             <h4 className="font-extrabold text-white text-lg m-0">{jockeyName}</h4>
-                            <div className="text-sm font-bold text-slate-300 flex items-center gap-1.5"><Activity className="w-4 h-4 text-[var(--primary)]" /> Giải đua: {inv.raceId?.name || '—'}</div>
+                            <div className="text-sm font-bold text-slate-300 flex items-center gap-1.5"><Activity className="w-4 h-4 text-[var(--primary)]" /> Giải đua: {displayRaceName}</div>
                             <div className="flex gap-2">
-                              <Badge variant="secondary" className="bg-[var(--bg2)]/60 text-slate-300 border border-[var(--border)]/20 text-[10px] font-semibold px-2 py-0.5 rounded-lg">Tỉ lệ thắng: {inv.jockeyId?.winRate ?? 0}%</Badge>
+                              <Badge variant="secondary" className="bg-[var(--bg2)]/60 text-slate-300 border border-[var(--border)]/20 text-[10px] font-semibold px-2 py-0.5 rounded-lg">Tỉ lệ thắng: {winRate}%</Badge>
                             </div>
                           </div>
                         </div>
@@ -928,10 +1064,11 @@ export function HorsesPage() {
                           {displayStatus === 'ACCEPTED' && (
                             <Button 
                               size="sm" 
-                              className="mt-2 font-bold bg-gradient-to-r from-[var(--primary)] to-[var(--primary-dark)] text-white hover:opacity-95 shadow-md shadow-[var(--primary)]/20 border-none rounded-xl px-4 py-2 text-xs transition-all duration-300 animate-pulse" 
-                              onClick={() => handleConfirmJockey(inv.jockeyId?._id || inv.jockeyId, inv.raceId?._id || inv.raceId, jockeyName)}
+                              disabled={isRaceAlreadyConfirmed}
+                              className={`mt-2 font-bold bg-gradient-to-r from-[var(--primary)] to-[var(--primary-dark)] text-white shadow-md shadow-[var(--primary)]/20 border-none rounded-xl px-4 py-2 text-xs transition-all duration-300 ${isRaceAlreadyConfirmed ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-95 animate-pulse'}`} 
+                              onClick={() => handleConfirmJockey(inv.jockeyId?._id || inv.jockeyId, inviteRaceId, jockeyName, String(inv.id || inv._id))}
                             >
-                              ✓ Chốt Jockey Này
+                              {isRaceAlreadyConfirmed ? 'Đã chốt người khác' : '✓ Chốt Jockey Này'}
                             </Button>
                           )}
                         </div>

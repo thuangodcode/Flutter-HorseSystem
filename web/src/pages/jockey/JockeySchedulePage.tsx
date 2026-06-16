@@ -25,7 +25,7 @@ export function JockeySchedulePage() {
         
         // 2. Fetch invitations
         const invites = await getInvites()
-        const acceptedInvites = invites.filter(inv => inv.status === 'ACCEPTED')
+        const acceptedInvites = invites.filter(inv => inv.status === 'ACCEPTED' || inv.status === 'CONFIRMED')
         
         // 3. Fetch all races to resolve details
         const allRaces = await getRaces()
@@ -54,20 +54,63 @@ export function JockeySchedulePage() {
           let matchedRace: any = null
           
           for (const reg of registrations) {
+            const raceIdMatch = String(reg.race.id || reg.race._id) === String(inv.raceId || '');
             const found = reg.horses.find((h: any) => String(h.horseId) === String(targetHorseId))
-            if (found) {
+            // If the backend returns raceId as the registrationId (due to fallback), we might not match race.id.
+            // But we should prioritize matching the raceId. If not, at least we matched the horse AND the race.
+            if (found && raceIdMatch) {
               matchedReg = found
               matchedRace = reg.race
               break
+            }
+          }
+
+          // Fallback if we couldn't match the exact race (e.g. inv.raceId was a registrationId)
+          if (!matchedReg || !matchedRace) {
+            for (const reg of registrations) {
+              const found = reg.horses.find((h: any) => String(h.horseId) === String(targetHorseId) && String(h.registrationId || h.id || h._id) === String(inv.raceId || ''))
+              if (found) {
+                matchedReg = found
+                matchedRace = reg.race
+                break
+              }
+            }
+          }
+          
+          // Absolute fallback if everything fails, just find by horse ID, but this causes bugs if registered in multiple races
+          if (!matchedReg || !matchedRace) {
+            for (const reg of registrations) {
+              const found = reg.horses.find((h: any) => String(h.horseId) === String(targetHorseId))
+              if (found) {
+                matchedReg = found
+                matchedRace = reg.race
+                break
+              }
             }
           }
           
           if (matchedReg && matchedRace) {
             const horseObj = matchedReg.horse || {}
             
-            // Check if this registration is confirmed by the owner/admin
-            const isConfirmed = matchedReg.status === 'CONFIRMED' || matchedReg.registrationStatus === 'CONFIRMED'
+            const regJockeyId = String(matchedReg.jockeyId?._id || matchedReg.jockeyId?.id || matchedReg.jockeyId || matchedReg.jockey?._id || matchedReg.jockey?.id || matchedReg.jockey || '').trim()
+            const invJockeyId = String(inv.jockeyId?._id || inv.jockeyId?.id || inv.jockeyId || '').trim()
             
+            // Check if ANY jockey is confirmed for this registration
+            const isAnyJockeyConfirmed = !!regJockeyId || inv.status === 'CONFIRMED'
+            
+            let finalStatus = 'ACCEPTED_PENDING_CONFIRMATION'
+            if (inv.status === 'CONFIRMED') {
+              finalStatus = 'CONFIRMED'
+            } else if (isAnyJockeyConfirmed) {
+              // We need to check against both invJockeyId and user ID if available, but invJockeyId is usually the user ID or jockey profile ID.
+              // To be safe, if regJockeyId doesn't match invJockeyId, it's someone else.
+              if (regJockeyId !== invJockeyId) {
+                finalStatus = 'OTHER_JOCKEY_CONFIRMED'
+              } else {
+                finalStatus = 'CONFIRMED'
+              }
+            }
+
             return {
               _id: `accepted-${inv.id}`,
               registrationId: matchedReg.registrationId || matchedReg.id,
@@ -76,7 +119,7 @@ export function JockeySchedulePage() {
               scheduledTime: matchedRace.scheduledAt,
               distance: matchedRace.distance,
               location: matchedRace.location || matchedRace.venue || 'Trường đua Phú Thọ',
-              status: isConfirmed ? 'CONFIRMED' : 'ACCEPTED_PENDING_CONFIRMATION',
+              status: finalStatus,
               horse: {
                 id: horseObj._id || horseObj.id,
                 name: horseObj.name,
@@ -128,6 +171,13 @@ export function JockeySchedulePage() {
       return (
         <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-500 dark:text-amber-400 font-semibold px-2.5 py-1 text-xs shrink-0">
           ⏳ Chờ chủ ngựa chốt
+        </Badge>
+      )
+    }
+    if (status === 'OTHER_JOCKEY_CONFIRMED') {
+      return (
+        <Badge variant="outline" className="border-slate-500/30 bg-slate-500/10 text-slate-500 dark:text-slate-400 font-semibold px-2.5 py-1 text-xs shrink-0">
+          ❌ Chủ ngựa chọn nài khác
         </Badge>
       )
     }
@@ -241,6 +291,14 @@ export function JockeySchedulePage() {
                     <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-amber-500 flex items-center gap-2">
                       <ShieldAlert className="w-4 h-4 shrink-0" />
                       <span>Bạn đã đồng ý. Cuộc đua sẽ chính thức hiển thị khi chủ ngựa chốt nài.</span>
+                    </div>
+                  )}
+
+                  {/* Warning message if another jockey was confirmed */}
+                  {s.status === 'OTHER_JOCKEY_CONFIRMED' && (
+                    <div className="p-3 rounded-xl bg-slate-500/10 border border-slate-500/20 text-xs font-semibold text-slate-400 flex items-center gap-2 opacity-80 grayscale">
+                      <ShieldAlert className="w-4 h-4 shrink-0" />
+                      <span>Rất tiếc! Chủ ngựa đã chốt nài khác cho cuộc đua này.</span>
                     </div>
                   )}
 

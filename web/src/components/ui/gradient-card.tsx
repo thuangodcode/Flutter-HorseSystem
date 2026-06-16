@@ -37,7 +37,7 @@ const GradientCard = ({ children, className = "" }: GradientProps) => {
     <div className={`relative group h-full ${className}`}>
       {/* Blurred glowing shadow behind the card */}
       <div
-        className="absolute -inset-1 bg-gradient-to-r from-pink-600 via-purple-600 to-blue-500 rounded-2xl blur-lg opacity-40 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"
+        className="gradient-card-glow absolute -inset-1 bg-gradient-to-r from-pink-600 via-purple-600 to-blue-500 rounded-2xl blur-lg opacity-40 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"
         style={{
           backgroundSize: "200% 200%",
           animation: "move-gradient 4s ease-in-out infinite",
@@ -46,7 +46,7 @@ const GradientCard = ({ children, className = "" }: GradientProps) => {
 
       {/* The actual border with 1px padding */}
       <div
-        className="relative h-full rounded-2xl bg-gradient-to-r from-pink-600 via-purple-600 to-blue-500 p-[1px] transition-all duration-500"
+        className="gradient-card-border relative h-full rounded-2xl bg-gradient-to-r from-pink-600 via-purple-600 to-blue-500 p-[1px] transition-all duration-500"
         style={{
           backgroundSize: "200% 200%",
           animation: "move-gradient 4s ease-in-out infinite",
@@ -59,6 +59,7 @@ const GradientCard = ({ children, className = "" }: GradientProps) => {
       </div>
     </div>
   );
+
 };
 
 export { GradientCard };

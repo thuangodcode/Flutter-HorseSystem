@@ -673,19 +673,27 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
     setResultNotes('')
     try {
       // Get horses registered for this race
-      const res = await http.get(`${import.meta.env.VITE_API_BASE_URL || 'https://managerhourse-be.onrender.com/api-docs'}/races/${race.id}/horses`)
+      const res = await http.get(`${import.meta.env.VITE_API_BASE_URL || 'https://managerhourse-be.onrender.com'}/races/${race.id}/horses`)
       const horsesList = res.data.horses || []
       setRaceHorses(horsesList)
 
-      // Initialize rankings form: default positions
-      const initialRankings = horsesList.map((h: any, idx: number) => ({
-        horseId: h.horse?._id || h.horse?.id,
-        jockeyId: h.horse?.ownerId?._id || h.horse?.ownerId, // placeholder or jockey if confirmed
-        position: idx + 1,
-        finishTime: 60 + idx * 2.5, // default time estimate
-        status: 'FINISHED',
-        prizeAmount: idx === 0 ? race.prizeFirst : idx === 1 ? race.prizeSecond : idx === 2 ? race.prizeThird : 0,
-      }))
+      // Check if race already has confirmed rankings/results
+      let initialRankings: any[]
+      if (race.status === 'RESULT_CONFIRMED' && race.rankings && Array.isArray(race.rankings) && race.rankings.length > 0) {
+        initialRankings = race.rankings
+      } else if (race.status === 'RESULT_CONFIRMED' && race.results && Array.isArray(race.results) && race.results.length > 0) {
+        initialRankings = race.results
+      } else {
+        // Initialize rankings form: default positions
+        initialRankings = horsesList.map((h: any, idx: number) => ({
+          horseId: h.horse?._id || h.horse?.id,
+          jockeyId: h.horse?.ownerId?._id || h.horse?.ownerId, // placeholder or jockey if confirmed
+          position: idx + 1,
+          finishTime: 60 + idx * 2.5, // default time estimate
+          status: 'FINISHED',
+          prizeAmount: idx === 0 ? race.prizeFirst : idx === 1 ? race.prizeSecond : idx === 2 ? race.prizeThird : 0,
+        }))
+      }
       setResultRankings(initialRankings)
       setShowResultModal(true)
     } catch (err: any) {
@@ -1154,6 +1162,7 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                           races={tournRaces}
                           onEditRace={(race) => openRaceModal(race)}
                           onSchedule={openSchedModal}
+                          onOpenResultModal={openResultModal}
                           onRefresh={(rId) => {
                             if (rId) setLastModifiedRaceId(rId)
                             loadTabData(undefined, rId, undefined, undefined)
@@ -1807,12 +1816,13 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                       filterOptions: [
                         { label: 'Đã lên lịch', value: 'SCHEDULED' },
                         { label: 'Đang diễn ra', value: 'ONGOING' },
+                        { label: 'Xác nhận kết quả', value: 'RESULT_CONFIRMED' },
                         { label: 'Kết thúc', value: 'COMPLETED' },
                         { label: 'Đã hủy', value: 'CANCELLED' },
                       ],
                       cell: (row) => (
-                        <span className={`badge ${row.status === 'COMPLETED' ? 'badge-approved' : row.status === 'ONGOING' ? 'badge-ongoing' : row.status === 'CANCELLED' ? 'badge-rejected' : 'badge-scheduled'}`}>
-                          {row.status === 'COMPLETED' ? 'Kết thúc' : row.status === 'ONGOING' ? 'Đang diễn ra' : row.status === 'CANCELLED' ? 'Đã hủy' : row.status === 'SCHEDULED' ? 'Đã lên lịch' : row.status}
+                        <span className={`badge ${row.status === 'COMPLETED' || row.status === 'RESULT_CONFIRMED' ? 'badge-approved' : row.status === 'ONGOING' ? 'badge-ongoing' : row.status === 'CANCELLED' ? 'badge-rejected' : 'badge-scheduled'}`}>
+                          {row.status === 'COMPLETED' ? 'Kết thúc' : row.status === 'RESULT_CONFIRMED' ? 'Xác nhận kết quả' : row.status === 'ONGOING' ? 'Đang diễn ra' : row.status === 'CANCELLED' ? 'Đã hủy' : row.status === 'SCHEDULED' ? 'Đã lên lịch' : row.status}
                         </span>
                       )
                     },
@@ -1857,11 +1867,15 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                               Công bố kết quả
                             </button>
                           )}
+                          {row.status === 'RESULT_CONFIRMED' && (
+                            <button className="btn btnPrimary" style={{ fontSize: '12px', padding: '5px 8px' }} onClick={() => openResultModal(row)}>
+                              Công bố kết quả
+                            </button>
+                          )}
                           {row.status === 'COMPLETED' && (
-                            <span className="success-text flex items-center gap-1" style={{ fontSize: '12px', fontWeight: 600 }}>
-                              <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                              <span>Đã hoàn thành</span>
-                            </span>
+                            <button className="btn btnPrimary" style={{ fontSize: '12px', padding: '5px 8px' }} onClick={() => handleSettlePredictions(row.id)}>
+                              Trả thưởng cược
+                            </button>
                           )}
                         </div>
                       )
@@ -1906,6 +1920,7 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
               onClosePred={handleClosePredictions}
               onSettlePred={handleSettlePredictions}
               onViewStats={handleViewPredictionStats}
+              onOpenResultModal={openResultModal}
               lastModifiedRaceId={lastModifiedRaceId}
             />
           </div>
@@ -2523,12 +2538,14 @@ function RaceList({
   races,
   onEditRace,
   onSchedule,
+  onOpenResultModal,
   onRefresh,
   lastModifiedRaceId,
 }: {
   races: Race[]
   onEditRace: (race: Race) => void
   onSchedule: (race: Race) => void
+  onOpenResultModal: (race: Race) => void
   onRefresh: (highlightRaceId?: string) => void
   lastModifiedRaceId?: string | null
 }) {
@@ -2594,19 +2611,27 @@ function RaceList({
                     background:
                       r.status === 'ONGOING' ? 'rgba(16,185,129,0.12)' :
                       r.status === 'COMPLETED' ? 'rgba(16,185,129,0.08)' :
+                      r.status === 'RESULT_CONFIRMED' ? 'rgba(59,130,246,0.10)' :
+                      r.status === 'PENDING' ? 'rgba(100,116,139,0.1)' :
                       r.status === 'CANCELLED' ? 'rgba(239,68,68,0.10)' : 'rgba(59,130,246,0.10)',
                     borderColor:
                       r.status === 'ONGOING' ? '#10b981' :
                       r.status === 'COMPLETED' ? '#059669' :
+                      r.status === 'RESULT_CONFIRMED' ? '#3b82f6' :
+                      r.status === 'PENDING' ? '#64748b' :
                       r.status === 'CANCELLED' ? '#ef4444' : '#3b82f6',
                     color:
                       r.status === 'ONGOING' ? '#059669' :
                       r.status === 'COMPLETED' ? '#047857' :
+                      r.status === 'RESULT_CONFIRMED' ? '#2563eb' :
+                      r.status === 'PENDING' ? '#475569' :
                       r.status === 'CANCELLED' ? '#dc2626' : '#2563eb',
                   }}
                 >
+                  <option value="PENDING">Chưa có lịch</option>
                   <option value="SCHEDULED">Đã lên lịch</option>
                   <option value="ONGOING">Đang diễn ra</option>
+                  <option value="RESULT_CONFIRMED">Xác nhận kết quả</option>
                   <option value="COMPLETED">Hoàn thành</option>
                   <option value="CANCELLED">Đã hủy</option>
                 </select>
@@ -2619,6 +2644,11 @@ function RaceList({
                   {r.status === 'SCHEDULED' && (
                     <button className="btn btnPrimary" style={{ fontSize: '11px', padding: '4px 8px' }} onClick={() => onSchedule(r)}>
                       Lập lịch
+                    </button>
+                  )}
+                  {r.status === 'RESULT_CONFIRMED' && (
+                    <button className="btn btnPrimary" style={{ fontSize: '11px', padding: '4px 8px' }} onClick={() => onOpenResultModal(r)}>
+                      Công bố kết quả
                     </button>
                   )}
                 </div>
@@ -2639,12 +2669,14 @@ function PredictionRaceList({
   onClosePred,
   onSettlePred,
   onViewStats,
+  onOpenResultModal,
   lastModifiedRaceId,
 }: {
   predictions: any[]
   onClosePred: (raceId: string) => void
   onSettlePred: (raceId: string) => void
   onViewStats: (raceId: string) => void
+  onOpenResultModal: (race: Race) => void
   lastModifiedRaceId?: string | null
 }) {
   const [races, setRaces] = useState<Race[]>([])
@@ -2690,7 +2722,6 @@ function PredictionRaceList({
         </thead>
         <tbody>
           {sortedRaces.map((r) => {
-            const isCompleted = r.status === 'COMPLETED'
             const racePreds = predictions.filter(p => {
               const rId = typeof p.raceId === 'object' ? p.raceId?._id || p.raceId?.id : p.raceId
               return rId === r.id
@@ -2710,8 +2741,8 @@ function PredictionRaceList({
                 </td>
                 <td>{new Date(r.scheduledAt).toLocaleString('vi-VN')}</td>
                 <td>
-                  <span className={`badge ${r.status === 'COMPLETED' ? 'badge-approved' : r.status === 'ONGOING' ? 'badge-ongoing' : r.status === 'CANCELLED' ? 'badge-rejected' : 'badge-scheduled'}`}>
-                    {r.status === 'COMPLETED' ? 'Kết thúc' : r.status === 'ONGOING' ? 'Đang diễn ra' : r.status === 'CANCELLED' ? 'Đã hủy' : r.status === 'SCHEDULED' ? 'Đã lên lịch' : r.status}
+                  <span className={`badge ${r.status === 'COMPLETED' || r.status === 'RESULT_CONFIRMED' ? 'badge-approved' : r.status === 'ONGOING' ? 'badge-ongoing' : r.status === 'CANCELLED' ? 'badge-rejected' : 'badge-scheduled'}`}>
+                    {r.status === 'COMPLETED' ? 'Kết thúc' : r.status === 'RESULT_CONFIRMED' ? 'Xác nhận kết quả' : r.status === 'ONGOING' ? 'Đang diễn ra' : r.status === 'CANCELLED' ? 'Đã hủy' : r.status === 'SCHEDULED' ? 'Đã lên lịch' : r.status}
                   </span>
                 </td>
                 <td style={{ fontWeight: 600 }}>{betCount}</td>
@@ -2730,13 +2761,19 @@ function PredictionRaceList({
                       <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
                       <span>Chi tiết</span>
                     </button>
-                    {!isCompleted && (
+                    {r.status !== 'COMPLETED' && r.status !== 'RESULT_CONFIRMED' && (
                       <button className="btn flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px', color: '#d97706' }} onClick={() => onClosePred(r.id)}>
                         <Lock className="w-3.5 h-3.5 text-amber-500" />
                         <span>Đóng cổng</span>
                       </button>
                     )}
-                    {isCompleted && (
+                    {r.status === 'RESULT_CONFIRMED' && (
+                      <button className="btn btnPrimary flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onOpenResultModal(r)}>
+                        <Coins className="w-3.5 h-3.5 text-white" />
+                        <span>Công bố kết quả</span>
+                      </button>
+                    )}
+                    {r.status === 'COMPLETED' && (
                       <button className="btn btnPrimary flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onSettlePred(r.id)}>
                         <Coins className="w-3.5 h-3.5 text-white" />
                         <span>Trả thưởng</span>

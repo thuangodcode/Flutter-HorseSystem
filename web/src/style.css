@@ -1317,11 +1317,30 @@ html.light body {
 html.light .spotlight-card-outer {
   background: linear-gradient(45deg, var(--card-bg-start), var(--card-bg-mid) 50%, var(--card-bg-end)) padding-box,
               conic-gradient(from var(--border-angle-custom), #db2777 0%, #ea580c 15%, #d97706 30%, #16a34a 50%, #0284c7 70%, #7c3aed 85%, #db2777 100%) border-box;
+  border-width: 2px;
+}
+
+/* =====================================================
+   GRADIENT CARD — Light Mode Enhancements
+   Make the glow and border gradient more visible on light backgrounds
+   ===================================================== */
+html.light .gradient-card-glow {
+  opacity: 0.55;
+}
+
+html.light .gradient-card-glow:hover,
+html.light .group:hover .gradient-card-glow {
+  opacity: 0.85;
+}
+
+html.light .gradient-card-border {
+  background-image: linear-gradient(to right, #db2777, #9333ea, #2563eb);
+  padding: 2px;
 }
 
 /* Invert GIF icons in dark mode so their black outlines become white and stand out */
-.dark img[src$=".gif"],
-.dark img[src*=".gif?"] {
+html.dark img[src$=".gif"],
+html.dark img[src*=".gif?"] {
   filter: invert(1) hue-rotate(180deg) brightness(1.25);
 }
 

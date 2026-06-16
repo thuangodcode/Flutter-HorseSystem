@@ -1,0 +1,4528 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Auth & User API",
+    "version": "1.0.0",
+    "description": "API documentation for Auth & User module"
+  },
+  "servers": [
+    {
+      "url": "https://managerhourse-be.onrender.com",
+      "description": "Current server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/admin/horses": {
+      "get": {
+        "summary": "Get all horses (Admin)",
+        "tags": [
+          "AdminHorses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Search by horse name"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by status"
+          },
+          {
+            "in": "query",
+            "name": "breed",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by breed"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of horses"
+          }
+        }
+      }
+    },
+    "/admin/horses/{horseId}/approve": {
+      "patch": {
+        "summary": "Approve a horse",
+        "tags": [
+          "AdminHorses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "horseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Horse approved"
+          }
+        }
+      }
+    },
+    "/admin/horses/{horseId}/reject": {
+      "patch": {
+        "summary": "Reject a horse",
+        "tags": [
+          "AdminHorses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "horseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Horse rejected"
+          }
+        }
+      }
+    },
+    "/admin/jockeys": {
+      "get": {
+        "summary": "Get all jockeys (Admin)",
+        "tags": [
+          "AdminJockeys"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Items per page"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by status"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of jockeys"
+          }
+        }
+      }
+    },
+    "/admin/races": {
+      "post": {
+        "summary": "Create a new race within a tournament",
+        "tags": [
+          "Admin - Races"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "tournamentId",
+                  "name",
+                  "distance",
+                  "scheduledAt",
+                  "maxHorses"
+                ],
+                "properties": {
+                  "tournamentId": {
+                    "type": "string",
+                    "example": "665f1a2b3c4d5e6f7a8b9c0d"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "Vòng 1 — Nội dung 1200m"
+                  },
+                  "distance": {
+                    "type": "integer",
+                    "description": "Distance in meters",
+                    "example": 1200
+                  },
+                  "scheduledAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2025-03-01T08:00:00Z"
+                  },
+                  "maxHorses": {
+                    "type": "integer",
+                    "example": 12
+                  },
+                  "prizeFirst": {
+                    "type": "number",
+                    "example": 100000000
+                  },
+                  "prizeSecond": {
+                    "type": "number",
+                    "example": 50000000
+                  },
+                  "prizeThird": {
+                    "type": "number",
+                    "example": 25000000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Race created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "raceId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "SCHEDULED"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error or invalid date"
+          },
+          "404": {
+            "description": "Tournament not found"
+          }
+        }
+      }
+    },
+    "/admin/races/{raceId}": {
+      "put": {
+        "summary": "Update a race",
+        "tags": [
+          "Admin - Races"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "distance": {
+                    "type": "integer"
+                  },
+                  "scheduledAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "maxHorses": {
+                    "type": "integer"
+                  },
+                  "prizeFirst": {
+                    "type": "number"
+                  },
+                  "prizeSecond": {
+                    "type": "number"
+                  },
+                  "prizeThird": {
+                    "type": "number"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "SCHEDULED",
+                      "ONGOING",
+                      "COMPLETED",
+                      "CANCELLED"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated race"
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "404": {
+            "description": "Race not found"
+          }
+        }
+      }
+    },
+    "/admin/races/{raceId}/assign-referee": {
+      "post": {
+        "summary": "Assign a referee to a race",
+        "tags": [
+          "Admin - Races"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "refereeId"
+                ],
+                "properties": {
+                  "refereeId": {
+                    "type": "string",
+                    "description": "User ID of the referee (must have REFEREE role)",
+                    "example": "665f1a2b3c4d5e6f7a8b9c0d"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Referee assigned successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "raceId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "refereeId": {
+                      "type": "string"
+                    },
+                    "refereeName": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "User is not a REFEREE or refereeId missing"
+          },
+          "404": {
+            "description": "Race or User not found"
+          }
+        }
+      }
+    },
+    "/admin/races/registrations": {
+      "get": {
+        "summary": "Get all race registrations with optional filtering",
+        "tags": [
+          "Admin - Races"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "raceId",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by race ID"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING_APPROVAL",
+                "APPROVED",
+                "REJECTED",
+                "CONFIRMED"
+              ]
+            },
+            "description": "Filter by registration status"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of race registrations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "integer"
+                    },
+                    "registrations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "regId": {
+                            "type": "string"
+                          },
+                          "horseId": {
+                            "type": "string"
+                          },
+                          "horseName": {
+                            "type": "string"
+                          },
+                          "raceId": {
+                            "type": "string"
+                          },
+                          "raceName": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "example": "PENDING_APPROVAL"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Query error"
+          }
+        }
+      }
+    },
+    "/admin/races/registrations/{regId}/approve": {
+      "patch": {
+        "summary": "Approve a pending race registration",
+        "tags": [
+          "Admin - Races"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "regId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Registration ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Registration approved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "regId": {
+                      "type": "string"
+                    },
+                    "horseId": {
+                      "type": "string"
+                    },
+                    "horseName": {
+                      "type": "string"
+                    },
+                    "raceId": {
+                      "type": "string"
+                    },
+                    "raceName": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "APPROVED"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Registration not in PENDING_APPROVAL status"
+          },
+          "404": {
+            "description": "Registration not found"
+          }
+        }
+      }
+    },
+    "/admin/races/registrations/{regId}/reject": {
+      "patch": {
+        "summary": "Reject a pending race registration",
+        "tags": [
+          "Admin - Races"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "regId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Registration ID"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "description": "Reason for rejection",
+                    "example": "Horse does not meet weight requirements"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registration rejected successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "regId": {
+                      "type": "string"
+                    },
+                    "horseId": {
+                      "type": "string"
+                    },
+                    "horseName": {
+                      "type": "string"
+                    },
+                    "raceId": {
+                      "type": "string"
+                    },
+                    "raceName": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "REJECTED"
+                    },
+                    "rejectionReason": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Registration not in PENDING_APPROVAL status"
+          },
+          "404": {
+            "description": "Registration not found"
+          }
+        }
+      }
+    },
+    "/admin/tournaments": {
+      "post": {
+        "summary": "Create a new tournament",
+        "tags": [
+          "Admin - Tournaments"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "startDate",
+                  "endDate",
+                  "venue",
+                  "prizePool",
+                  "maxHorses"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Giải Đua Ngựa Mùa Xuân 2025"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2025-03-01"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2025-03-07"
+                  },
+                  "venue": {
+                    "type": "string",
+                    "example": "Trường đua Phú Thọ"
+                  },
+                  "prizePool": {
+                    "type": "number",
+                    "example": 500000000
+                  },
+                  "currency": {
+                    "type": "string",
+                    "example": "VND"
+                  },
+                  "maxHorses": {
+                    "type": "integer",
+                    "example": 50
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Tournament created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tournamentId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "DRAFT"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_DATE_RANGE"
+          },
+          "409": {
+            "description": "NAME_ALREADY_EXISTS"
+          }
+        }
+      }
+    },
+    "/admin/tournaments/{tournId}": {
+      "put": {
+        "summary": "Update a tournament",
+        "tags": [
+          "Admin - Tournaments"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tournId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "venue": {
+                    "type": "string"
+                  },
+                  "prizePool": {
+                    "type": "number"
+                  },
+                  "currency": {
+                    "type": "string"
+                  },
+                  "maxHorses": {
+                    "type": "integer"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "DRAFT",
+                      "PUBLISHED",
+                      "ONGOING",
+                      "COMPLETED",
+                      "CANCELLED"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated tournament"
+          },
+          "400": {
+            "description": "INVALID_DATE_RANGE or validation error"
+          },
+          "404": {
+            "description": "Tournament not found"
+          },
+          "409": {
+            "description": "NAME_ALREADY_EXISTS"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a tournament (only if not started)",
+        "tags": [
+          "Admin - Tournaments"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tournId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tournament deleted"
+          },
+          "400": {
+            "description": "Cannot delete started/completed tournament"
+          },
+          "404": {
+            "description": "Tournament not found"
+          }
+        }
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "summary": "Danh sách tất cả user (filter, search, phân trang)",
+        "tags": [
+          "Admin - Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "role",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "OWNER",
+                "JOCKEY",
+                "SPECTATOR",
+                "ADMIN",
+                "REFEREE"
+              ]
+            },
+            "description": "Filter by role"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "INACTIVE"
+              ]
+            },
+            "description": "Filter by account status"
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Search by email or fullName (case-insensitive)"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            },
+            "description": "Items per page (max 100)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "integer",
+                      "example": 150
+                    },
+                    "page": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "limit": {
+                      "type": "integer",
+                      "example": 20
+                    },
+                    "totalPages": {
+                      "type": "integer",
+                      "example": 8
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "userId": {
+                            "type": "string"
+                          },
+                          "email": {
+                            "type": "string"
+                          },
+                          "fullName": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string",
+                            "enum": [
+                              "OWNER",
+                              "JOCKEY",
+                              "SPECTATOR",
+                              "ADMIN",
+                              "REFEREE"
+                            ]
+                          },
+                          "phone": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "ACTIVE",
+                              "INACTIVE"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      },
+      "post": {
+        "summary": "Admin tạo tài khoản cho OWNER, JOCKEY, REFEREE",
+        "tags": [
+          "Admin - Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password",
+                  "fullName",
+                  "role"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "fullName": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "OWNER",
+                      "JOCKEY",
+                      "REFEREE"
+                    ]
+                  },
+                  "phone": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created successfully"
+          },
+          "400": {
+            "description": "Invalid input or role"
+          },
+          "409": {
+            "description": "Email already exists"
+          }
+        }
+      }
+    },
+    "/admin/users/{userId}": {
+      "get": {
+        "summary": "Chi tiết user",
+        "tags": [
+          "Admin - Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "User ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "userId": {
+                      "type": "string"
+                    },
+                    "email": {
+                      "type": "string"
+                    },
+                    "fullName": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "phone": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ACTIVE",
+                        "INACTIVE"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Xóa tài khoản (soft delete)",
+        "tags": [
+          "Admin - Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User soft-deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "userId": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "User deleted successfully"
+                    },
+                    "deletedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cannot delete your own account"
+          },
+          "403": {
+            "description": "Cannot delete an ADMIN account"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/admin/users/{userId}/role": {
+      "patch": {
+        "summary": "Thay đổi role của user",
+        "tags": [
+          "Admin - Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "role"
+                ],
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "OWNER",
+                      "JOCKEY",
+                      "SPECTATOR",
+                      "REFEREE"
+                    ],
+                    "example": "REFEREE"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Role updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "userId": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid role value"
+          },
+          "403": {
+            "description": "CANNOT_CHANGE_ADMIN_ROLE"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/admin/users/{userId}/activate": {
+      "patch": {
+        "summary": "Kích hoạt tài khoản",
+        "tags": [
+          "Admin - Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Account activated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "userId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "ACTIVE"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Account is already active"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/admin/users/{userId}/deactivate": {
+      "patch": {
+        "summary": "Vô hiệu hóa tài khoản",
+        "tags": [
+          "Admin - Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Account deactivated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "userId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "INACTIVE"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Account is already inactive"
+          },
+          "403": {
+            "description": "Cannot deactivate an ADMIN account"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "summary": "Register a new account (Spectator)",
+        "tags": [
+          "Auth"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password",
+                  "fullName"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "fullName": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created successfully"
+          },
+          "400": {
+            "description": "Invalid password format"
+          },
+          "409": {
+            "description": "Email already exists"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Login and get JWT token",
+        "tags": [
+          "Auth"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Logged in successfully"
+          },
+          "401": {
+            "description": "Invalid credentials"
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "summary": "Refresh access token",
+        "tags": [
+          "Auth"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "refreshToken"
+                ],
+                "properties": {
+                  "refreshToken": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New tokens generated"
+          },
+          "401": {
+            "description": "No refresh token provided"
+          },
+          "403": {
+            "description": "Invalid refresh token"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Logout user and revoke refresh token",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "Logged out successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Get current user profile",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "User profile data"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update current user profile",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fullName": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User profile updated"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/auth/change-password": {
+      "post": {
+        "summary": "Change user password",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "oldPassword",
+                  "newPassword"
+                ],
+                "properties": {
+                  "oldPassword": {
+                    "type": "string"
+                  },
+                  "newPassword": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password changed successfully"
+          },
+          "400": {
+            "description": "Incorrect old password or invalid format"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      }
+    },
+    "/auth/reset-points": {
+      "post": {
+        "summary": "Reset virtual points back to default balance (Spectator only)",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Points reset successfully"
+          },
+          "400": {
+            "description": "Not eligible to reset (has enough points or within 3 days limit)"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden (only Spectators allowed)"
+          }
+        }
+      }
+    },
+    "/horses": {
+      "post": {
+        "summary": "Register a new horse",
+        "tags": [
+          "Horses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "breed",
+                  "age",
+                  "weight",
+                  "color",
+                  "gender",
+                  "origin",
+                  "healthCertUrl"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "breed": {
+                    "type": "string"
+                  },
+                  "age": {
+                    "type": "number"
+                  },
+                  "weight": {
+                    "type": "number"
+                  },
+                  "color": {
+                    "type": "string"
+                  },
+                  "gender": {
+                    "type": "string",
+                    "enum": [
+                      "MALE",
+                      "FEMALE"
+                    ]
+                  },
+                  "origin": {
+                    "type": "string"
+                  },
+                  "healthCertUrl": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created horse"
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/horses/me": {
+      "get": {
+        "summary": "Get all horses owned by current user",
+        "tags": [
+          "Horses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of horses"
+          }
+        }
+      }
+    },
+    "/horses/{horseId}": {
+      "get": {
+        "summary": "Get a specific horse",
+        "tags": [
+          "Horses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "horseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Horse details"
+          },
+          "404": {
+            "description": "Horse not found"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update a horse",
+        "tags": [
+          "Horses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "horseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "breed": {
+                    "type": "string"
+                  },
+                  "age": {
+                    "type": "number"
+                  },
+                  "weight": {
+                    "type": "number"
+                  },
+                  "color": {
+                    "type": "string"
+                  },
+                  "gender": {
+                    "type": "string",
+                    "enum": [
+                      "MALE",
+                      "FEMALE"
+                    ]
+                  },
+                  "origin": {
+                    "type": "string"
+                  },
+                  "healthCertUrl": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated horse"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a horse",
+        "tags": [
+          "Horses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "horseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted successfully"
+          },
+          "400": {
+            "description": "Cannot delete horse registered for race"
+          }
+        }
+      }
+    },
+    "/horses/{horseId}/register-race": {
+      "post": {
+        "summary": "Register a horse for a race",
+        "tags": [
+          "Horses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "horseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "raceId"
+                ],
+                "properties": {
+                  "raceId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successfully registered"
+          },
+          "409": {
+            "description": "Already registered"
+          }
+        }
+      }
+    },
+    "/horses/{horseId}/invitations": {
+      "post": {
+        "summary": "Send invitation to jockey",
+        "tags": [
+          "Horses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "horseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "jockeyId",
+                  "raceId"
+                ],
+                "properties": {
+                  "jockeyId": {
+                    "type": "string"
+                  },
+                  "raceId": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Invitation sent successfully"
+          },
+          "409": {
+            "description": "Jockey already invited"
+          }
+        }
+      }
+    },
+    "/horses/{horseId}/jockeys": {
+      "get": {
+        "summary": "Get jockeys for a horse",
+        "tags": [
+          "Horses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "horseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of jockeys"
+          }
+        }
+      }
+    },
+    "/horses/{horseId}/jockeys/{jockeyId}/confirm": {
+      "patch": {
+        "summary": "Confirm jockey for race",
+        "tags": [
+          "Horses"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "horseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "jockeyId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "raceId"
+                ],
+                "properties": {
+                  "raceId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Jockey confirmed successfully"
+          }
+        }
+      }
+    },
+    "/jockeys/me": {
+      "get": {
+        "summary": "Get my jockey profile",
+        "tags": [
+          "Jockeys"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Jockey profile"
+          },
+          "404": {
+            "description": "Jockey profile not found"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update my jockey profile",
+        "tags": [
+          "Jockeys"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "age": {
+                    "type": "number"
+                  },
+                  "experience": {
+                    "type": "number"
+                  },
+                  "bio": {
+                    "type": "string"
+                  },
+                  "image": {
+                    "type": "string"
+                  },
+                  "specialties": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated profile"
+          },
+          "404": {
+            "description": "Jockey profile not found"
+          }
+        }
+      }
+    },
+    "/jockeys/me/invitations": {
+      "get": {
+        "summary": "Get my invitations",
+        "tags": [
+          "Jockeys"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by status (PENDING, ACCEPTED, REJECTED)"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of invitations"
+          },
+          "404": {
+            "description": "Jockey profile not found"
+          }
+        }
+      }
+    },
+    "/jockeys/me/invitations/{invId}/accept": {
+      "patch": {
+        "summary": "Accept an invitation",
+        "tags": [
+          "Jockeys"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invitation accepted"
+          },
+          "400": {
+            "description": "Invitation expired or not pending"
+          },
+          "404": {
+            "description": "Invitation not found"
+          }
+        }
+      }
+    },
+    "/jockeys/me/invitations/{invId}/reject": {
+      "patch": {
+        "summary": "Reject an invitation",
+        "tags": [
+          "Jockeys"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invitation rejected"
+          },
+          "400": {
+            "description": "Invitation is not pending"
+          },
+          "404": {
+            "description": "Invitation not found"
+          }
+        }
+      }
+    },
+    "/jockeys/{jockeyId}": {
+      "get": {
+        "summary": "Get jockey public profile",
+        "tags": [
+          "Jockeys"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "jockeyId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Jockey public profile"
+          },
+          "404": {
+            "description": "Jockey not found"
+          }
+        }
+      }
+    },
+    "/jockeys": {
+      "get": {
+        "summary": "List all available jockeys (for OWNER to hire)",
+        "tags": [
+          "Jockeys"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by status"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of jockeys with pagination"
+          }
+        }
+      }
+    },
+    "/races/{raceId}/predictions/open": {
+      "get": {
+        "summary": "[Public] Check if race is still open for predictions",
+        "tags": [
+          "Prediction (Dự đoán kết quả)"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Race ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Race open status"
+          },
+          "404": {
+            "description": "Race not found"
+          }
+        }
+      }
+    },
+    "/races/{raceId}/predictions": {
+      "post": {
+        "summary": "[Spectator] Places a prediction (bet)",
+        "tags": [
+          "Prediction (Dự đoán kết quả)"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "horseId": {
+                    "type": "string",
+                    "description": "Horse ID to predict"
+                  },
+                  "betAmount": {
+                    "type": "number",
+                    "description": "Bet amount (100,000 - 10,000,000 VND)"
+                  }
+                },
+                "required": [
+                  "horseId",
+                  "betAmount"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Prediction placed successfully"
+          },
+          "400": {
+            "description": "Invalid bet amount or horse not registered"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "404": {
+            "description": "Race or horse not found"
+          },
+          "409": {
+            "description": "Already have a prediction for this race"
+          }
+        }
+      }
+    },
+    "/me/predictions": {
+      "get": {
+        "summary": "[Spectator] Get all my predictions",
+        "tags": [
+          "Prediction (Dự đoán kết quả)"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "OPEN",
+                "CLOSED",
+                "WON",
+                "LOST"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of my predictions"
+          }
+        }
+      }
+    },
+    "/me/predictions/{predId}": {
+      "get": {
+        "summary": "[Spectator] Get prediction details and result",
+        "tags": [
+          "Prediction (Dự đoán kết quả)"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "predId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Prediction details"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "404": {
+            "description": "Prediction not found"
+          }
+        }
+      }
+    },
+    "/me/notifications": {
+      "get": {
+        "summary": "[Spectator] Get notifications about predictions",
+        "tags": [
+          "Prediction (Dự đoán kết quả)"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "in": "query",
+            "name": "isRead",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of notifications"
+          }
+        }
+      }
+    },
+    "/admin/races/{raceId}/predictions/close": {
+      "post": {
+        "summary": "[Admin] Closes predictions for a race (before race starts)",
+        "tags": [
+          "Prediction (Dự đoán kết quả)"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Predictions closed successfully"
+          },
+          "403": {
+            "description": "Not authorized (ADMIN required)"
+          },
+          "404": {
+            "description": "Race not found"
+          }
+        }
+      }
+    },
+    "/admin/races/{raceId}/predictions/settle": {
+      "post": {
+        "summary": "[Admin] Settles predictions (after race result published)",
+        "tags": [
+          "Prediction (Dự đoán kết quả)"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Predictions settled and notifications sent"
+          },
+          "400": {
+            "description": "No results found for this race"
+          },
+          "403": {
+            "description": "Not authorized (ADMIN required)"
+          }
+        }
+      }
+    },
+    "/admin/predictions": {
+      "get": {
+        "summary": "[Admin] Manages all predictions",
+        "tags": [
+          "Prediction (Dự đoán kết quả)"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "raceId",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "OPEN",
+                "CLOSED",
+                "WON",
+                "LOST"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of all predictions"
+          },
+          "403": {
+            "description": "Not authorized (ADMIN required)"
+          }
+        }
+      }
+    },
+    "/admin/predictions/stats": {
+      "get": {
+        "summary": "[Admin] Gets prediction statistics by race",
+        "tags": [
+          "Prediction (Dự đoán kết quả)"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "raceId",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Prediction statistics"
+          },
+          "403": {
+            "description": "Not authorized (ADMIN required)"
+          }
+        }
+      }
+    },
+    "/races": {
+      "get": {
+        "summary": "Get list of races (filter by tournament)",
+        "tags": [
+          "Races"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tournamentId",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter races by tournament ID"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SCHEDULED",
+                "ONGOING",
+                "COMPLETED",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of races"
+          }
+        }
+      }
+    },
+    "/races/{raceId}": {
+      "get": {
+        "summary": "Get race details",
+        "tags": [
+          "Races"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Race details"
+          },
+          "404": {
+            "description": "Race not found"
+          }
+        }
+      }
+    },
+    "/races/{raceId}/horses": {
+      "get": {
+        "summary": "Get list of horses registered for a race",
+        "tags": [
+          "Races"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of registered horses with registration status"
+          },
+          "404": {
+            "description": "Race not found"
+          }
+        }
+      }
+    },
+    "/horses/me/{horseId}/confirm-race/{raceId}": {
+      "patch": {
+        "summary": "Owner confirms horse participation in a race",
+        "tags": [
+          "Races"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "horseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Participation confirmed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "registrationId": {
+                      "type": "string"
+                    },
+                    "horseId": {
+                      "type": "string"
+                    },
+                    "raceId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "CONFIRMED"
+                    },
+                    "confirmedByOwner": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Registration not yet APPROVED"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "404": {
+            "description": "Horse, Race, or Registration not found"
+          },
+          "409": {
+            "description": "ALREADY_CONFIRMED"
+          }
+        }
+      }
+    },
+    "/referee/races": {
+      "get": {
+        "summary": "Danh sách cuộc đua được phân công",
+        "tags": [
+          "Referee"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of assigned races",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "_id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "SCHEDULED",
+                          "ONGOING",
+                          "COMPLETED",
+                          "CANCELLED"
+                        ]
+                      },
+                      "scheduledAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "tournamentId": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "startDate": {
+                            "type": "string"
+                          },
+                          "endDate": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/referee/races/{raceId}/horses": {
+      "get": {
+        "summary": "Kiểm tra thông tin ngựa trước đua",
+        "tags": [
+          "Referee"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Race ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of approved horses for the race",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "raceId": {
+                      "type": "string"
+                    },
+                    "raceName": {
+                      "type": "string"
+                    },
+                    "horses": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "registrationId": {
+                            "type": "string"
+                          },
+                          "registrationStatus": {
+                            "type": "string"
+                          },
+                          "horse": {
+                            "type": "object"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not assigned to this race"
+          },
+          "404": {
+            "description": "Race not found"
+          }
+        }
+      }
+    },
+    "/referee/races/{raceId}/violations": {
+      "post": {
+        "summary": "Ghi nhận vi phạm trong đua",
+        "tags": [
+          "Referee"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "horseId",
+                  "jockeyId",
+                  "type",
+                  "description",
+                  "penalty"
+                ],
+                "properties": {
+                  "horseId": {
+                    "type": "string",
+                    "example": "665f1a2b3c4d5e6f7a8b9c0d"
+                  },
+                  "jockeyId": {
+                    "type": "string",
+                    "example": "665f1a2b3c4d5e6f7a8b9c0e"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "FALSE_START",
+                      "INTERFERENCE",
+                      "OVERWEIGHT",
+                      "DOPING",
+                      "OTHER"
+                    ],
+                    "example": "FALSE_START"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "Ngựa xuất phát sớm 0.3 giây"
+                  },
+                  "penalty": {
+                    "type": "string",
+                    "enum": [
+                      "WARNING",
+                      "DISQUALIFY",
+                      "FINE"
+                    ],
+                    "example": "WARNING"
+                  },
+                  "fineAmount": {
+                    "type": "number",
+                    "example": 5000000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Violation recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "violationId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "OPEN"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing required fields"
+          },
+          "403": {
+            "description": "Not assigned to this race"
+          },
+          "404": {
+            "description": "Race or horse not found"
+          }
+        }
+      },
+      "get": {
+        "summary": "Xem danh sách vi phạm",
+        "tags": [
+          "Referee"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of violations for the race",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "raceId": {
+                      "type": "string"
+                    },
+                    "raceName": {
+                      "type": "string"
+                    },
+                    "violations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "_id": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "penalty": {
+                            "type": "string"
+                          },
+                          "fineAmount": {
+                            "type": "number"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "OPEN",
+                              "RESOLVED"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not assigned to this race"
+          },
+          "404": {
+            "description": "Race not found"
+          }
+        }
+      }
+    },
+    "/referee/violations/{vId}/resolve": {
+      "patch": {
+        "summary": "Xử lý / đóng vi phạm",
+        "tags": [
+          "Referee"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Violation ID"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "resolutionNote": {
+                    "type": "string",
+                    "example": "Vi phạm đã được xem xét và xử lý"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Violation resolved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "violationId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "RESOLVED"
+                    },
+                    "resolvedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "resolutionNote": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Already resolved"
+          },
+          "403": {
+            "description": "Not assigned to this race"
+          },
+          "404": {
+            "description": "Violation not found"
+          }
+        }
+      }
+    },
+    "/referee/races/{raceId}/confirm-result": {
+      "post": {
+        "summary": "Xác nhận kết quả cuộc đua",
+        "tags": [
+          "Referee"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "rankings"
+                ],
+                "properties": {
+                  "rankings": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "position",
+                        "horseId",
+                        "jockeyId",
+                        "finishTime"
+                      ],
+                      "properties": {
+                        "position": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "horseId": {
+                          "type": "string",
+                          "example": "665f1a2b3c4d5e6f7a8b9c0d"
+                        },
+                        "jockeyId": {
+                          "type": "string",
+                          "example": "665f1a2b3c4d5e6f7a8b9c0e"
+                        },
+                        "finishTime": {
+                          "type": "string",
+                          "example": "1:12.345"
+                        }
+                      }
+                    }
+                  },
+                  "notes": {
+                    "type": "string",
+                    "example": "Cuộc đua diễn ra bình thường"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Race result confirmed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "raceId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "RESULT_CONFIRMED"
+                    },
+                    "confirmedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "RACE_NOT_FINISHED or missing rankings"
+          },
+          "403": {
+            "description": "Not assigned to this race"
+          },
+          "404": {
+            "description": "Race not found"
+          },
+          "409": {
+            "description": "OPEN_VIOLATIONS_EXIST"
+          }
+        }
+      }
+    },
+    "/referee/races/{raceId}/report": {
+      "post": {
+        "summary": "Lập biên bản thi đấu",
+        "tags": [
+          "Referee"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "summary": {
+                    "type": "string",
+                    "example": "Cuộc đua diễn ra suôn sẻ"
+                  },
+                  "weatherCondition": {
+                    "type": "string",
+                    "example": "Nắng nhẹ, gió nhẹ"
+                  },
+                  "trackCondition": {
+                    "type": "string",
+                    "example": "Khô ráo, tốt"
+                  },
+                  "incidentDetails": {
+                    "type": "string",
+                    "example": "Ngựa số 3 bị cảnh cáo xuất phát sớm"
+                  },
+                  "additionalNotes": {
+                    "type": "string",
+                    "example": "Không có sự cố nghiêm trọng"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Report created or updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reportId": {
+                      "type": "string"
+                    },
+                    "raceId": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not assigned to this race"
+          },
+          "404": {
+            "description": "Race not found"
+          }
+        }
+      },
+      "get": {
+        "summary": "Xem biên bản thi đấu",
+        "tags": [
+          "Referee"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Race report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "_id": {
+                      "type": "string"
+                    },
+                    "raceId": {
+                      "type": "string"
+                    },
+                    "refereeId": {
+                      "type": "object",
+                      "properties": {
+                        "fullName": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "summary": {
+                      "type": "string"
+                    },
+                    "weatherCondition": {
+                      "type": "string"
+                    },
+                    "trackCondition": {
+                      "type": "string"
+                    },
+                    "totalParticipants": {
+                      "type": "integer"
+                    },
+                    "totalViolations": {
+                      "type": "integer"
+                    },
+                    "incidentDetails": {
+                      "type": "string"
+                    },
+                    "additionalNotes": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not assigned to this race"
+          },
+          "404": {
+            "description": "Race or report not found"
+          }
+        }
+      }
+    },
+    "/races/{raceId}/results": {
+      "get": {
+        "summary": "Get all results for a race",
+        "tags": [
+          "Results & Ranking"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Race ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of race results"
+          },
+          "404": {
+            "description": "Race not found"
+          }
+        }
+      }
+    },
+    "/admin/races/{raceId}/publish-result": {
+      "post": {
+        "summary": "Admin publishes race results",
+        "tags": [
+          "Results & Ranking"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "results": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "horseId": {
+                          "type": "string"
+                        },
+                        "jockeyId": {
+                          "type": "string"
+                        },
+                        "position": {
+                          "type": "number"
+                        },
+                        "finishTime": {
+                          "type": "number",
+                          "description": "Finish time in seconds (optional)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "FINISHED",
+                            "DISQUALIFIED",
+                            "DNF"
+                          ]
+                        },
+                        "prizeAmount": {
+                          "type": "number"
+                        },
+                        "notes": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Race results published successfully"
+          },
+          "400": {
+            "description": "Invalid input or horse not registered"
+          },
+          "403": {
+            "description": "Not authorized (ADMIN required)"
+          },
+          "404": {
+            "description": "Race not found"
+          }
+        }
+      }
+    },
+    "/horses/me/{horseId}/results": {
+      "get": {
+        "summary": "Get all results for a specific horse",
+        "tags": [
+          "Results & Ranking"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "horseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Horse results with statistics"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "404": {
+            "description": "Horse not found"
+          }
+        }
+      }
+    },
+    "/jockeys/me/results": {
+      "get": {
+        "summary": "Get all results for a jockey",
+        "tags": [
+          "Results & Ranking"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Jockey results with statistics"
+          }
+        }
+      }
+    },
+    "/horses/me/{horseId}/prize": {
+      "get": {
+        "summary": "Get total prize earnings for a horse",
+        "tags": [
+          "Results & Ranking"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "horseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Prize information with history"
+          },
+          "403": {
+            "description": "Not authorized"
+          },
+          "404": {
+            "description": "Horse not found"
+          }
+        }
+      }
+    },
+    "/tournaments/{tournId}/leaderboard": {
+      "get": {
+        "summary": "Get tournament leaderboard",
+        "tags": [
+          "Results & Ranking"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tournId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated tournament leaderboard"
+          }
+        }
+      }
+    },
+    "/jockeys/leaderboard": {
+      "get": {
+        "summary": "Get overall jockey leaderboard",
+        "tags": [
+          "Results & Ranking"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated jockey leaderboard"
+          }
+        }
+      }
+    },
+    "/me/schedule": {
+      "get": {
+        "summary": "Get my schedule",
+        "tags": [
+          "Schedule"
+        ],
+        "description": "Get the race schedule for the current user (OWNER or JOCKEY)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schedule retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "count": {
+                      "type": "number"
+                    },
+                    "data": {
+                      "type": "array"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/races/{raceId}/schedule": {
+      "get": {
+        "summary": "Get race schedule",
+        "tags": [
+          "Schedule"
+        ],
+        "description": "Get detailed schedule information for a specific race (Public)",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Race ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schedule retrieved successfully"
+          },
+          "404": {
+            "description": "Schedule not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/tournaments/{tournamentId}/schedule": {
+      "get": {
+        "summary": "Get tournament schedule",
+        "tags": [
+          "Schedule"
+        ],
+        "description": "Get full schedule for a tournament (Public)",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tournamentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Tournament ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tournament schedule retrieved successfully"
+          },
+          "404": {
+            "description": "No schedules found for this tournament"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/me/horses/{horseId}/races/{raceId}/confirm": {
+      "patch": {
+        "summary": "Confirm race participation",
+        "tags": [
+          "Schedule"
+        ],
+        "description": "Owner confirms horse participation in a race",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "horseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Race participation confirmed"
+          },
+          "403": {
+            "description": "Horse does not belong to you"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/me/horses/{horseId}/races/{raceId}/withdraw": {
+      "patch": {
+        "summary": "Withdraw from race",
+        "tags": [
+          "Schedule"
+        ],
+        "description": "Owner withdraws horse from a race",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "horseId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Horse withdrawn from race"
+          },
+          "400": {
+            "description": "Cannot withdraw from ongoing/completed race"
+          },
+          "403": {
+            "description": "Horse does not belong to you"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/jockeys/me/races": {
+      "get": {
+        "summary": "Get my races",
+        "tags": [
+          "Schedule"
+        ],
+        "description": "Get list of races assigned to the jockey",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Jockey races retrieved successfully"
+          },
+          "404": {
+            "description": "Jockey not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/jockeys/me/races/{raceId}": {
+      "get": {
+        "summary": "Get race detail for jockey",
+        "tags": [
+          "Schedule"
+        ],
+        "description": "Get detailed information about a race assigned to the jockey",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Race detail retrieved successfully"
+          },
+          "404": {
+            "description": "Race or jockey not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/schedules/{scheduleId}": {
+      "get": {
+        "summary": "Get schedule detail",
+        "tags": [
+          "Schedule"
+        ],
+        "description": "Get detailed information about a schedule",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scheduleId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schedule retrieved successfully"
+          },
+          "404": {
+            "description": "Schedule not found"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/schedules": {
+      "post": {
+        "summary": "Create schedule",
+        "tags": [
+          "Schedule"
+        ],
+        "description": "Create a new race schedule (Admin/Referee only)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "raceId",
+                  "tournamentId",
+                  "raceName",
+                  "scheduledTime",
+                  "location",
+                  "distance",
+                  "raceType",
+                  "maxParticipants"
+                ],
+                "properties": {
+                  "raceId": {
+                    "type": "string"
+                  },
+                  "tournamentId": {
+                    "type": "string"
+                  },
+                  "raceName": {
+                    "type": "string"
+                  },
+                  "scheduledTime": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "location": {
+                    "type": "string"
+                  },
+                  "distance": {
+                    "type": "number"
+                  },
+                  "raceType": {
+                    "type": "string",
+                    "enum": [
+                      "SPRINT",
+                      "LONG_DISTANCE",
+                      "HANDICAP",
+                      "STEEPLECHASE"
+                    ]
+                  },
+                  "maxParticipants": {
+                    "type": "number"
+                  },
+                  "prizePool": {
+                    "type": "number"
+                  },
+                  "trackCondition": {
+                    "type": "string",
+                    "enum": [
+                      "GOOD",
+                      "YIELDING",
+                      "SOFT",
+                      "HEAVY"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Schedule created successfully"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/admin/races/{raceId}/stream/start": {
+      "post": {
+        "summary": "Start a Mux live stream for a race (ADMIN only)",
+        "tags": [
+          "Streams"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Race ID to start streaming"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stream started successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "raceId": {
+                      "type": "string"
+                    },
+                    "streamKey": {
+                      "type": "string"
+                    },
+                    "playbackId": {
+                      "type": "string"
+                    },
+                    "isLive": {
+                      "type": "boolean"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "rtmpIngestUrl": {
+                      "type": "string"
+                    },
+                    "streamUrl": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Stream already started or validation error"
+          },
+          "404": {
+            "description": "Race not found"
+          }
+        }
+      }
+    },
+    "/admin/races/{raceId}/stream/stop": {
+      "post": {
+        "summary": "Stop a Mux live stream for a race (ADMIN only)",
+        "tags": [
+          "Streams"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Race ID to stop streaming"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stream stopped successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "raceId": {
+                      "type": "string"
+                    },
+                    "isLive": {
+                      "type": "boolean"
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Stream is not active"
+          },
+          "404": {
+            "description": "Race not found"
+          }
+        }
+      }
+    },
+    "/races/{raceId}/stream": {
+      "get": {
+        "summary": "Get HLS streaming URL for a race (SPECTATOR only)",
+        "tags": [
+          "Streams"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "raceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Race ID to get HLS stream URL"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Live stream HLS URL details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "raceId": {
+                      "type": "string"
+                    },
+                    "playbackId": {
+                      "type": "string"
+                    },
+                    "streamUrl": {
+                      "type": "string"
+                    },
+                    "isLive": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Stream has not started yet or has ended"
+          },
+          "404": {
+            "description": "Race not found"
+          }
+        }
+      }
+    },
+    "/tournaments": {
+      "get": {
+        "summary": "Get list of tournaments",
+        "tags": [
+          "Tournaments"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "PUBLISHED",
+                "ONGOING",
+                "COMPLETED",
+                "CANCELLED"
+              ]
+            },
+            "description": "Filter by tournament status"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of tournaments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "integer"
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "limit": {
+                      "type": "integer"
+                    },
+                    "tournaments": {
+                      "type": "array"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tournaments/{tournId}": {
+      "get": {
+        "summary": "Get tournament details",
+        "tags": [
+          "Tournaments"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tournId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Tournament ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tournament details"
+          },
+          "404": {
+            "description": "Tournament not found"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "AdminHorses",
+      "description": "Horse management for admins"
+    },
+    {
+      "name": "Admin - Races",
+      "description": "Race management (ADMIN only)"
+    },
+    {
+      "name": "Admin - Tournaments",
+      "description": "Tournament management (ADMIN only)"
+    },
+    {
+      "name": "Admin - Users",
+      "description": "User management (ADMIN only)"
+    },
+    {
+      "name": "Auth",
+      "description": "Authentication & User Management"
+    },
+    {
+      "name": "Horses",
+      "description": "Horse management for owners"
+    },
+    {
+      "name": "Jockeys",
+      "description": "Jockey management"
+    },
+    {
+      "name": "Prediction (Dự đoán kết quả)",
+      "description": "Betting and prediction endpoints"
+    },
+    {
+      "name": "Races",
+      "description": "Race management (public + owner endpoints)"
+    },
+    {
+      "name": "Referee",
+      "description": "Referee management endpoints (REFEREE / ADMIN)"
+    },
+    {
+      "name": "Results & Ranking",
+      "description": "Race results and leaderboard endpoints"
+    },
+    {
+      "name": "Schedule",
+      "description": "Race schedule management"
+    },
+    {
+      "name": "Streams",
+      "description": "Race live streaming endpoints"
+    },
+    {
+      "name": "Tournaments",
+      "description": "Tournament management (public endpoints)"
+    }
+  ]
+}

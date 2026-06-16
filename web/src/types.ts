@@ -42,8 +42,11 @@ export type Race = {
   prizeFirst: number
   prizeSecond: number
   prizeThird: number
-  status?: 'SCHEDULED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED' | 'RUNNING' | 'FINISHED' | 'RESULT_CONFIRMED' // Merge legacy and actual statuses
+  status?: 'PENDING' | 'SCHEDULED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED' | 'RUNNING' | 'FINISHED' | 'RESULT_CONFIRMED' // Merge legacy and actual statuses
   refereeId?: any
+  results?: any[]
+  rankings?: any[]
+  confirmedAt?: string
 }
 
 export type Horse = {

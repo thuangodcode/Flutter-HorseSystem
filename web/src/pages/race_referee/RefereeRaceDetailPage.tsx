@@ -89,7 +89,15 @@ export function RefereeRaceDetailPage() {
     if (!raceId) return
     setLoading(true)
     getPublicRace(raceId)
-      .then(setRace)
+      .then((r) => {
+        setRace(r)
+        // Initialize rankings from race data if available
+        if (r?.rankings && Array.isArray(r.rankings)) {
+          setRankings(r.rankings)
+        } else if (r?.results && Array.isArray(r.results)) {
+          setRankings(r.results)
+        }
+      })
       .catch(() => setError('Không tìm thấy cuộc đua'))
       .finally(() => setLoading(false))
   }, [raceId])
@@ -170,11 +178,23 @@ export function RefereeRaceDetailPage() {
     setConfirmLoading(true)
     setConfirmMsg(null)
     try {
+      console.log('Confirming race result with:', { raceId, rankings, resultNotes })
       await confirmRaceResult(raceId, rankings, resultNotes)
       setConfirmMsg({ type: 'success', text: 'Xác nhận kết quả thành công!' })
+      
+      // Refresh race data to get updated status
+      if (raceId) {
+        try {
+          const updatedRace = await getPublicRace(raceId)
+          setRace(updatedRace)
+        } catch (err) {
+          console.error('Failed to refresh race data:', err)
+        }
+      }
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.response?.data?.error || 'Lỗi khi xác nhận kết quả'
       setConfirmMsg({ type: 'error', text: msg })
+      console.error('Error confirming result:', e)
     } finally {
       setConfirmLoading(false)
     }
