@@ -57,9 +57,9 @@ export async function getTournaments(): Promise<Tournament[]> {
     endDate: t.endDate,
     prizePool: t.prizePool,
     currency: t.currency,
-    maxHorses: t.maxHorses,
     status: t.status,
-  }))
+    createdAt: t.createdAt,
+  })).reverse()
 }
 
 export async function getTournament(id: string): Promise<Tournament> {
@@ -103,7 +103,8 @@ export async function getRaces(tournamentId?: string): Promise<Race[]> {
     results: r.results,
     rankings: r.rankings,
     confirmedAt: r.confirmedAt,
-  }))
+    createdAt: r.createdAt,
+  })).reverse()
 }
 
 export async function getRace(id: string): Promise<any> {
@@ -146,7 +147,8 @@ export async function getHorses(): Promise<Horse[]> {
     healthCertUrl: h.healthCertUrl,
     status: h.status,
     ownerId: h.ownerId,
-  }))
+    createdAt: h.createdAt,
+  })).reverse()
 }
 
 export async function createHorse(data: Partial<Horse>): Promise<any> {
@@ -198,7 +200,7 @@ export async function searchJockeys(params?: { status?: string; page?: number; l
     wins: j.wins,
     races: j.races,
     createdAt: j.createdAt,
-  }))
+  })).reverse()
 }
 
 export async function sendJockeyInvitation(horseId: string, jockeyId: string, raceId: string, message?: string, registrationId?: string, raceName?: string): Promise<any> {
@@ -525,7 +527,7 @@ export async function getRaceRegistrations(status?: string, raceId?: string): Pr
     createdAt: r.createdAt,
     rejectionReason: r.rejectionReason,
     ownerName: r.ownerName || r.ownerFullName || (r.horse && typeof r.horse === 'object' ? (r.horse.ownerId?.fullName || r.horse.ownerId?.name || r.horse.owner?.fullName || r.horse.owner) : undefined) || (r.horseId && typeof r.horseId === 'object' ? (r.horseId?.ownerId?.fullName || r.horseId?.ownerId?.name || r.horseId?.owner?.fullName || r.horseId?.owner) : undefined) || r.owner,
-  }))
+  })).reverse()
 }
 
 export async function approveRaceRegistration(regId: string): Promise<any> {
@@ -553,7 +555,8 @@ export async function getAdminHorses(params?: { search?: string; status?: string
     healthCertUrl: h.healthCertUrl,
     status: h.status,
     ownerId: h.ownerId,
-  }))
+    createdAt: h.createdAt,
+  })).reverse()
 }
 
 export async function approveHorse(horseId: string): Promise<any> {
@@ -582,7 +585,7 @@ export async function getAdminJockeys(params?: { status?: string; page?: number;
     wins: j.wins,
     races: j.races,
     createdAt: j.createdAt,
-  }))
+  })).reverse()
 }
 
 // --- CÔNG BỐ KẾT QUẢ ---
@@ -616,7 +619,7 @@ export async function getAdminPredictions(params?: { status?: string; raceId?: s
     prizeAmount: p.prizeAmount,
     actualPosition: p.actualPosition,
     createdAt: p.createdAt,
-  }))
+  })).reverse()
 }
 
 export async function getPredictionStats(raceId?: string): Promise<any> {
@@ -657,7 +660,8 @@ export async function getPublicRaces(params?: { status?: string; tournamentId?: 
     results: r.results,
     rankings: r.rankings,
     confirmedAt: r.confirmedAt,
-  }))
+    createdAt: r.createdAt,
+  })).reverse()
 }
 
 export async function getPublicTournament(id: string): Promise<Tournament> {
