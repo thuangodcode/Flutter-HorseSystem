@@ -87,7 +87,7 @@ export function LandingPage() {
         <div className="flex justify-between items-center w-full px-6 md:px-12 h-16 max-w-[1440px] mx-auto">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-3xl" data-icon="stadium">stadium</span>
-            <span className="font-headline font-bold text-xl tracking-tight text-primary">Equestrian Racing Management System (ERMS)</span>
+            <span className="font-headline font-bold text-xl tracking-tight text-primary">EBET</span>
           </div>
           <nav className="hidden md:flex items-center gap-8">
             <Link className="text-primary font-bold border-b-2 border-primary pb-1 transition-colors duration-200" to="/">Home</Link>
@@ -320,10 +320,10 @@ export function LandingPage() {
           <div className="flex flex-col items-center md:items-start gap-4">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-primary text-2xl" data-icon="stadium">stadium</span>
-              <span className="font-headline font-bold text-lg text-primary">Equestrian Racing Management System (ERMS)</span>
+              <span className="font-headline font-bold text-lg text-primary">EBET</span>
             </div>
             <p className="text-on-surface-variant text-sm text-center md:text-left max-w-xs">
-              © 2024 Equestrian Racing Management System (ERMS). Precision Management for the Racing Industry.
+              © 2026 EBET. Precision Management for the Racing Industry.
             </p>
           </div>
           <div className="flex flex-wrap justify-center gap-8">

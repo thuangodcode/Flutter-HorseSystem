@@ -180,12 +180,28 @@ export function PredictionsPage() {
     setHorsesLoading(true)
     Promise.all([
       getRaceHorses(selectedRace).catch(() => []),
-      checkPredictionOpen(selectedRace).catch(() => ({ isOpen: false })),
+      checkPredictionOpen(selectedRace).catch(() => ({ isOpen: null })),
     ])
       .then(([h, openStatus]) => {
         const horseList = Array.isArray(h) ? h : (h?.horses || h?.data || [])
         setHorses(horseList)
-        setIsPredOpen(openStatus?.isOpen === true)
+        
+        let isOpen = false
+        if (openStatus && typeof openStatus.isOpen === 'boolean') {
+          // Trust BE entirely if API is successful
+          isOpen = openStatus.isOpen
+        } else {
+          // Fallback check matching BE logic if API fails
+          const raceObj = races.find((r: any) => (r._id || r.id) === selectedRace)
+          if (raceObj && (raceObj.status === 'SCHEDULED' || raceObj.status === 'ONGOING')) {
+            const nowUtc = new Date().getTime()
+            const scheduledUtc = new Date(raceObj.scheduledAt).getTime()
+            if (nowUtc < scheduledUtc) {
+              isOpen = true
+            }
+          }
+        }
+        setIsPredOpen(isOpen)
       })
       .finally(() => setHorsesLoading(false))
   }, [selectedRace])

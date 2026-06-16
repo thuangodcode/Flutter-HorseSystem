@@ -317,10 +317,7 @@ export function AppLayout() {
               </div>
               <div className="hidden sm:flex items-center gap-2">
                 <span className="text-sm font-black tracking-wide text-(--text) group-hover:text-sky-500 transition-colors duration-300 uppercase">
-                  Equestrian
-                </span>
-                <span className="text-[8px] tracking-wider text-sky-600 uppercase font-bold bg-(--bg2) px-1.5 py-0.5 rounded border border-sky-500/20">
-                  Elite
+                  EBET
                 </span>
               </div>
             </Link>
@@ -829,7 +826,7 @@ export function AppLayout() {
           <footer className="border-t border-border bg-(--surface)/20 py-2.5 text-center text-[11px] text-slate-400 mt-auto shrink-0">
             <div className="w-full mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="text-xs text-muted font-medium flex items-center gap-1.5">
-                <span>© 2026 Equestrian Racing Management System (ERMS). All rights reserved.</span>
+                <span>© 2026 EBET. All rights reserved.</span>
               </div>
               <div className="flex gap-6">
                 <a href="#" className="hover:text-(--text) transition-colors">Điều khoản</a>

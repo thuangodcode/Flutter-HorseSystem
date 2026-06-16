@@ -451,6 +451,9 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
         const res = await createTournament(tournForm as any)
         const newId = res?.id || res?._id || res?.data?.id || res?.data?._id
         if (newId) {
+          if (tournForm.status && tournForm.status !== 'DRAFT') {
+            await updateTournament(newId, { status: tournForm.status as any })
+          }
           setLastModifiedTournId(newId)
           loadTabData(newId, undefined, undefined, undefined)
         } else {
@@ -1223,7 +1226,7 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
               Không tìm thấy yêu cầu đăng ký nào khớp với điều kiện lọc.
             </div>
           ) : (
-            <div className="admin-table-wrapper w-full overflow-hidden">
+            <div className="admin-table-wrapper w-full">
               <AnimatedTable
                 data={(() => {
                   let res = filteredRegistrations
@@ -1435,7 +1438,7 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
             ) : horses.length === 0 ? (
               <p className="muted">Không có hồ sơ ngựa nào cần duyệt.</p>
             ) : (
-              <div className="admin-table-wrapper w-full overflow-hidden">
+              <div className="admin-table-wrapper w-full">
                 <AnimatedTable
                   data={(() => {
                     let res = horses
@@ -1592,7 +1595,7 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
             ) : jockeys.length === 0 ? (
               <p className="muted">Chưa có kỵ sĩ nào đăng ký.</p>
             ) : (
-              <div className="admin-table-wrapper w-full overflow-hidden">
+              <div className="admin-table-wrapper w-full">
                 <AnimatedTable
                   data={(() => {
                     let res = jockeys
@@ -1729,7 +1732,7 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
           ) : races.length === 0 ? (
             <p className="muted">Chưa có cuộc đua nào được tạo.</p>
           ) : (
-              <div className="admin-table-wrapper w-full overflow-hidden">
+              <div className="admin-table-wrapper w-full">
                 <AnimatedTable
                   data={(() => {
                     let res = races
@@ -1955,7 +1958,7 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
             ) : filteredPredictions.length === 0 ? (
               <p className="muted">Không tìm thấy lượt dự đoán nào phù hợp.</p>
             ) : (
-              <div className="admin-table-wrapper w-full overflow-hidden">
+              <div className="admin-table-wrapper w-full">
                 <AnimatedTable
                   data={(() => {
                     let res = filteredPredictions
@@ -2190,7 +2193,7 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                 <div className="grid-2">
                   <div className="form-group">
                     <label>Cự ly (Meters)</label>
-                    <input type="number" required value={raceForm.distance} onChange={(e) => setRaceForm({ ...raceForm, distance: parseInt(e.target.value) })} />
+                    <input type="number" required step={100} value={raceForm.distance} onChange={(e) => setRaceForm({ ...raceForm, distance: parseInt(e.target.value) })} />
                   </div>
                   <div className="form-group">
                     <label>Số ngựa tối đa</label>

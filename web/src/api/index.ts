@@ -82,8 +82,8 @@ export async function getTournament(id: string): Promise<Tournament> {
 
 export async function getRaces(tournamentId?: string): Promise<Race[]> {
   const url = tournamentId 
-    ? `${BE_BASE_URL}/races?tournamentId=${tournamentId}` 
-    : `${BE_BASE_URL}/races`
+    ? `${BE_BASE_URL}/races?tournamentId=${tournamentId}&limit=1000` 
+    : `${BE_BASE_URL}/races?limit=1000`
   const res = await http.get(url)
   const data = res.data.races || res.data.data || (Array.isArray(res.data) ? res.data : [])
   
@@ -448,16 +448,16 @@ export async function getRaceRegistrations(status?: string, raceId?: string): Pr
 
   return data.map((r: any) => ({
     id: r.regId || r._id || r.id,
-    horseId: (r.horse && typeof r.horse === 'object') ? (r.horse._id || r.horse.id || r.horse) : (typeof r.horseId === 'object' ? (r.horseId._id || r.horseId.id || r.horseId) : r.horseId),
-    horseName: r.horseName || (r.horse && typeof r.horse === 'object' ? r.horse.name : undefined) || (typeof r.horseId === 'object' ? r.horseId.name : undefined),
-    horseBreed: r.horseBreed || (r.horse && typeof r.horse === 'object' ? r.horse.breed : undefined) || (typeof r.horseId === 'object' ? r.horseId.breed : undefined),
-    raceId: (r.race && typeof r.race === 'object') ? (r.race._id || r.race.id || r.race) : (typeof r.raceId === 'object' ? (r.raceId._id || r.raceId.id || r.raceId) : r.raceId),
-    raceName: r.raceName || (r.race && typeof r.race === 'object' ? r.race.name : undefined) || (typeof r.raceId === 'object' ? r.raceId.name : undefined),
+    horseId: (r.horse && typeof r.horse === 'object') ? (r.horse._id || r.horse.id || r.horse) : (r.horseId && typeof r.horseId === 'object' ? (r.horseId._id || r.horseId.id || r.horseId) : r.horseId),
+    horseName: r.horseName || (r.horse && typeof r.horse === 'object' ? r.horse.name : undefined) || (r.horseId && typeof r.horseId === 'object' ? r.horseId.name : undefined),
+    horseBreed: r.horseBreed || (r.horse && typeof r.horse === 'object' ? r.horse.breed : undefined) || (r.horseId && typeof r.horseId === 'object' ? r.horseId.breed : undefined),
+    raceId: (r.race && typeof r.race === 'object') ? (r.race._id || r.race.id || r.race) : (r.raceId && typeof r.raceId === 'object' ? (r.raceId._id || r.raceId.id || r.raceId) : r.raceId),
+    raceName: r.raceName || (r.race && typeof r.race === 'object' ? r.race.name : undefined) || (r.raceId && typeof r.raceId === 'object' ? r.raceId.name : undefined),
     status: r.status,
     confirmedByOwner: r.confirmedByOwner,
     createdAt: r.createdAt,
     rejectionReason: r.rejectionReason,
-    ownerName: r.ownerName || r.ownerFullName || (r.horse && typeof r.horse === 'object' ? (r.horse.ownerId?.fullName || r.horse.ownerId?.name || r.horse.owner?.fullName || r.horse.owner) : undefined) || (typeof r.horseId === 'object' ? (r.horseId?.ownerId?.fullName || r.horseId?.ownerId?.name || r.horseId?.owner?.fullName || r.horseId?.owner) : undefined) || r.owner,
+    ownerName: r.ownerName || r.ownerFullName || (r.horse && typeof r.horse === 'object' ? (r.horse.ownerId?.fullName || r.horse.ownerId?.name || r.horse.owner?.fullName || r.horse.owner) : undefined) || (r.horseId && typeof r.horseId === 'object' ? (r.horseId?.ownerId?.fullName || r.horseId?.ownerId?.name || r.horseId?.owner?.fullName || r.horseId?.owner) : undefined) || r.owner,
   }))
 }
 
@@ -571,8 +571,8 @@ export async function settlePredictions(raceId: string): Promise<any> {
 // 4. BỔ SUNG CÁC API THIẾU CHO TOURNAMENT, PREDICTION, REFEREE & NOTIFICATIONS
 // ============================================================================
 
-export async function getPublicRaces(params?: { status?: string; tournamentId?: string }): Promise<Race[]> {
-  const res = await http.get(`${BE_BASE_URL}/races`, { params })
+export async function getPublicRaces(params?: { status?: string; tournamentId?: string; limit?: number }): Promise<Race[]> {
+  const res = await http.get(`${BE_BASE_URL}/races`, { params: { limit: 1000, ...params } })
   const data = res.data.races || res.data.data || res.data
   return data.map((r: any) => ({
     id: r._id || r.id,
