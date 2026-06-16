@@ -130,6 +130,17 @@ export async function getRace(id: string): Promise<any> {
   }
 }
 
+export async function getRaceStreamUrl(id: string): Promise<string | null> {
+  try {
+    const raceId = String(id || '').trim()
+    const res = await http.get(`${BE_BASE_URL}/races/${raceId}/stream`)
+    return res.data?.streamUrl || res.data?.url || null
+  } catch (err) {
+    console.error('Failed to get race stream URL', err)
+    return null
+  }
+}
+
 export async function getHorses(): Promise<Horse[]> {
   const res = await http.get(`${BE_BASE_URL}/horses/me`)
   const data = res.data.horses || res.data.data || (Array.isArray(res.data) ? res.data : [])

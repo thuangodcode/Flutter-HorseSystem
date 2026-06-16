@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { X, Radio, Clock3, Ruler, Users, ExternalLink, Maximize2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { getRaceStreamUrl } from '@/api'
 
 // Horse racing YouTube demo streams (public, no auth needed)
 const DEMO_STREAMS = [
@@ -23,15 +24,33 @@ interface LiveStreamModalProps {
 export function LiveStreamModal({ race, onClose }: LiveStreamModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [fetchedStreamUrl, setFetchedStreamUrl] = useState<string | null>(null)
+  const [loadingStream, setLoadingStream] = useState(true)
+
+  useEffect(() => {
+    async function fetchStream() {
+      if (race?.id || race?._id) {
+        setLoadingStream(true)
+        const url = await getRaceStreamUrl(race.id || race._id)
+        if (url) {
+          setFetchedStreamUrl(`${url}${url.includes('youtube') ? '&autoplay=1&mute=1' : ''}`)
+        }
+        setLoadingStream(false)
+      } else {
+        setLoadingStream(false)
+      }
+    }
+    fetchStream()
+  }, [race])
 
   // Pick a consistent demo stream based on race id hash
   const demoIndex = race?.name
     ? race.name.charCodeAt(0) % DEMO_STREAMS.length
     : 0
 
-  const streamUrl = race?.streamUrl
+  const streamUrl = fetchedStreamUrl || (race?.streamUrl
     ? `${race.streamUrl}${race.streamUrl.includes('youtube') ? '&autoplay=1&mute=1' : ''}`
-    : DEMO_STREAMS[demoIndex]
+    : DEMO_STREAMS[demoIndex])
 
   // ESC key to close
   useEffect(() => {
@@ -105,15 +124,19 @@ export function LiveStreamModal({ race, onClose }: LiveStreamModalProps) {
           </div>
 
           {/* Stream Iframe */}
-          <div className={`relative bg-black ${isFullscreen ? 'flex-1' : 'aspect-video'}`}>
-            <iframe
-              src={streamUrl}
-              className="w-full h-full"
-              allow="autoplay; fullscreen; picture-in-picture"
-              allowFullScreen
-              title={`Livestream: ${race?.name}`}
-              style={{ border: 'none', display: 'block' }}
-            />
+          <div className={`relative bg-black ${isFullscreen ? 'flex-1' : 'aspect-video'} flex items-center justify-center`}>
+            {loadingStream ? (
+              <div className="text-white/70 font-semibold animate-pulse">Đang tải luồng trực tiếp...</div>
+            ) : (
+              <iframe
+                src={streamUrl}
+                className="w-full h-full"
+                allow="autoplay; fullscreen; picture-in-picture"
+                allowFullScreen
+                title={`Livestream: ${race?.name}`}
+                style={{ border: 'none', display: 'block' }}
+              />
+            )}
 
             {/* Stream overlay label */}
             <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 pointer-events-none">
@@ -125,7 +148,7 @@ export function LiveStreamModal({ race, onClose }: LiveStreamModalProps) {
             </div>
 
             {/* Demo badge */}
-            {!race?.streamUrl && (
+            {!fetchedStreamUrl && !race?.streamUrl && !loadingStream && (
               <div className="absolute bottom-3 right-3 px-2 py-1 rounded-md bg-black/70 backdrop-blur-sm border border-white/10 pointer-events-none">
                 <span className="text-[9px] font-bold text-white/60 uppercase tracking-wider">Demo Stream</span>
               </div>
