@@ -315,14 +315,14 @@ export async function rejectInvitation(inviteId: string): Promise<any> {
 }
 
 export async function markNotificationRead(notifId: string): Promise<any> {
-  const res = await http.patch(`${BE_BASE_URL}/prediction/me/notifications/${notifId}/read`)
+  const res = await http.patch(`${BE_BASE_URL}/me/notifications/${notifId}/read`)
   return res.data
 }
 
 
 
 export async function getPredictions(): Promise<Prediction[]> {
-  const res = await http.get(`${BE_BASE_URL}/prediction/me/predictions`)
+  const res = await http.get(`${BE_BASE_URL}/me/predictions`)
   const data = res.data.predictions || res.data.data || res.data
   return data.map((p: any) => ({
     id: p._id || p.id,
@@ -680,7 +680,7 @@ export async function placePrediction(raceId: string, horseId: string, betAmount
   if (predictedPosition !== undefined && predictedPosition > 0) {
     body.predictedPosition = predictedPosition
   }
-  const res = await http.post(`${BE_BASE_URL}/prediction/races/${raceId}/predictions`, body)
+  const res = await http.post(`${BE_BASE_URL}/races/${raceId}/predictions`, body)
   return res.data
 }
 
@@ -725,7 +725,7 @@ export async function confirmRaceResult(raceId: string, rankings: any[], notes?:
 }
 
 export async function getMyNotifications(): Promise<NotificationItem[]> {
-  const res = await http.get(`${BE_BASE_URL}/prediction/me/notifications`)
+  const res = await http.get(`${BE_BASE_URL}/me/notifications`)
   const list = Array.isArray(res.data) ? res.data : (res.data.notifications || res.data.data || [])
   return list.map((n: any) => ({
     id: n._id || n.id,

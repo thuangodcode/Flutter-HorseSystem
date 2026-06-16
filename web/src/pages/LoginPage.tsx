@@ -99,7 +99,7 @@ export function LoginPage() {
             {/* Logo */}
             <Link to="/" className="inline-flex items-center gap-2 text-white no-underline mb-12">
               <span className="material-symbols-outlined text-3xl text-sky-300" data-icon="stadium">stadium</span>
-              <span className="font-headline font-bold text-xl tracking-tight">EBET</span>
+              <span className="font-headline font-bold text-xl tracking-tight">ERMS</span>
             </Link>
 
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-sky-500/20 border border-sky-400/30 mb-6">

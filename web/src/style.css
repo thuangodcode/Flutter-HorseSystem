@@ -687,7 +687,7 @@ input::placeholder { color: #64748b; }
 
 .admin-table th {
   background: var(--surface-2);
-  padding: 20px 40px;
+  padding: 16px 20px;
   font-weight: 700;
   font-size: 12px;
   text-transform: uppercase;
@@ -698,7 +698,7 @@ input::placeholder { color: #64748b; }
 }
 
 .admin-table td {
-  padding: 24px 40px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
   color: var(--text-2);

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Prediction, Race } from '../../types'
-import { checkPredictionOpen, getMyPredictions, getPublicRaces, getRaceHorses, placePrediction } from '@/api'
+import { checkPredictionOpen, getMyPredictions, getPublicRaces, getPublicTournaments, getRaceHorses, placePrediction } from '@/api'
 import { AnimatedTable, type ColumnDef } from '@/components/ui/animated-table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -99,7 +99,9 @@ export function PredictionsPage() {
   const { balance, updateBalance } = useSession()
 
   const [races, setRaces] = useState<Race[]>([])
+  const [tournaments, setTournaments] = useState<any[]>([])
   const [racesLoading, setRacesLoading] = useState(false)
+  const [selectedTournament, setSelectedTournament] = useState('')
   const [selectedRace, setSelectedRace] = useState('')
   const [horses, setHorses] = useState<any[]>([])
   const [horsesLoading, setHorsesLoading] = useState(false)
@@ -142,14 +144,18 @@ export function PredictionsPage() {
       .finally(() => setHistoryLoading(false))
   }, [historyReloadKey])
 
-  // Load available races
+  // Load available races & tournaments
   useEffect(() => {
     setRacesLoading(true)
     Promise.all([
+      getPublicTournaments().catch((err) => { console.error(err); return [] }),
       getPublicRaces({ status: 'SCHEDULED' }).catch((err) => { console.error(err); return [] }),
       getPublicRaces({ status: 'ONGOING' }).catch((err) => { console.error(err); return [] }),
     ])
-      .then(([scheduled, ongoing]: [any, any]) => {
+      .then(([tourns, scheduled, ongoing]: [any, any, any]) => {
+        const tList = Array.isArray(tourns) ? tourns : (tourns?.tournaments || tourns?.data || [])
+        setTournaments(tList)
+        
         const scheduledList: any[] = Array.isArray(scheduled) ? scheduled : (scheduled?.races || scheduled?.data || [])
         const ongoingList: any[] = Array.isArray(ongoing) ? ongoing : (ongoing?.races || ongoing?.data || [])
         const merged: any[] = [...scheduledList, ...ongoingList]
@@ -442,32 +448,70 @@ export function PredictionsPage() {
                 </div>
               )}
 
-              {/* Race Select */}
+              {/* Tournament Select */}
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-[var(--text)]">Chọn cuộc đua</label>
+                <label className="block text-sm font-semibold text-[var(--text)]">Chọn giải đấu</label>
                 {racesLoading ? (
                   <div className="spectator-shimmer h-11 w-full" />
-                ) : races.length === 0 ? (
+                ) : tournaments.length === 0 ? (
                   <div className="spectator-tip text-sm font-semibold text-amber-300">
-                    ⚠️ Hiện không có cuộc đua nào đang mở để đặt dự đoán.
+                    ⚠️ Hiện không có giải đấu nào.
                   </div>
                 ) : (
-                  <Select value={selectedRace} onValueChange={(value) => { setSelectedRace(value ?? ''); setSelectedHorse('') }}>
+                  <Select value={selectedTournament} onValueChange={(value) => { setSelectedTournament(value ?? ''); setSelectedRace(''); setSelectedHorse('') }}>
                     <SelectTrigger className="h-11 w-full border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] font-semibold">
-                      {selectedRace
-                        ? `${races.find((race: any) => (race._id || race.id) === selectedRace)?.name || '— Chọn cuộc đua —'} (${getStatusLabel(races.find((race: any) => (race._id || race.id) === selectedRace)?.status, 'race')})`
-                        : '— Chọn cuộc đua —'}
+                      {selectedTournament
+                        ? `${tournaments.find((t: any) => (t._id || t.id) === selectedTournament)?.name || '— Chọn giải đấu —'}`
+                        : '— Chọn giải đấu —'}
                     </SelectTrigger>
                     <SelectContent>
-                      {races.map((race: any) => (
-                        <SelectItem key={race._id || race.id} value={race._id || race.id} className="font-semibold">
-                          {race.name} ({getStatusLabel(race.status, 'race')})
+                      {tournaments.map((t: any) => (
+                        <SelectItem key={t._id || t.id} value={t._id || t.id} className="font-semibold">
+                          {t.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 )}
               </div>
+
+              {/* Race Select */}
+              {selectedTournament && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-[var(--text)]">Chọn vòng đấu (cuộc đua)</label>
+                  {(() => {
+                    const filteredRaces = races.filter((r: any) => {
+                      const tId = r.tournamentId?._id || r.tournamentId?.id || r.tournamentId
+                      return tId === selectedTournament
+                    })
+                    
+                    if (filteredRaces.length === 0) {
+                      return (
+                        <div className="spectator-tip text-sm font-semibold text-amber-300">
+                          ⚠️ Giải đấu này hiện không có vòng đấu nào đang mở dự đoán.
+                        </div>
+                      )
+                    }
+                    
+                    return (
+                      <Select value={selectedRace} onValueChange={(value) => { setSelectedRace(value ?? ''); setSelectedHorse('') }}>
+                        <SelectTrigger className="h-11 w-full border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] font-semibold">
+                          {selectedRace
+                            ? `${filteredRaces.find((race: any) => (race._id || race.id) === selectedRace)?.name || '— Chọn vòng đấu —'} (${getStatusLabel(filteredRaces.find((race: any) => (race._id || race.id) === selectedRace)?.status, 'race')})`
+                            : '— Chọn vòng đấu —'}
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filteredRaces.map((race: any) => (
+                            <SelectItem key={race._id || race.id} value={race._id || race.id} className="font-semibold">
+                              {race.name} ({getStatusLabel(race.status, 'race')})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )
+                  })()}
+                </div>
+              )}
 
               {/* Warning: prediction not open */}
               {selectedRace && !isPredOpen && !horsesLoading && (
