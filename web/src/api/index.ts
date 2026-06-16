@@ -536,7 +536,7 @@ export async function getHorseResults(horseId: string): Promise<any> {
 
 // --- QUẢN LÝ DỰ ĐOÁN (PREDICTIONS) ---
 export async function getAdminPredictions(params?: { status?: string; raceId?: string }): Promise<Prediction[]> {
-  const res = await http.get(`${BE_BASE_URL}/prediction/admin/predictions`, { params })
+  const res = await http.get(`${BE_BASE_URL}/admin/predictions`, { params })
   const data = res.data.predictions || res.data.data || res.data
   return data.map((p: any) => ({
     id: p._id || p.id,
@@ -553,17 +553,17 @@ export async function getAdminPredictions(params?: { status?: string; raceId?: s
 }
 
 export async function getPredictionStats(raceId?: string): Promise<any> {
-  const res = await http.get(`${BE_BASE_URL}/prediction/admin/predictions/stats`, { params: { raceId } })
+  const res = await http.get(`${BE_BASE_URL}/admin/predictions/stats`, { params: { raceId } })
   return res.data
 }
 
 export async function closePredictions(raceId: string): Promise<any> {
-  const res = await http.post(`${BE_BASE_URL}/prediction/admin/races/${raceId}/predictions/close`)
+  const res = await http.post(`${BE_BASE_URL}/admin/races/${raceId}/predictions/close`)
   return res.data
 }
 
 export async function settlePredictions(raceId: string): Promise<any> {
-  const res = await http.post(`${BE_BASE_URL}/prediction/admin/races/${raceId}/predictions/settle`)
+  const res = await http.post(`${BE_BASE_URL}/admin/races/${raceId}/predictions/settle`)
   return res.data
 }
 
