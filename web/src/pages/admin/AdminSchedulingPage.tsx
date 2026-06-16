@@ -679,9 +679,9 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
 
       // Check if race already has confirmed rankings/results
       let initialRankings: any[]
-      if (race.status === 'RESULT_CONFIRMED' && race.rankings && Array.isArray(race.rankings) && race.rankings.length > 0) {
+      if ((race.status === 'RESULT_CONFIRMED' || race.status === 'COMPLETED') && race.rankings && Array.isArray(race.rankings) && race.rankings.length > 0) {
         initialRankings = race.rankings
-      } else if (race.status === 'RESULT_CONFIRMED' && race.results && Array.isArray(race.results) && race.results.length > 0) {
+      } else if ((race.status === 'RESULT_CONFIRMED' || race.status === 'COMPLETED') && race.results && Array.isArray(race.results) && race.results.length > 0) {
         initialRankings = race.results
       } else {
         // Initialize rankings form: default positions
@@ -1851,7 +1851,7 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                       header: 'Hành động',
                       align: 'right',
                       cell: (row) => (
-                        <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                           {row.status === 'SCHEDULED' && (
                             <>
                               <button type="button" className="btn" style={{ fontSize: '12px', padding: '5px 8px' }} onClick={() => openRefModal(row.id, row.refereeId && typeof row.refereeId === 'object' ? row.refereeId._id : row.refereeId)}>
@@ -1873,9 +1873,14 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                             </button>
                           )}
                           {row.status === 'COMPLETED' && (
-                            <button className="btn btnPrimary" style={{ fontSize: '12px', padding: '5px 8px' }} onClick={() => handleSettlePredictions(row.id)}>
-                              Trả thưởng cược
-                            </button>
+                            <>
+                              <button className="btn btnPrimary" style={{ fontSize: '12px', padding: '5px 8px' }} onClick={() => openResultModal(row)}>
+                                Công bố lại kết quả
+                              </button>
+                              <button className="btn btnPrimary" style={{ fontSize: '12px', padding: '5px 8px' }} onClick={() => handleSettlePredictions(row.id)}>
+                                Trả thưởng cược
+                              </button>
+                            </>
                           )}
                         </div>
                       )
@@ -2756,7 +2761,7 @@ function PredictionRaceList({
                   {profit > 0 ? '+' : ''}{profit.toLocaleString('vi-VN')} đ
                 </td>
                 <td style={{ textAlign: 'right' }}>
-                  <div style={{ display: 'inline-flex', gap: 6 }}>
+                  <div style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
                     <button className="btn flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onViewStats(r.id)}>
                       <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
                       <span>Chi tiết</span>
@@ -2774,10 +2779,16 @@ function PredictionRaceList({
                       </button>
                     )}
                     {r.status === 'COMPLETED' && (
-                      <button className="btn btnPrimary flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onSettlePred(r.id)}>
-                        <Coins className="w-3.5 h-3.5 text-white" />
-                        <span>Trả thưởng</span>
-                      </button>
+                      <>
+                        <button className="btn btnPrimary flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onOpenResultModal(r)}>
+                          <Coins className="w-3.5 h-3.5 text-white" />
+                          <span>Công bố lại kết quả</span>
+                        </button>
+                        <button className="btn btnPrimary flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onSettlePred(r.id)}>
+                          <Coins className="w-3.5 h-3.5 text-white" />
+                          <span>Trả thưởng</span>
+                        </button>
+                      </>
                     )}
                   </div>
                 </td>
