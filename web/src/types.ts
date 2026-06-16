@@ -96,7 +96,7 @@ export type Invite = {
   ownerId?: any
   ownerName?: string
   message?: string
-  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'DECLINED'
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'DECLINED' | 'CONFIRMED'
   sentAt?: string
   expiresAt?: string
 }
