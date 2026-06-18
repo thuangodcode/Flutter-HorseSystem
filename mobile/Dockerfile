@@ -1,5 +1,5 @@
 # Stage 1: Build môi trường Flutter Web
-FROM ghcr.io/cirruslabs/flutter:3.19.0 AS build
+FROM ghcr.io/cirruslabs/flutter:latest AS build
 WORKDIR /app
 
 # Copy toàn bộ code của app Flutter vào container
