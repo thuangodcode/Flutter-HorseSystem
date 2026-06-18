@@ -31,7 +31,7 @@ jobs:
         with:
           # LƯU Ý: Nếu thư mục chứa Flutter của bạn tên là 'mobile', hãy đổi '.' thành './mobile'
           # Nếu file Dockerfile nằm ngay thư mục ngoài cùng thì giữ nguyên '.'
-          context: .
-          file: ./Dockerfile
+          context: .mobile
+          file: ./mobile/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/flutter-horse-app:latest
