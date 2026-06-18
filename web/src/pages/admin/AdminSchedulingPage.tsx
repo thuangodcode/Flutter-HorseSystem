@@ -41,6 +41,8 @@ import {
   getAdminPredictions,
   closePredictions,
   settlePredictions,
+  startRaceStream,
+  stopRaceStream,
 } from '@/api'
 import { http } from '../../api/http'
 import { AnimatedTable, type SortDirection } from '@/components/ui/animated-table'
@@ -2554,6 +2556,36 @@ function RaceList({
   onRefresh: (highlightRaceId?: string) => void
   lastModifiedRaceId?: string | null
 }) {
+  const [startingStreamId, setStartingStreamId] = useState<string | null>(null)
+  const [stoppingStreamId, setStoppingStreamId] = useState<string | null>(null)
+
+  const handleStartStream = async (raceId: string) => {
+    setStartingStreamId(raceId)
+    try {
+      const res = await startRaceStream(raceId)
+      alert(`Bật Stream thành công!\n\nStream Key: ${res.streamKey}\nRTMP URL: rtmp://global-live.mux.com:5222/app\n\nHãy copy Stream Key dán vào phần mềm OBS để phát.`)
+      onRefresh(raceId)
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Không thể bật livestream cho cuộc đua này')
+    } finally {
+      setStartingStreamId(null)
+    }
+  }
+
+  const handleStopStream = async (raceId: string) => {
+    if (!confirm('Bạn có chắc chắn muốn tắt stream cho cuộc đua này?')) return
+    setStoppingStreamId(raceId)
+    try {
+      await stopRaceStream(raceId)
+      alert('Đã tắt livestream thành công!')
+      onRefresh(raceId)
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Không thể tắt livestream')
+    } finally {
+      setStoppingStreamId(null)
+    }
+  }
+
   const handleQuickStatusChange = async (id: string, newStatus: string) => {
     try {
       await updateRace(id, { status: newStatus } as any)
@@ -2655,6 +2687,38 @@ function RaceList({
                     <button className="btn btnPrimary" style={{ fontSize: '11px', padding: '4px 8px' }} onClick={() => onOpenResultModal(r)}>
                       Công bố kết quả
                     </button>
+                  )}
+                  {['ONGOING', 'SCHEDULED'].includes(r.status || '') && (
+                    <>
+                      {!r.isLive ? (
+                        <button
+                          className="btn"
+                          style={{ fontSize: '11px', padding: '4px 8px', background: '#10b981', color: '#fff', border: 'none' }}
+                          onClick={() => handleStartStream(r.id)}
+                          disabled={startingStreamId === r.id}
+                        >
+                          {startingStreamId === r.id ? 'Đang bật...' : 'Bật Stream'}
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            className="btn"
+                            style={{ fontSize: '11px', padding: '4px 8px', background: '#ef4444', color: '#fff', border: 'none' }}
+                            onClick={() => handleStopStream(r.id)}
+                            disabled={stoppingStreamId === r.id}
+                          >
+                            {stoppingStreamId === r.id ? 'Đang tắt...' : 'Tắt Stream'}
+                          </button>
+                          <button
+                            className="btn"
+                            style={{ fontSize: '11px', padding: '4px 8px' }}
+                            onClick={() => alert(`Stream Key hiện tại: ${r.streamKey}\n\nRTMP URL: rtmp://global-live.mux.com:5222/app`)}
+                          >
+                            Xem Key
+                          </button>
+                        </>
+                      )}
+                    </>
                   )}
                 </div>
               </td>
