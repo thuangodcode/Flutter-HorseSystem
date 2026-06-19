@@ -30,19 +30,13 @@ import { CalendarRange, Search, Trophy, Activity, FileCheck, Check, X, Users, Hi
 type Tab = 'my-horses' | 'race-registration' | 'hire-jockey' | 'invitations' | 'my-registrations'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function horseAvatarColor(name: string): string {
-  const colors = [
-    'linear-gradient(135deg,#059669,#047857)',
-    'linear-gradient(135deg,#3b82f6,#1d4ed8)',
-    'linear-gradient(135deg,#f59e0b,#d97706)',
-    'linear-gradient(135deg,#8b5cf6,#6d28d9)',
-    'linear-gradient(135deg,#f97316,#ea580c)',
-    'linear-gradient(135deg,#06b6d4,#0e7490)',
-    'linear-gradient(135deg,#ec4899,#be185d)',
-    'linear-gradient(135deg,#10b981,#059669)',
-  ]
-  const idx = (name.charCodeAt(0) + name.charCodeAt(name.length - 1)) % colors.length
-  return colors[idx]
+export function horseAvatarUrl(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const idx = Math.abs(hash) % 50;
+  return `https://loremflickr.com/400/400/horse?lock=${idx}`;
 }
 
 function statusConfig(status: string) {
@@ -538,7 +532,7 @@ export function HorsesPage() {
                     <ScrollReveal key={h.id} direction="up" distance={40} duration={0.6} delay={index * 0.1}>
                       <Card className="h-full border-[var(--border)] bg-gradient-to-b from-[var(--surface)] to-[var(--surface)]/80 hover:border-[var(--primary)]/40 hover:shadow-2xl hover:shadow-[var(--primary)]/5 hover:-translate-y-1.5 transition-all duration-300 rounded-2xl overflow-hidden flex flex-col group">
                         <div className="p-5 border-b border-[var(--border)] flex items-start gap-4">
-                          <div className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl shadow-lg shrink-0 group-hover:scale-110 transition-transform duration-300" style={{ background: horseAvatarColor(h.name) }}>🐎</div>
+                          <img src={horseAvatarUrl(h.name)} alt={h.name} className="w-14 h-14 rounded-xl object-cover shadow-lg shrink-0 group-hover:scale-110 transition-transform duration-300" />
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-start gap-1 mb-1">
                               <h3 className="font-bold text-lg text-[var(--text)] truncate m-0">{h.name}</h3>
@@ -608,7 +602,11 @@ export function HorsesPage() {
             </CardHeader>
             
             <div className="flex items-center gap-4 mb-8 bg-[var(--bg2)]/80 backdrop-blur-md p-4 rounded-2xl border border-[var(--border)]/40 flex-wrap">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0 shadow-md transition-all duration-300" style={{ background: selectedHorseObj ? horseAvatarColor(selectedHorseObj.name) : 'rgba(255,255,255,0.05)' }}>{selectedHorseObj ? '🐎' : '?'}</div>
+              {selectedHorseObj ? (
+                <img src={horseAvatarUrl(selectedHorseObj.name)} alt={selectedHorseObj.name} className="w-12 h-12 rounded-xl object-cover shadow-md shrink-0 transition-all duration-300" />
+              ) : (
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0 shadow-md transition-all duration-300 bg-[var(--surface-2)]/80 text-[var(--muted)]">?</div>
+              )}
               <div className="flex-1 min-w-[200px]">
                 <label className="text-[10px] font-extrabold text-[var(--muted)] uppercase tracking-wider mb-1 block">Chọn Ngựa Tham Gia</label>
                 <select 
@@ -763,7 +761,7 @@ export function HorsesPage() {
                     <ScrollReveal key={idx} direction="up" distance={20} delay={idx * 0.05}>
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl border border-[var(--border)]/60 bg-[var(--surface-2)]/40 hover:bg-[var(--surface-2)]/60 hover:border-[var(--primary)]/30 hover:scale-[1.005] hover:shadow-lg transition-all duration-300">
                         <div className="flex items-start gap-4">
-                          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0 shadow-md" style={{ background: horseAvatarColor(reg.horseName) }}>🐎</div>
+                          <img src={horseAvatarUrl(reg.horseName)} alt={reg.horseName} className="w-12 h-12 rounded-xl object-cover shadow-md shrink-0" />
                           <div className="space-y-1">
                             <h4 className="font-extrabold text-white text-lg m-0">{reg.horseName}</h4>
                             <div className="text-sm font-bold text-slate-300 flex items-center gap-1.5">
