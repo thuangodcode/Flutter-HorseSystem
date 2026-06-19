@@ -25,6 +25,11 @@ export async function login(params: { email: string; password: string; role?: Ro
   }
 }
 
+export async function getMyProfile(): Promise<any> {
+  const res = await http.get(`${BE_BASE_URL}/auth/me`)
+  return res.data
+}
+
 export async function register(params: { name: string; email: string; password: string; role: Role }): Promise<Session> {
   await http.post(`${BE_BASE_URL}/auth/register`, {
     email: params.email,

@@ -17,9 +17,9 @@ function formatDateTime(d: string) {
   return new Date(d).toLocaleString('vi-VN')
 }
 
-function formatMoney(n?: number) {
+function formatPoints(n?: number) {
   if (!n) return '—'
-  return n.toLocaleString('vi-VN') + ' VND'
+  return n.toLocaleString('vi-VN') + ' Point'
 }
 
 function parseMoney(value: string) {
@@ -62,7 +62,7 @@ async function shareRaceResult(raceName: string) {
 
 export function RaceDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const { session, balance, updateBalance } = useSession()
+  const { session, balance, refreshBalance, updateBalance } = useSession()
   const isSpectator = session?.user.role === 'SPECTATOR'
 
   const [race, setRace] = useState<Race | null>(null)
@@ -87,7 +87,7 @@ export function RaceDetailPage() {
     return (horse?._id || h?._id) === selectedHorse
   })
   const betValue = parseMoney(betAmount)
-  const estimatedPayout = betValue > 0 ? Math.round(betValue * 1.9) : 0
+  const estimatedPayout = betValue > 0 ? Math.round(betValue * 1.8) : 0
 
   function openPredictionModal(horseId?: string) {
     setSelectedHorse(horseId || '')
@@ -131,12 +131,12 @@ export function RaceDetailPage() {
   async function handlePrediction() {
     if (!id || !selectedHorse || !betAmount) return
     const amount = Number(betAmount)
-    if (isNaN(amount) || amount < 100000 || amount > 10000000) {
-      setPredMsg({ type: 'error', text: 'Số tiền đặt cược phải từ 100,000 đến 10,000,000 VND' })
+    if (isNaN(amount) || amount <= 0) {
+      setPredMsg({ type: 'error', text: 'Số điểm đặt cược phải lớn hơn 0' })
       return
     }
     if (balance < amount) {
-      setPredMsg({ type: 'error', text: 'Số dư tài khoản không đủ để đặt cược!' })
+      setPredMsg({ type: 'error', text: 'Số dư điểm không đủ để đặt cược!' })
       return
     }
     setPredLoading(true)
@@ -144,11 +144,12 @@ export function RaceDetailPage() {
     try {
       await placePrediction(id, selectedHorse, amount)
       updateBalance(balance - amount)
+      refreshBalance()
       setPredMsg({ type: 'success', text: 'Dự đoán thành công! 🎉' })
       setShowPredModal(false)
-      setPredOpen(false)
     } catch (e: any) {
-      const msg = e?.response?.data?.message || e?.response?.data?.error || 'Không thể đặt dự đoán'
+      let msg = e?.response?.data?.message || e?.response?.data?.error || 'Không thể đặt dự đoán'
+      msg = msg.replace(/\b\d{4,}\b/g, (match: string) => Number(match).toLocaleString('vi-VN'))
       setPredMsg({ type: 'error', text: msg })
     } finally {
       setPredLoading(false)
@@ -249,7 +250,7 @@ export function RaceDetailPage() {
       id: 'prize',
       header: 'Giải thưởng',
       align: 'right' as const,
-      cell: (r: RaceResult) => <span className="money">{formatMoney(r.prizeAmount)}</span>,
+      cell: (r: RaceResult) => <span className="money">{formatPoints(r.prizeAmount)}</span>,
     },
   ]
 
@@ -317,7 +318,7 @@ export function RaceDetailPage() {
             <div className="stat-card">
               <div className="stat-icon">💰</div>
               <div className="stat-label">Giải nhất</div>
-              <div className="stat-value" style={{ fontSize: 18 }}>{formatMoney(race.prizeFirst)}</div>
+              <div className="stat-value" style={{ fontSize: 18 }}>{formatPoints(race.prizeFirst)}</div>
             </div>
           )}
         </div>
@@ -421,36 +422,49 @@ export function RaceDetailPage() {
             )}
 
             <div className="form-group">
-              <label className="font-bold text-sm text-foreground">Số tiền đặt cược (100,000 - 10,000,000 VND)</label>
+              <label className="font-bold text-sm text-foreground">Số điểm đặt cược</label>
               <input
                 type="number"
-                min="100000"
-                max="10000000"
-                step="50000"
+                min="1"
+                step="1"
                 value={betAmount}
                 onChange={(e) => setBetAmount(e.target.value)}
-                placeholder="Ví dụ: 500000"
+                placeholder="Nhập số điểm..."
                 className="w-full rounded border border-border bg-background px-3 py-2 font-semibold text-foreground"
               />
               <div className="flex flex-wrap gap-2 mt-2">
-                {[500000, 1000000, 2000000, 5000000].map((amount) => (
+                <button
+                  type="button"
+                  className="h-8 px-3 rounded-lg border border-amber-500/30 text-amber-500 bg-amber-500/5 hover:bg-amber-500/20 font-black text-xs transition-colors cursor-pointer"
+                  onClick={() => setBetAmount(String(100000))}
+                >
+                  Min
+                </button>
+                <button
+                  type="button"
+                  className="h-8 px-3 rounded-lg border border-emerald-500/30 text-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/20 font-black text-xs transition-colors cursor-pointer"
+                  onClick={() => setBetAmount(String(balance))}
+                >
+                  Max
+                </button>
+                {[100000, 500000, 1000000, 5000000].map((amount) => (
                   <button
                     key={amount}
                     type="button"
                     className="h-8 px-3 rounded-lg border border-amber-500/30 text-amber-500 bg-amber-500/5 hover:bg-amber-500/20 font-bold text-xs transition-colors cursor-pointer"
                     onClick={() => setBetAmount(String(amount))}
                   >
-                    {amount.toLocaleString('vi-VN')} VND
+                    {amount.toLocaleString('vi-VN')} P
                   </button>
                 ))}
               </div>
               <div className="mt-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
-                <div className="text-xs uppercase tracking-wide text-emerald-400 font-bold">Số tiền trúng thưởng</div>
+                <div className="text-xs uppercase tracking-wide text-emerald-400 font-bold">Điểm thưởng dự kiến</div>
                 <div className="mt-1 text-lg font-black text-emerald-300">
-                  {estimatedPayout ? formatMoney(estimatedPayout) : '—'}
+                  {estimatedPayout ? formatPoints(estimatedPayout) : '—'}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  Tính theo tỉ lệ 1.9x, nhập 500.000 VND sẽ nhận khoảng 950.000 VND.
+                  Tính theo tỉ lệ 1.8x. Ví dụ: đặt 1,000 Point sẽ nhận khoảng 1,800 Point.
                 </div>
               </div>
             </div>

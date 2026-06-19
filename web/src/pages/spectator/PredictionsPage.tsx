@@ -24,19 +24,19 @@ function statusBadge(s: string) {
   )
 }
 
-function formatMoney(n?: number) {
+function formatPoints(n?: number) {
   if (n === undefined || n === null) return '—'
-  if (n === 0) return '0 VND'
-  return `${new Intl.NumberFormat('vi-VN').format(n)} VND`
+  if (n === 0) return '0 Point'
+  return `${new Intl.NumberFormat('vi-VN').format(n)} Point`
 }
 
-function formatMoneyInput(value: string) {
+function formatPointsInput(value: string) {
   const digits = value.replace(/[^\d]/g, '')
   if (!digits) return ''
   return Number(digits).toLocaleString('en-US')
 }
 
-function parseMoneyInput(value: string) {
+function parsePointsInput(value: string) {
   const digits = value.replace(/[^\d]/g, '')
   return digits ? Number(digits) : 0
 }
@@ -97,7 +97,7 @@ export function PredictionsPage() {
   const [historySearchQuery, setHistorySearchQuery] = useState('')
   const [historySortOrder, setHistorySortOrder] = useState('newest')
   const [historyReloadKey, setHistoryReloadKey] = useState(0)
-  const { balance, updateBalance } = useSession()
+  const { balance, refreshBalance, updateBalance } = useSession()
 
   const [races, setRaces] = useState<Race[]>([])
   const [tournaments, setTournaments] = useState<any[]>([])
@@ -214,25 +214,24 @@ export function PredictionsPage() {
   }, [selectedRace])
 
   async function handleSubmit() {
-    const betValue = parseMoneyInput(betAmount)
+    const betValue = parsePointsInput(betAmount)
     if (!selectedRace || !selectedHorse || !betValue) return
-    if (betValue < 100000 || betValue > 10000000) {
-      setPredMsg({ type: 'error', text: 'Số tiền đặt cược phải từ 100,000 đến 10,000,000 VND' })
-      return
-    }
-    if (betValue % 1000 !== 0) {
-      setPredMsg({ type: 'error', text: 'Số tiền đặt cược phải là bội số của 1,000 VND' })
+    if (betValue <= 0) {
+      setPredMsg({ type: 'error', text: 'Số điểm đặt cược phải lớn hơn 0' })
       return
     }
     if (balance < betValue) {
-      setPredMsg({ type: 'error', text: 'Số dư tài khoản không đủ để đặt cược!' })
+      setPredMsg({ type: 'error', text: 'Số dư điểm không đủ để đặt cược!' })
       return
     }
     setPredLoading(true)
     setPredMsg(null)
     try {
       await placePrediction(selectedRace, selectedHorse, betValue)
+      // Optimistically update the UI balance
       updateBalance(balance - betValue)
+      // Refresh balance from backend after successful prediction
+      refreshBalance()
       
       const raceName = races.find((r: any) => (r._id || r.id) === selectedRace)?.name || 'Cuộc đua'
       const horseName = findHorseById(horses, selectedHorse)?.name || 'Ngựa thi đấu'
@@ -244,23 +243,19 @@ export function PredictionsPage() {
         prize: betValue * 1.8
       })
       
-      setSelectedRace('')
+      // Reset horse selection and bet, but keep the race selected so user can bet again
       setSelectedHorse('')
       setBetAmount('')
       setHistoryReloadKey((value) => value + 1)
     } catch (error: any) {
-      const msg = error?.response?.data?.message || error?.response?.data?.error || 'Không thể đặt dự đoán'
+      let msg = error?.response?.data?.message || error?.response?.data?.error || 'Không thể đặt dự đoán'
+      // Format numbers with dots if the message contains large numbers
+      msg = msg.replace(/\b\d{4,}\b/g, (match: string) => Number(match).toLocaleString('vi-VN'))
       setPredMsg({ type: 'error', text: msg })
     } finally {
       setPredLoading(false)
     }
   }
-
-  const totalBet = predictions.reduce((sum, prediction) => sum + (prediction.betAmount || 0), 0)
-  const wonCount = predictions.filter((prediction) => prediction.status === 'WON').length
-  const totalPayout = predictions
-    .filter((prediction) => prediction.status === 'WON')
-    .reduce((sum, prediction) => sum + (prediction.payout || 0), 0)
 
   const filteredHistory = [...predictions]
     .filter((prediction) => {
@@ -277,6 +272,12 @@ export function PredictionsPage() {
       const diff = new Date(a.createdAt ?? '').getTime() - new Date(b.createdAt ?? '').getTime()
       return historySortOrder === 'oldest' ? diff : -diff
     })
+
+  const totalBet = filteredHistory.reduce((sum, prediction) => sum + (prediction.betAmount || 0), 0)
+  const wonCount = filteredHistory.filter((prediction) => prediction.status === 'WON').length
+  const totalPayout = filteredHistory
+    .filter((prediction) => prediction.status === 'WON')
+    .reduce((sum, prediction) => sum + (prediction.prizeAmount || prediction.payout || 0), 0)
 
   const predictionsColumns: ColumnDef<Prediction & { id: string }>[] = [
     {
@@ -301,9 +302,9 @@ export function PredictionsPage() {
     },
     {
       id: 'amount',
-      header: 'Số tiền cược',
+      header: 'Điểm cược',
       cell: (prediction: any) => (
-        <span className="font-bold text-amber-400">{formatMoney(prediction.betAmount)}</span>
+        <span className="font-bold text-amber-400">{formatPoints(prediction.betAmount)}</span>
       ),
     },
     {
@@ -313,13 +314,13 @@ export function PredictionsPage() {
     },
     {
       id: 'payout',
-      header: 'Tiền thưởng',
+      header: 'Điểm thưởng',
       cell: (prediction: any) => {
         if (prediction.status === 'WON') {
-          return <span className="text-emerald-400 font-black">{formatMoney(prediction.prizeAmount || prediction.payout)}</span>
+          return <span className="text-emerald-400 font-black">{formatPoints(prediction.prizeAmount || prediction.payout)}</span>
         }
         if (prediction.status === 'PENDING') {
-          return <span className="text-amber-500/80 font-bold text-xs leading-tight block">Dự kiến: <br/><span className="text-sm">{formatMoney((prediction.betAmount || 0) * 1.8)}</span></span>
+          return <span className="text-amber-400 font-bold">{formatPoints((prediction.betAmount || 0) * 1.8)}</span>
         }
         return <span className="text-[var(--muted)] font-bold">—</span>
       },
@@ -369,7 +370,7 @@ export function PredictionsPage() {
                   </div>
                   <div>
                     <div className="spectator-stat-label">Tổng cược</div>
-                    <div className="spectator-stat-value text-lg"><NumberCounter value={predictions.length} duration={1} easing="easeOut" /></div>
+                    <div className="spectator-stat-value text-lg"><NumberCounter value={filteredHistory.length} duration={1} easing="easeOut" /></div>
                   </div>
                 </div>
                 <div className="spectator-stat-card">
@@ -387,7 +388,7 @@ export function PredictionsPage() {
                   </div>
                   <div>
                     <div className="spectator-stat-label">Đã đặt</div>
-                    <div className="spectator-stat-value text-sm">{formatMoney(totalBet)}</div>
+                    <div className="spectator-stat-value text-sm">{formatPoints(totalBet)}</div>
                   </div>
                 </div>
                 <div className="spectator-stat-card">
@@ -395,8 +396,8 @@ export function PredictionsPage() {
                     <BadgeDollarSign className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="spectator-stat-label">Tiền thưởng</div>
-                    <div className="spectator-stat-value text-sm text-emerald-400">{formatMoney(totalPayout)}</div>
+                    <div className="spectator-stat-label">Điểm thưởng</div>
+                    <div className="spectator-stat-value text-sm text-emerald-400">{formatPoints(totalPayout)}</div>
                   </div>
                 </div>
               </div>
@@ -437,7 +438,7 @@ export function PredictionsPage() {
             </div>
             <div>
               <h2 className="text-xl font-bold text-[var(--text)] m-0">Tạo dự đoán mới</h2>
-              <p className="text-xs text-[var(--muted)] font-medium mt-0.5">Chọn cuộc đua đang mở và đặt cược cho ngựa bạn tin tưởng.</p>
+              <p className="text-xs text-[var(--muted)] font-medium mt-0.5">Chọn cuộc đua đang mở và đặt cược cho ngựa bạn tin tưởng. Bạn có thể đặt nhiều lần!</p>
             </div>
           </div>
 
@@ -554,38 +555,50 @@ export function PredictionsPage() {
                 </div>
               )}
 
-              {/* Predicted Position logic removed. Spectator always bets for position #1 */}
-
               {/* Bet Amount */}
               {selectedRace && (
                 <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-[var(--text)]">Số tiền đặt cược</label>
+                  <label className="block text-sm font-semibold text-[var(--text)]">Số điểm đặt cược</label>
                   <Input
                     type="text"
                     inputMode="numeric"
                     value={betAmount}
-                    onChange={(event) => setBetAmount(formatMoneyInput(event.target.value))}
-                    placeholder="Nhập số tiền..."
+                    onChange={(event) => setBetAmount(formatPointsInput(event.target.value))}
+                    placeholder="Nhập số điểm..."
                     className="h-11 border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] placeholder:text-[var(--muted)]/40 font-semibold"
                   />
                   {/* Quick amount buttons */}
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {[500000, 1000000, 2000000, 5000000].map((amount) => (
+                    <button
+                      type="button"
+                      className="spectator-quick-bet font-black text-amber-300"
+                      onClick={() => setBetAmount(formatPointsInput(String(100000)))}
+                    >
+                      Min
+                    </button>
+                    <button
+                      type="button"
+                      className="spectator-quick-bet font-black text-emerald-300"
+                      onClick={() => setBetAmount(formatPointsInput(String(balance)))}
+                    >
+                      Max
+                    </button>
+                    {[100000, 500000, 1000000, 5000000].map((amount) => (
                       <button
                         key={amount}
                         type="button"
                         className="spectator-quick-bet"
-                        onClick={() => setBetAmount(formatMoneyInput(String(amount)))}
+                        onClick={() => setBetAmount(formatPointsInput(String(amount)))}
                       >
-                        {amount.toLocaleString('vi-VN')}
+                        {amount.toLocaleString('vi-VN')} P
                       </button>
                     ))}
                   </div>
                   <div className="flex justify-between items-center mt-1">
-                    <p className="text-xs text-[var(--muted)] font-medium">Giới hạn: 100,000 — 10,000,000 VND. Bội số của 1,000 VND.</p>
+                    <p className="text-xs text-[var(--muted)] font-medium">Số dư hiện tại: <span className="text-amber-400 font-bold">{formatPoints(balance)}</span></p>
                     {betAmount && (
                       <p className="text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
-                        Thưởng nếu thắng: {formatMoney(parseMoneyInput(betAmount) * 1.8)}
+                        Thưởng nếu thắng: {formatPoints(parsePointsInput(betAmount) * 1.8)}
                       </p>
                     )}
                   </div>
@@ -634,11 +647,11 @@ export function PredictionsPage() {
                 </div>
                 <div className="spectator-status-row">
                   <span className="text-[var(--muted)] font-medium text-sm">Số dư hiện tại</span>
-                  <span className="font-bold text-amber-400 text-sm">{formatMoney(balance)}</span>
+                  <span className="font-bold text-amber-400 text-sm">{formatPoints(balance)}</span>
                 </div>
                 <div className="spectator-status-row">
                   <span className="text-[var(--muted)] font-medium text-sm">Tổng thưởng</span>
-                  <span className="font-bold text-emerald-400 text-sm">{formatMoney(totalPayout)}</span>
+                  <span className="font-bold text-emerald-400 text-sm">{formatPoints(totalPayout)}</span>
                 </div>
               </div>
 
@@ -648,7 +661,7 @@ export function PredictionsPage() {
                   <Sparkles className="w-3.5 h-3.5" /> Gợi ý
                 </div>
                 <p className="text-xs text-[var(--muted)] font-medium leading-relaxed">
-                  Chọn cuộc đua <span className="text-[var(--text)] font-semibold">Đã lên lịch</span> hoặc <span className="text-[var(--text)] font-semibold">Đang diễn ra</span>, sau đó chọn ngựa và nhập số tiền.
+                  Chọn cuộc đua <span className="text-[var(--text)] font-semibold">Đã lên lịch</span> hoặc <span className="text-[var(--text)] font-semibold">Đang diễn ra</span>, sau đó chọn ngựa và nhập số điểm. Bạn có thể đặt nhiều lần cho cùng một cuộc đua!
                 </p>
               </div>
             </div>
@@ -762,12 +775,12 @@ export function PredictionsPage() {
                 <span className="font-bold text-[var(--text)]">{successPredictionData.horseName}</span>
               </div>
               <div className="flex justify-between items-center pb-3 border-b border-[var(--border)]/50">
-                <span className="text-[var(--muted)] font-medium text-sm">Số tiền cược</span>
-                <span className="font-bold text-amber-400">{formatMoney(successPredictionData.betAmount)}</span>
+                <span className="text-[var(--muted)] font-medium text-sm">Điểm cược</span>
+                <span className="font-bold text-amber-400">{formatPoints(successPredictionData.betAmount)}</span>
               </div>
               <div className="flex justify-between items-center pt-1">
-                <span className="text-[var(--muted)] font-medium text-sm">Tiền thưởng dự kiến</span>
-                <span className="font-black text-emerald-400 text-lg drop-shadow-sm">{formatMoney(successPredictionData.prize)}</span>
+                <span className="text-[var(--muted)] font-medium text-sm">Điểm thưởng dự kiến</span>
+                <span className="font-black text-emerald-400 text-lg drop-shadow-sm">{formatPoints(successPredictionData.prize)}</span>
               </div>
             </div>
           )}

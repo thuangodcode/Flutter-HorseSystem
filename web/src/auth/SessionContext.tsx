@@ -4,10 +4,6 @@ import type { Role, Session } from '../types'
 import { clearSession, loadSession, saveSession } from './sessionStorage'
 import * as api from '@/api'
 
-const DEFAULT_BALANCE = 10_000_000
-const RESTORE_THRESHOLD = 100_000
-const RESTORE_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000 // 3 days in ms
-
 type SessionContextValue = {
   session: Session | null
   login: (params: { email: string; password: string; role?: Role }) => Promise<void>
@@ -15,47 +11,32 @@ type SessionContextValue = {
   logout: () => void
   balance: number
   updateBalance: (newBalance: number) => void
-}
-
-/** Check if balance should be auto-restored to default */
-function shouldRestoreBalance(currentBalance: number): boolean {
-  if (currentBalance >= RESTORE_THRESHOLD) return false
-  const lastReset = localStorage.getItem('lastBalanceReset')
-  if (!lastReset) return true // never reset before → restore
-  const elapsed = Date.now() - Number(lastReset)
-  return elapsed >= RESTORE_COOLDOWN_MS
-}
-
-function loadPersistedBalance(): number {
-  try {
-    const saved = localStorage.getItem('spectator_balance')
-    if (saved !== null) {
-      const parsed = Number(saved)
-      if (!isNaN(parsed) && parsed >= 0) return parsed
-    }
-  } catch {}
-  return DEFAULT_BALANCE
+  refreshBalance: () => Promise<void>
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null)
 
 export function SessionProvider(props: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(() => loadSession())
-  const [balance, setBalance] = useState<number>(() => {
-    const persisted = loadPersistedBalance()
-    // Check auto-restore on initial load
-    if (shouldRestoreBalance(persisted)) {
-      localStorage.setItem('spectator_balance', String(DEFAULT_BALANCE))
-      localStorage.setItem('lastBalanceReset', String(Date.now()))
-      return DEFAULT_BALANCE
-    }
-    return persisted
-  })
+  const [balance, setBalance] = useState<number>(0)
 
-  // Persist balance to localStorage whenever it changes
+  // Fetch balance from backend profile (points field)
+  async function fetchBalanceFromBackend() {
+    try {
+      const profile = await api.getMyProfile()
+      const pts = profile?.profile?.points ?? profile?.points ?? profile?.balance ?? profile?.virtualPoints ?? 0
+      setBalance(pts)
+    } catch (err) {
+      console.warn('Could not fetch profile balance:', err)
+    }
+  }
+
+  // On mount or session change, load balance from backend
   useEffect(() => {
-    localStorage.setItem('spectator_balance', String(balance))
-  }, [balance])
+    if (session?.token) {
+      fetchBalanceFromBackend()
+    }
+  }, [session?.token])
 
   const value = useMemo<SessionContextValue>(
     () => ({
@@ -64,38 +45,24 @@ export function SessionProvider(props: { children: ReactNode }) {
         const next = await api.login(params)
         saveSession(next)
         setSession(next)
-        // Check auto-restore on login
-        const currentBal = loadPersistedBalance()
-        if (shouldRestoreBalance(currentBal)) {
-          setBalance(DEFAULT_BALANCE)
-          localStorage.setItem('spectator_balance', String(DEFAULT_BALANCE))
-          localStorage.setItem('lastBalanceReset', String(Date.now()))
-        } else {
-          setBalance(currentBal)
-        }
+        // Balance will be fetched automatically via the useEffect above
       },
       register: async (params) => {
         const next = await api.register(params)
         saveSession(next)
         setSession(next)
-        // New user gets default balance
-        setBalance(DEFAULT_BALANCE)
-        localStorage.setItem('spectator_balance', String(DEFAULT_BALANCE))
-        localStorage.setItem('lastBalanceReset', String(Date.now()))
+        // Balance will be fetched automatically via the useEffect above
       },
       logout: () => {
         clearSession()
         setSession(null)
+        setBalance(0)
       },
       balance,
       updateBalance: (newBalance: number) => {
         setBalance(newBalance)
-        localStorage.setItem('spectator_balance', String(newBalance))
-        // If balance dropped below threshold, record for future auto-restore check
-        if (newBalance < RESTORE_THRESHOLD) {
-          // Auto-restore will happen on next login if 3 days have passed
-        }
       },
+      refreshBalance: fetchBalanceFromBackend,
     }),
     [session, balance],
   )
@@ -108,4 +75,3 @@ export function useSession() {
   if (!ctx) throw new Error('useSession must be used within SessionProvider')
   return ctx
 }
-
