@@ -47,6 +47,8 @@ export type Race = {
   results?: any[]
   rankings?: any[]
   confirmedAt?: string
+  isLive?: boolean
+  streamKey?: string
 }
 
 export type Horse = {

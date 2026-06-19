@@ -64,7 +64,7 @@ export function LiveStreamModal({ race, onClose }: LiveStreamModalProps) {
     console.log('[HLS Debug] useEffect triggered with streamUrl:', streamUrl, 'isYouTube:', isYouTube)
     if (!video || !streamUrl || isYouTube) return
 
-    let hls: Hls | null = null
+    let hls: any = null
 
     console.log('[HLS Debug] Hls.isSupported():', Hls.isSupported())
 
@@ -79,7 +79,7 @@ export function LiveStreamModal({ race, onClose }: LiveStreamModalProps) {
           .then(() => console.log('[HLS Debug] Playback started successfully!'))
           .catch(err => console.warn('[HLS Debug] Autoplay failed or prevented:', err))
       })
-      hls.on(Hls.Events.ERROR, (_, data) => {
+      hls.on(Hls.Events.ERROR, (_: any, data: any) => {
         console.warn('[HLS Debug] HLS Player Error event:', data)
         if (data.fatal) {
           switch (data.type) {
