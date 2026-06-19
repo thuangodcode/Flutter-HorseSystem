@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import { X, Radio, Clock3, Ruler, Users, ExternalLink, Maximize2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { getRaceStreamUrl } from '@/api'
+import Hls from 'hls.js'
 
 // Horse racing YouTube demo streams (public, no auth needed)
 const DEMO_STREAMS = [
@@ -23,6 +24,7 @@ interface LiveStreamModalProps {
 
 export function LiveStreamModal({ race, onClose }: LiveStreamModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [fetchedStreamUrl, setFetchedStreamUrl] = useState<string | null>(null)
   const [loadingStream, setLoadingStream] = useState(true)
@@ -48,9 +50,73 @@ export function LiveStreamModal({ race, onClose }: LiveStreamModalProps) {
     ? race.name.charCodeAt(0) % DEMO_STREAMS.length
     : 0
 
-  const streamUrl = fetchedStreamUrl || (race?.streamUrl
-    ? `${race.streamUrl}${race.streamUrl.includes('youtube') ? '&autoplay=1&mute=1' : ''}`
-    : DEMO_STREAMS[demoIndex])
+  const streamUrl = fetchedStreamUrl || (race?.playbackId
+    ? `https://stream.mux.com/${race.playbackId}.m3u8`
+    : race?.streamUrl
+      ? `${race.streamUrl}${race.streamUrl.includes('youtube') ? '&autoplay=1&mute=1' : ''}`
+      : DEMO_STREAMS[demoIndex])
+
+  const isYouTube = streamUrl.includes('youtube') || streamUrl.includes('youtu.be')
+
+  // Setup HLS for standard streaming URLs (.m3u8)
+  useEffect(() => {
+    const video = videoRef.current
+    console.log('[HLS Debug] useEffect triggered with streamUrl:', streamUrl, 'isYouTube:', isYouTube)
+    if (!video || !streamUrl || isYouTube) return
+
+    let hls: Hls | null = null
+
+    console.log('[HLS Debug] Hls.isSupported():', Hls.isSupported())
+
+    if (Hls.isSupported()) {
+      hls = new Hls()
+      console.log('[HLS Debug] Instantiated Hls.js client. Loading source...')
+      hls.loadSource(streamUrl)
+      hls.attachMedia(video)
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        console.log('[HLS Debug] MANIFEST_PARSED: manifest parsed successfully. Triggering play()...')
+        video.play()
+          .then(() => console.log('[HLS Debug] Playback started successfully!'))
+          .catch(err => console.warn('[HLS Debug] Autoplay failed or prevented:', err))
+      })
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        console.warn('[HLS Debug] HLS Player Error event:', data)
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              console.log('[HLS Debug] Fatal HLS network error, attempting to recover...')
+              hls?.startLoad()
+              break
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              console.log('[HLS Debug] Fatal HLS media error, attempting to recover...')
+              hls?.recoverMediaError()
+              break
+            default:
+              console.log('[HLS Debug] Fatal HLS error, destroying player.')
+              hls?.destroy()
+              break
+          }
+        }
+      })
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      console.log('[HLS Debug] Hls.js not supported. Falling back to native browser HLS support.')
+      // Native HLS support (Safari)
+      video.src = streamUrl
+      video.addEventListener('loadedmetadata', () => {
+        console.log('[HLS Debug] Native HLS: loadedmetadata event fired. Triggering play()...')
+        video.play()
+          .then(() => console.log('[HLS Debug] Native playback started successfully!'))
+          .catch(err => console.warn('[HLS Debug] Native autoplay failed or prevented:', err))
+      })
+    }
+
+    return () => {
+      if (hls) {
+        console.log('[HLS Debug] Component cleaning up. Destroying Hls instance.')
+        hls.destroy()
+      }
+    }
+  }, [streamUrl, isYouTube, loadingStream])
 
   // ESC key to close
   useEffect(() => {
@@ -123,11 +189,11 @@ export function LiveStreamModal({ race, onClose }: LiveStreamModalProps) {
             </div>
           </div>
 
-          {/* Stream Iframe */}
+          {/* Stream Iframe or Video Player */}
           <div className={`relative bg-black ${isFullscreen ? 'flex-1' : 'aspect-video'} flex items-center justify-center`}>
             {loadingStream ? (
               <div className="text-white/70 font-semibold animate-pulse">Đang tải luồng trực tiếp...</div>
-            ) : (
+            ) : isYouTube ? (
               <iframe
                 src={streamUrl}
                 className="w-full h-full"
@@ -135,6 +201,16 @@ export function LiveStreamModal({ race, onClose }: LiveStreamModalProps) {
                 allowFullScreen
                 title={`Livestream: ${race?.name}`}
                 style={{ border: 'none', display: 'block' }}
+              />
+            ) : (
+              <video
+                ref={videoRef}
+                className="w-full h-full"
+                controls
+                autoPlay
+                muted
+                playsInline
+                style={{ display: 'block' }}
               />
             )}
 
@@ -148,7 +224,7 @@ export function LiveStreamModal({ race, onClose }: LiveStreamModalProps) {
             </div>
 
             {/* Demo badge */}
-            {!fetchedStreamUrl && !race?.streamUrl && !loadingStream && (
+            {!fetchedStreamUrl && !race?.playbackId && !race?.streamUrl && !loadingStream && (
               <div className="absolute bottom-3 right-3 px-2 py-1 rounded-md bg-black/70 backdrop-blur-sm border border-white/10 pointer-events-none">
                 <span className="text-[9px] font-bold text-white/60 uppercase tracking-wider">Demo Stream</span>
               </div>
