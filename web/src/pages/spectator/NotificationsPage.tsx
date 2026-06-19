@@ -129,7 +129,7 @@ export function NotificationsPage() {
                   placeholder="Tìm kiếm..."
                   value={searchQuery}
                   onChange={(e: any) => setSearchQuery(e.target.value)}
-                  className="h-9 w-48 pl-9 border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] font-medium placeholder:text-[var(--muted)]/40 text-sm"
+                  className="h-9 w-48 !pl-9 border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] font-medium placeholder:text-[var(--muted)]/40 text-sm"
                 />
               </div>
               <Select value={timeFilter} onValueChange={(value: any) => setTimeFilter(value ?? 'all')}>

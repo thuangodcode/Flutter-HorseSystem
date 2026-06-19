@@ -97,6 +97,11 @@ export function InvitesPage() {
         if (matchedReg && matchedRace) {
           const horseObj = matchedReg.horse || {}
           const ownerObj = horseObj.ownerId || horseObj.owner || {}
+          
+          const assignedJockeyId = String(matchedReg.jockeyId?._id || matchedReg.jockeyId?.id || matchedReg.jockeyId || matchedReg.jockey?._id || matchedReg.jockey?.id || '');
+          const myJockeyId = String(invAny.jockeyId?._id || invAny.jockeyId?.id || invAny.jockeyId || invAny.jockey?._id || invAny.jockey?.id || invAny.jockey || '');
+          const isOtherConfirmed = assignedJockeyId && myJockeyId && assignedJockeyId !== myJockeyId;
+
           return {
             ...inv,
             raceId: matchedRace.id,
@@ -105,7 +110,8 @@ export function InvitesPage() {
             raceScheduledAt: matchedRace.scheduledAt || inv.raceScheduledAt,
             horseBreed: horseObj.breed || inv.horseBreed,
             horseWeight: horseObj.weight || inv.horseWeight,
-            ownerName: ownerObj.fullName || ownerObj.name || ownerObj.email || inv.ownerName
+            ownerName: ownerObj.fullName || ownerObj.name || ownerObj.email || inv.ownerName,
+            isOtherConfirmed: !!isOtherConfirmed
           }
         }
         return inv
@@ -135,8 +141,11 @@ export function InvitesPage() {
     }
   }
 
-  const getStatusDisplay = (status: string) => {
-    switch (status) {
+  const getStatusDisplay = (inv: any) => {
+    if (inv.isOtherConfirmed) {
+      return <Badge variant="outline" className="border-slate-500/30 bg-slate-500/10 text-slate-400">🚫 Đã chốt Jockey khác</Badge>
+    }
+    switch (inv.status) {
       case 'PENDING':
         return <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-300">⏳ Chờ phản hồi</Badge>
       case 'ACCEPTED':
@@ -147,7 +156,7 @@ export function InvitesPage() {
       case 'CONFIRMED':
         return <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-300">🎉 Đã chốt (Chính thức)</Badge>
       default:
-        return <Badge variant="outline">{status}</Badge>
+        return <Badge variant="outline">{inv.status}</Badge>
     }
   }
 
@@ -199,7 +208,7 @@ export function InvitesPage() {
                         🐎 {inv.horseName}
                       </CardTitle>
                     </div>
-                    <div>{getStatusDisplay(inv.status)}</div>
+                    <div>{getStatusDisplay(inv)}</div>
                   </div>
                 </CardHeader>
 
@@ -233,7 +242,11 @@ export function InvitesPage() {
                   </div>
 
                   <div className="mt-auto pt-4 border-t border-[var(--border)] flex items-center justify-between gap-3">
-                    {inv.status === 'PENDING' ? (
+                    {(inv as any).isOtherConfirmed ? (
+                      <Button disabled className="w-full bg-slate-800 text-slate-500 cursor-not-allowed">
+                        🚫 Cuộc đua đã có Jockey khác
+                      </Button>
+                    ) : inv.status === 'PENDING' ? (
                       <>
                         <Button 
                           variant="outline" 

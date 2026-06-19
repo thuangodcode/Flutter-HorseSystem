@@ -97,6 +97,7 @@ function getRoleNav(role: string): NavItem[] {
   if (role === 'REFEREE') {
     return [
       ...common,
+      { to: '/app/referee/invites', label: 'Lời mời', icon: Mail },
       { to: '/app/referee/races', label: 'Quản lý đua', icon: Scale },
     ]
   }
@@ -160,6 +161,42 @@ export function AppLayout() {
     }, 30000)
     return () => clearInterval(interval)
   }, [])
+
+  // Pending invites count badge for Jockey and Referee
+  const [pendingInvitesCount, setPendingInvitesCount] = useStateReact(0)
+  useEffectReact(() => {
+    if (actualRole === 'JOCKEY') {
+      import('@/api').then(({ getInvites }) => {
+        const fetchInvites = () => {
+          getInvites()
+            .then((data: any) => {
+              const list = Array.isArray(data) ? data : (data?.invitations || data?.data || [])
+              const count = list.filter((inv: any) => inv.status === 'PENDING').length
+              setPendingInvitesCount(count)
+            })
+            .catch(() => {})
+        }
+        fetchInvites()
+        const interval = setInterval(fetchInvites, 30000)
+        return () => clearInterval(interval)
+      })
+    } else if (actualRole === 'REFEREE') {
+      import('@/api').then(({ getRefereeInvites }) => {
+        const fetchInvites = () => {
+          getRefereeInvites()
+            .then((data: any) => {
+              const list = Array.isArray(data) ? data : (data?.invitations || data?.data || [])
+              const count = list.filter((inv: any) => inv.status === 'PENDING').length
+              setPendingInvitesCount(count)
+            })
+            .catch(() => {})
+        }
+        fetchInvites()
+        const interval = setInterval(fetchInvites, 30000)
+        return () => clearInterval(interval)
+      })
+    }
+  }, [actualRole])
 
   // Admin can "view as" another role (Spectator / Referee). Persist choice in localStorage.
   const [adminViewAs, setAdminViewAs] = useState<string | null>(() => {
@@ -617,6 +654,19 @@ export function AppLayout() {
                                 </span>
                               )}
                             </div>
+                          ) : item.label === 'Lời mời' ? (
+                            <div className="relative">
+                              <Icon
+                                className={`w-5 h-5 transition-all duration-200 ${isActive ? 'text-amber-500 drop-shadow-[0_0_6px_rgba(245,158,11,0.4)]' : ''
+                                  }`}
+                              />
+                              {pendingInvitesCount > 0 && (
+                                <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75" />
+                                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
+                                </span>
+                              )}
+                            </div>
                           ) : (
                             <Icon
                               className={`w-5 h-5 transition-all duration-200 ${isActive ? 'text-amber-500 drop-shadow-[0_0_6px_rgba(245,158,11,0.4)]' : ''
@@ -639,6 +689,11 @@ export function AppLayout() {
                               {item.label === 'Livestream' && liveRaceCount > 0 && (
                                 <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black bg-red-500 text-white leading-none">
                                   {liveRaceCount}
+                                </span>
+                              )}
+                              {item.label === 'Lời mời' && pendingInvitesCount > 0 && (
+                                <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black bg-amber-500 text-white leading-none">
+                                  {pendingInvitesCount}
                                 </span>
                               )}
                             </motion.span>

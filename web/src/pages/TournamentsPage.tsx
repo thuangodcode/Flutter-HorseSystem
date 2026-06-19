@@ -131,7 +131,7 @@ export function TournamentsPage() {
                   placeholder="Tìm kiếm giải đấu..."
                   value={searchQuery}
                   onChange={(e: any) => setSearchQuery(e.target.value)}
-                  className="h-10 w-56 pl-9 border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] font-medium placeholder:text-[var(--muted)]/40"
+                  className="h-10 w-56 !pl-9 border-[var(--border)] bg-[var(--bg2)]/60 text-[var(--text)] font-medium placeholder:text-[var(--muted)]/40"
                 />
               </div>
               <Button

@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, startTransition, useMemo } from 'react'
+import { useEffect, useState, startTransition, useMemo } from 'react'
 import type { Role, User } from '../../types'
 import { getAdminUsers, createAdminUser, updateUserRole, toggleUserStatus, deleteUser } from '@/api'
 import { AnimatedTable, type ColumnDef, type SortDirection } from '@/components/ui/animated-table'
 import { Users, CheckCircle, Lock, Search, Key, Trash2, Unlock, MoreHorizontal, AlertTriangle } from 'lucide-react'
+import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -78,66 +79,44 @@ function ActionMenu({
   onToggle: () => void
   onDelete: () => void
 }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
   if (user.role === 'ADMIN') {
     return <span className="muted text-xs">—</span>
   }
 
   return (
-    <div className="dropdown-wrapper" ref={ref}>
-      <button
-        className="btn btn-sm btn-ghost btn-icon flex items-center justify-center p-0"
-        onClick={() => setOpen((o) => !o)}
-        title="Tác vụ"
-      >
-        <MoreHorizontal className="w-4 h-4" />
-      </button>
-      {open && (
-        <div className="dropdown-menu">
-          <button
-            className="dropdown-item flex items-center gap-2"
-            onClick={() => { setOpen(false); onEditRole() }}
-          >
-            <Key className="w-3.5 h-3.5 text-blue-400" />
-            <span>Phân quyền</span>
-          </button>
-          <button
-            className="dropdown-item flex items-center gap-2"
-            onClick={() => { setOpen(false); onToggle() }}
-          >
-            {user.status === 'ACTIVE' ? (
-              <>
-                <Lock className="w-3.5 h-3.5 text-amber-500" />
-                <span>Khóa tài khoản</span>
-              </>
-            ) : (
-              <>
-                <Unlock className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Mở khóa</span>
-              </>
-            )}
-          </button>
-          <div className="dropdown-divider" />
-          <button
-            className="dropdown-item dropdown-item-danger flex items-center gap-2"
-            onClick={() => { setOpen(false); onDelete() }}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Xóa tài khoản</span>
-          </button>
-        </div>
-      )}
-    </div>
+    <DropdownMenu
+      trigger={
+        <button
+          className="btn btn-sm btn-ghost btn-icon flex items-center justify-center p-0"
+          title="Tác vụ"
+        >
+          <MoreHorizontal className="w-4 h-4" />
+        </button>
+      }
+    >
+      <DropdownMenuItem onClick={onEditRole}>
+        <Key className="w-3.5 h-3.5 text-blue-400" />
+        <span>Phân quyền</span>
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={onToggle}>
+        {user.status === 'ACTIVE' ? (
+          <>
+            <Lock className="w-3.5 h-3.5 text-amber-500" />
+            <span>Khóa tài khoản</span>
+          </>
+        ) : (
+          <>
+            <Unlock className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Mở khóa</span>
+          </>
+        )}
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onClick={onDelete}>
+        <Trash2 className="w-3.5 h-3.5 text-red-500" />
+        <span className="text-red-500">Xóa tài khoản</span>
+      </DropdownMenuItem>
+    </DropdownMenu>
   )
 }
 

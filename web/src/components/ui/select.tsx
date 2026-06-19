@@ -41,7 +41,7 @@ function SelectTrigger({
       data-slot="select-trigger"
       data-size={size}
       className={cn(
-        "flex w-fit items-center justify-between gap-2 rounded-lg border border-border bg-transparent px-3 py-2 text-sm font-semibold whitespace-nowrap transition-colors outline-none select-none",
+        "flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-transparent px-3 py-2 text-sm font-semibold whitespace-nowrap transition-colors outline-none select-none",
         "text-foreground cursor-pointer",
         "hover:bg-muted hover:border-input",
         "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50",
@@ -54,7 +54,7 @@ function SelectTrigger({
       )}
       {...props}
     >
-      {children}
+      <span className="truncate flex-1 text-left">{children}</span>
       <SelectPrimitive.Icon render={<ChevronDownIcon className="size-4 text-muted-foreground pointer-events-none shrink-0" />} />
     </SelectPrimitive.Trigger>
   )
