@@ -26,7 +26,7 @@ import { JockeyRacesPage } from './pages/jockey/JockeyRacesPage'
 import { JockeyRaceDetailPage } from './pages/jockey/JockeyRaceDetailPage'
 import { JockeySchedulePage } from './pages/jockey/JockeySchedulePage'
 import { JockeyResultsPage } from './pages/jockey/JockeyResultsPage'
-import { JockeyProfilePage } from './pages/jockey/JockeyProfilePage'
+import { ProfilePage } from './pages/ProfilePage'
 import { LiveStreamPage } from './pages/LiveStreamPage'
 
 function RequireAuth(props: { children: ReactNode }) {
@@ -85,7 +85,7 @@ const router = createBrowserRouter([
       { path: 'jockey/races/:raceId', element: <JockeyRaceDetailPage /> },
       { path: 'jockey/schedule', element: <JockeySchedulePage /> },
       { path: 'jockey/results', element: <JockeyResultsPage /> },
-      { path: 'jockey/profile', element: <JockeyProfilePage /> },
+      { path: 'profile', element: <ProfilePage /> },
       { path: 'predictions', element: <PredictionsPage /> },
       { path: 'notifications', element: <NotificationsPage /> },
       { path: 'leaderboard', element: <LeaderboardPage /> },

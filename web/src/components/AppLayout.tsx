@@ -73,6 +73,7 @@ function getRoleNav(role: string): NavItem[] {
     { to: '/app/races', label: 'Cuộc đua', icon: Zap },
     { to: '/app/leaderboard', label: 'Bảng xếp hạng', icon: Medal },
     { to: '/app/livestream', label: 'Livestream', icon: Tv2 },
+    { to: '/app/profile', label: 'Hồ sơ', icon: UserIcon },
   ]
 
   if (role === 'OWNER') {
@@ -171,7 +172,7 @@ export function AppLayout() {
 
   const effectiveRole = actualRole === 'ADMIN' && adminViewAs ? adminViewAs : actualRole
   const navItems = getRoleNav(effectiveRole)
-  const profileActive = location.pathname.startsWith('/app/jockey/profile')
+  const profileActive = location.pathname.startsWith('/app/profile')
 
   // Sidebar open state (unified for all screen sizes)
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
@@ -337,8 +338,8 @@ export function AppLayout() {
             {/* Profile Info */}
             <button
               type="button"
-              onClick={() => actualRole === 'JOCKEY' && navigate('/app/jockey/profile')}
-              className={`hidden md:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-(--bg2) border border-border hover:bg-(--surface-strong)/50 transition-all duration-200 ${actualRole === 'JOCKEY' ? 'cursor-pointer' : 'cursor-default'}`}
+              onClick={() => navigate('/app/profile')}
+              className={`hidden md:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-(--bg2) border border-border hover:bg-(--surface-strong)/50 transition-all duration-200 cursor-pointer`}
             >
               <div className="w-6 h-6 rounded-md bg-(--surface-strong) flex items-center justify-center border border-border">
                 <UserIcon className="w-3.5 h-3.5 text-muted" />
@@ -377,9 +378,9 @@ export function AppLayout() {
             {/* Account Balance */}
             {actualRole === 'SPECTATOR' && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 shadow-sm transition-all duration-300">
-                <span className="text-xs font-black text-amber-500">💰</span>
+                <span className="text-xs font-black text-amber-500">⭐</span>
                 <span className="text-xs font-black text-(--text)">
-                  {new Intl.NumberFormat('vi-VN').format(balance)} VND
+                  {new Intl.NumberFormat('vi-VN').format(balance)} Point
                 </span>
               </div>
             )}
