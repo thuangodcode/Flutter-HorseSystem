@@ -104,6 +104,9 @@ export async function getRaces(tournamentId?: string): Promise<Race[]> {
     rankings: r.rankings,
     confirmedAt: r.confirmedAt,
     createdAt: r.createdAt,
+    playbackId: r.playbackId,
+    isLive: r.isLive,
+    streamKey: r.streamKey,
   })).reverse()
 }
 
@@ -127,6 +130,9 @@ export async function getRace(id: string): Promise<any> {
     results: r.results,
     rankings: r.rankings,
     confirmedAt: r.confirmedAt,
+    playbackId: r.playbackId,
+    isLive: r.isLive,
+    streamKey: r.streamKey,
   }
 }
 
@@ -701,6 +707,9 @@ export async function getPublicRaces(params?: { status?: string; tournamentId?: 
     rankings: r.rankings,
     confirmedAt: r.confirmedAt,
     createdAt: r.createdAt,
+    playbackId: r.playbackId,
+    isLive: r.isLive,
+    streamKey: r.streamKey,
   })).reverse()
 }
 
