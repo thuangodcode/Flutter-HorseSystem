@@ -64,9 +64,9 @@ export function DashboardPage() {
       </ScrollReveal>
 
       {/* Grid containing action cards with magnetic interaction */}
-      <div className="grid-3">
-        <ScrollReveal direction="up" duration={0.8} delay={0.1}>
-          <Magnetic intensity={0.2} range={100}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <ScrollReveal className="h-full [&>div]:h-full" direction="up" duration={0.8} delay={0.1}>
+          <Magnetic className="h-full" intensity={0.2} range={100}>
             <Link to="/app/tournaments" style={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}>
               {role === 'SPECTATOR' ? (
                 <GradientCard>
@@ -113,8 +113,8 @@ export function DashboardPage() {
           </Magnetic>
         </ScrollReveal>
 
-        <ScrollReveal direction="up" duration={0.8} delay={0.2}>
-          <Magnetic intensity={0.2} range={100}>
+        <ScrollReveal className="h-full [&>div]:h-full" direction="up" duration={0.8} delay={0.2}>
+          <Magnetic className="h-full" intensity={0.2} range={100}>
             <Link to="/app/races" style={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}>
               {role === 'SPECTATOR' ? (
                 <GradientCard>
@@ -162,8 +162,8 @@ export function DashboardPage() {
         </ScrollReveal>
 
         {role === 'OWNER' && (
-          <ScrollReveal direction="up" duration={0.8} delay={0.3}>
-            <Magnetic intensity={0.2} range={100}>
+          <ScrollReveal className="h-full [&>div]:h-full" direction="up" duration={0.8} delay={0.3}>
+            <Magnetic className="h-full" intensity={0.2} range={100}>
               <Link to="/app/horses" style={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}>
                 <Card className="card card-hover border-border hover:border-emerald-500/40 transition-all duration-300 shadow-lg" style={{ cursor: 'pointer', height: '100%', padding: '32px 28px' }}>
                   <CardHeader style={{ padding: 0 }}>
@@ -180,8 +180,8 @@ export function DashboardPage() {
         )}
 
         {role === 'JOCKEY' && (
-          <ScrollReveal direction="up" duration={0.8} delay={0.3}>
-            <Magnetic intensity={0.2} range={100}>
+          <ScrollReveal className="h-full [&>div]:h-full" direction="up" duration={0.8} delay={0.3}>
+            <Magnetic className="h-full" intensity={0.2} range={100}>
               <Link to="/app/invites" style={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}>
                 <Card className="card card-hover border-border hover:border-emerald-500/40 transition-all duration-300 shadow-lg" style={{ cursor: 'pointer', height: '100%', padding: '32px 28px' }}>
                   <CardHeader style={{ padding: 0 }}>
@@ -198,8 +198,8 @@ export function DashboardPage() {
         )}
 
         {role === 'SPECTATOR' && (
-          <ScrollReveal direction="up" duration={0.8} delay={0.3}>
-            <Magnetic intensity={0.2} range={100}>
+          <ScrollReveal className="h-full [&>div]:h-full" direction="up" duration={0.8} delay={0.3}>
+            <Magnetic className="h-full" intensity={0.2} range={100}>
               <Link to="/app/predictions" style={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}>
                 <GradientCard>
                   <Card className="card border-0 bg-transparent transition-all duration-300 shadow-lg h-full" style={{ cursor: 'pointer', padding: '32px 28px' }}>
@@ -222,8 +222,8 @@ export function DashboardPage() {
         )}
 
         {role === 'REFEREE' && (
-          <ScrollReveal direction="up" duration={0.8} delay={0.3}>
-            <Magnetic intensity={0.2} range={100}>
+          <ScrollReveal className="h-full [&>div]:h-full" direction="up" duration={0.8} delay={0.3}>
+            <Magnetic className="h-full" intensity={0.2} range={100}>
               <Link to="/app/referee/races" style={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}>
                 <Card className="card card-hover border-border hover:border-emerald-500/40 transition-all duration-300 shadow-lg" style={{ cursor: 'pointer', height: '100%', padding: '32px 28px' }}>
                   <CardHeader style={{ padding: 0 }}>

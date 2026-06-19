@@ -206,7 +206,7 @@ const TablePagination = ({
         <select
           value={pageSize}
           onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
-          className="h-8 rounded border border-[var(--border)] bg-[var(--surface-2)] px-2 text-[var(--text)] text-xs focus:border-emerald-500 focus:outline-none"
+          className="py-1 rounded border border-[var(--border)] bg-[var(--surface-2)] px-2 text-[var(--text)] text-xs focus:border-emerald-500 focus:outline-none"
         >
           {pageSizeOptions.map((size) => (
             <option key={size} value={size}>
@@ -774,7 +774,7 @@ export function AnimatedTable<T extends { id: string | number }>({
                         {column.filterType === 'select' ? (
                           <div className="relative">
                             <select
-                              className="w-full h-8 text-[11px] font-semibold px-2 pr-6 py-0 rounded-md border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] focus:border-emerald-500 focus:outline-none transition-colors appearance-none cursor-pointer"
+                              className="w-full py-1.5 text-[11px] font-semibold px-2 pr-6 rounded-md border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] focus:border-emerald-500 focus:outline-none transition-colors appearance-none cursor-pointer"
                               value={columnFilters?.[column.id] || ''}
                               onChange={(e) => onColumnFilterChange(column.id, e.target.value)}
                             >
@@ -791,7 +791,7 @@ export function AnimatedTable<T extends { id: string | number }>({
                             <input
                               type="text"
                               style={{ paddingLeft: '28px' }}
-                              className="w-full h-8 text-[11px] font-semibold pr-7 rounded-md border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] placeholder-[var(--muted)]/50 focus:border-emerald-500 focus:outline-none transition-colors"
+                              className="w-full py-1.5 text-[11px] font-semibold pr-7 rounded-md border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] placeholder-[var(--muted)]/50 focus:border-emerald-500 focus:outline-none transition-colors"
                               placeholder={`Lọc ${typeof column.header === 'string' ? column.header.toLowerCase() : '...'}`}
                               value={columnFilters?.[column.id] || ''}
                               onChange={(e) => onColumnFilterChange(column.id, e.target.value)}

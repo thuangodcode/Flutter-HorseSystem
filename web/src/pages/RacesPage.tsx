@@ -191,7 +191,7 @@ export function RacesPage() {
                   placeholder="Tìm kiếm cuộc đua..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-11 w-60 pl-10 border border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] text-sm font-semibold placeholder:text-[var(--muted)]/40 focus:border-amber-500/50 rounded-xl"
+                  className="h-11 w-60 !pl-10 border border-[var(--border)] bg-[var(--bg2)] text-[var(--text)] text-sm font-semibold placeholder:text-[var(--muted)]/40 focus:border-amber-500/50 rounded-xl"
                 />
               </div>
 

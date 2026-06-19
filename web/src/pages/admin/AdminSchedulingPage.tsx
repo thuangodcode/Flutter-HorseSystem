@@ -441,6 +441,16 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
 
   const handleSaveTourn = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (tournForm.startDate && tournForm.endDate) {
+      const start = new Date(tournForm.startDate).getTime()
+      const end = new Date(tournForm.endDate).getTime()
+      if (end < start) {
+        showToast('Ngày kết thúc không được nhỏ hơn ngày bắt đầu', 'error')
+        return
+      }
+    }
+
     try {
       if (selectedTourn) {
         await updateTournament(selectedTourn.id, tournForm as any)
@@ -550,7 +560,11 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
       }
       setShowRaceModal(false)
     } catch (err: any) {
-      showToast(err.response?.data?.message || 'Không thể lưu cuộc đua', 'error')
+      let errorMsg = err.response?.data?.message;
+      if (Array.isArray(errorMsg)) {
+        errorMsg = errorMsg.join(', ');
+      }
+      showToast(errorMsg || 'Không thể lưu cuộc đua', 'error');
     }
   }
 
@@ -2687,6 +2701,12 @@ function PredictionRaceList({
   const [races, setRaces] = useState<Race[]>([])
   const [loading, setLoading] = useState(false)
 
+  // AnimatedTable states
+  const [sortColumn, setSortColumn] = useState<string | undefined>()
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null)
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({})
+  const [page, setPage] = useState(1)
+
   useEffect(() => {
     setLoading(true)
     getRaces()
@@ -2698,105 +2718,205 @@ function PredictionRaceList({
   if (loading) return <p className="muted">Đang tải danh sách cuộc đua đặt cược...</p>
   if (races.length === 0) return <p className="muted">Không có cuộc đua nào để cược.</p>
 
-  const sortedRaces = [...races].sort((a, b) => {
-    const aId = a.id || a._id
-    const bId = b.id || b._id
-    if (lastModifiedRaceId) {
-      if (aId === lastModifiedRaceId) return -1
-      if (bId === lastModifiedRaceId) return 1
+  const handleSort = (columnId: string, direction: SortDirection) => {
+    setSortColumn(columnId)
+    setSortDirection(direction)
+  }
+
+  const handleColumnFilterChange = (columnId: string, value: string) => {
+    setColumnFilters(prev => ({ ...prev, [columnId]: value }))
+    setPage(1)
+  }
+
+  const enrichedRaces = races.map(r => {
+    const racePreds = predictions.filter(p => {
+      const rId = typeof p.raceId === 'object' ? p.raceId?._id || p.raceId?.id : p.raceId
+      return rId === r.id
+    })
+    const betCount = racePreds.length
+    const totalBets = racePreds.reduce((sum, p) => sum + (p.betAmount || 0), 0)
+    const totalPayouts = racePreds.filter(p => p.status === 'WON').reduce((sum, p) => sum + (p.prizeAmount || p.payout || 0), 0)
+    const profit = totalBets - totalPayouts
+
+    return {
+      ...r,
+      betCount,
+      totalBets,
+      totalPayouts,
+      profit
     }
-    const dateA = a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0
-    const dateB = b.scheduledAt ? new Date(b.scheduledAt).getTime() : 0
-    return dateB - dateA
   })
 
-  return (
-    <div className="admin-table-wrapper" style={{ margin: 0 }}>
-      <table className="admin-table" style={{ fontSize: '13px' }}>
-        <thead>
-          <tr>
-            <th>Cuộc đua / Giải đấu</th>
-            <th>Thời gian thi đấu</th>
-            <th>Trạng thái đua</th>
-            <th>Lượt cược</th>
-            <th>Tổng tiền cược</th>
-            <th>Đã trả thưởng</th>
-            <th>Lợi nhuận</th>
-            <th style={{ textAlign: 'right' }}>Thao tác cổng cược</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sortedRaces.map((r) => {
-            const racePreds = predictions.filter(p => {
-              const rId = typeof p.raceId === 'object' ? p.raceId?._id || p.raceId?.id : p.raceId
-              return rId === r.id
-            })
-            const betCount = racePreds.length
-            const totalBets = racePreds.reduce((sum, p) => sum + (p.betAmount || 0), 0)
-            const totalPayouts = racePreds.filter(p => p.status === 'WON').reduce((sum, p) => sum + (p.prizeAmount || p.payout || 0), 0)
-            const profit = totalBets - totalPayouts
+  // Filter
+  let filtered = enrichedRaces.filter(r => {
+    if (columnFilters.name) {
+      const matchName = (r.name || '').toLowerCase().includes(columnFilters.name.toLowerCase())
+      const tournName = (typeof r.tournamentId === 'object' ? r.tournamentId?.name || '' : '').toLowerCase()
+      if (!matchName && !tournName.includes(columnFilters.name.toLowerCase())) return false
+    }
+    if (columnFilters.status && r.status !== columnFilters.status) return false
+    return true
+  })
 
-            return (
-              <tr key={r.id}>
-                <td>
-                  <div style={{ fontWeight: 600, color: 'var(--text)' }}>{r.name}</div>
-                  <div className="muted" style={{ fontSize: '11px' }}>
-                    Giải: {typeof r.tournamentId === 'object' ? r.tournamentId.name : 'Giải đua ngựa'}
-                  </div>
-                </td>
-                <td>{new Date(r.scheduledAt).toLocaleString('vi-VN')}</td>
-                <td>
-                  <span className={`badge ${r.status === 'COMPLETED' || r.status === 'RESULT_CONFIRMED' ? 'badge-approved' : r.status === 'ONGOING' ? 'badge-ongoing' : r.status === 'CANCELLED' ? 'badge-rejected' : 'badge-scheduled'}`}>
-                    {r.status === 'COMPLETED' ? 'Kết thúc' : r.status === 'RESULT_CONFIRMED' ? 'Xác nhận kết quả' : r.status === 'ONGOING' ? 'Đang diễn ra' : r.status === 'CANCELLED' ? 'Đã hủy' : r.status === 'SCHEDULED' ? 'Đã lên lịch' : r.status}
-                  </span>
-                </td>
-                <td style={{ fontWeight: 600 }}>{betCount}</td>
-                <td style={{ fontWeight: 700, color: '#f59e0b' }}>
-                  {totalBets.toLocaleString('vi-VN')} đ
-                </td>
-                <td style={{ fontWeight: 700, color: '#10b981' }}>
-                  {totalPayouts.toLocaleString('vi-VN')} đ
-                </td>
-                <td style={{ fontWeight: 700, color: profit >= 0 ? '#10b981' : '#ef4444' }}>
-                  {profit > 0 ? '+' : ''}{profit.toLocaleString('vi-VN')} đ
-                </td>
-                <td style={{ textAlign: 'right' }}>
-                  <div style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
-                    <button className="btn flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onViewStats(r.id)}>
-                      <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
-                      <span>Chi tiết</span>
-                    </button>
-                    {r.status !== 'COMPLETED' && r.status !== 'RESULT_CONFIRMED' && (
-                      <button className="btn flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px', color: '#d97706' }} onClick={() => onClosePred(r.id)}>
-                        <Lock className="w-3.5 h-3.5 text-amber-500" />
-                        <span>Đóng cổng</span>
-                      </button>
-                    )}
-                    {r.status === 'RESULT_CONFIRMED' && (
-                      <button className="btn btnPrimary flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onOpenResultModal(r)}>
-                        <Coins className="w-3.5 h-3.5 text-white" />
-                        <span>Công bố kết quả</span>
-                      </button>
-                    )}
-                    {r.status === 'COMPLETED' && (
-                      <>
-                        <button className="btn btnPrimary flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onOpenResultModal(r)}>
-                          <Coins className="w-3.5 h-3.5 text-white" />
-                          <span>Công bố lại kết quả</span>
-                        </button>
-                        <button className="btn btnPrimary flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onSettlePred(r.id)}>
-                          <Coins className="w-3.5 h-3.5 text-white" />
-                          <span>Trả thưởng</span>
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </td>
-              </tr>
+  // Sort
+  if (sortColumn && sortDirection) {
+    filtered.sort((a, b) => {
+      let aVal: any = a[sortColumn as keyof typeof a]
+      let bVal: any = b[sortColumn as keyof typeof b]
+      
+      if (sortColumn === 'name') {
+        aVal = a.name || ''
+        bVal = b.name || ''
+      } else if (sortColumn === 'scheduledAt') {
+        aVal = a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0
+        bVal = b.scheduledAt ? new Date(b.scheduledAt).getTime() : 0
+      }
+
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return sortDirection === 'asc' ? aVal.localeCompare(bVal, 'vi') : bVal.localeCompare(aVal, 'vi')
+      }
+      return sortDirection === 'asc' ? aVal - bVal : bVal - aVal
+    })
+  } else {
+    // Default sort by last modified or schedule
+    filtered.sort((a, b) => {
+      const aId = a.id || a._id
+      const bId = b.id || b._id
+      if (lastModifiedRaceId) {
+        if (aId === lastModifiedRaceId) return -1
+        if (bId === lastModifiedRaceId) return 1
+      }
+      const dateA = a.scheduledAt ? new Date(a.scheduledAt).getTime() : 0
+      const dateB = b.scheduledAt ? new Date(b.scheduledAt).getTime() : 0
+      return dateB - dateA
+    })
+  }
+
+  const paginatedData = filtered.slice((page - 1) * 10, page * 10)
+
+  return (
+    <div className="admin-table-wrapper w-full" style={{ margin: 0 }}>
+      <AnimatedTable
+        data={paginatedData}
+        columns={[
+          {
+            id: 'name',
+            header: 'Cuộc đua / Giải đấu',
+            sortable: true,
+            filterable: true,
+            filterType: 'text',
+            cell: (row) => (
+              <div>
+                <div style={{ fontWeight: 600, color: 'var(--text)' }}>{row.name}</div>
+                <div className="muted" style={{ fontSize: '11px' }}>
+                  Giải: {typeof row.tournamentId === 'object' ? row.tournamentId.name : 'Giải đua ngựa'}
+                </div>
+              </div>
             )
-          })}
-        </tbody>
-      </table>
+          },
+          {
+            id: 'scheduledAt',
+            header: 'Thời gian thi đấu',
+            sortable: true,
+            cell: (row) => <span>{new Date(row.scheduledAt).toLocaleString('vi-VN')}</span>
+          },
+          {
+            id: 'status',
+            header: 'Trạng thái đua',
+            sortable: true,
+            filterable: true,
+            filterType: 'select',
+            filterOptions: [
+              { label: 'Đã lên lịch', value: 'SCHEDULED' },
+              { label: 'Đang diễn ra', value: 'ONGOING' },
+              { label: 'Đã hủy', value: 'CANCELLED' },
+              { label: 'Kết thúc', value: 'COMPLETED' },
+              { label: 'Xác nhận kết quả', value: 'RESULT_CONFIRMED' }
+            ],
+            cell: (row) => (
+              <span className={`badge ${row.status === 'COMPLETED' || row.status === 'RESULT_CONFIRMED' ? 'badge-approved' : row.status === 'ONGOING' ? 'badge-ongoing' : row.status === 'CANCELLED' ? 'badge-rejected' : 'badge-scheduled'}`}>
+                {row.status === 'COMPLETED' ? 'Kết thúc' : row.status === 'RESULT_CONFIRMED' ? 'Xác nhận KQ' : row.status === 'ONGOING' ? 'Đang diễn ra' : row.status === 'CANCELLED' ? 'Đã hủy' : row.status === 'SCHEDULED' ? 'Đã lên lịch' : row.status}
+              </span>
+            )
+          },
+          {
+            id: 'betCount',
+            header: 'Lượt cược',
+            sortable: true,
+            cell: (row) => <span style={{ fontWeight: 600 }}>{row.betCount}</span>
+          },
+          {
+            id: 'totalBets',
+            header: 'Tổng tiền cược',
+            sortable: true,
+            cell: (row) => <span style={{ fontWeight: 700, color: '#f59e0b' }}>{row.totalBets.toLocaleString('vi-VN')} đ</span>
+          },
+          {
+            id: 'totalPayouts',
+            header: 'Đã trả thưởng',
+            sortable: true,
+            cell: (row) => <span style={{ fontWeight: 700, color: '#10b981' }}>{row.totalPayouts.toLocaleString('vi-VN')} đ</span>
+          },
+          {
+            id: 'profit',
+            header: 'Lợi nhuận',
+            sortable: true,
+            cell: (row) => (
+              <span style={{ fontWeight: 700, color: row.profit >= 0 ? '#10b981' : '#ef4444' }}>
+                {row.profit > 0 ? '+' : ''}{row.profit.toLocaleString('vi-VN')} đ
+              </span>
+            )
+          },
+          {
+            id: 'actions',
+            header: 'Thao tác cổng cược',
+            cell: (r) => (
+              <div style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end', width: '100%' }}>
+                <button className="btn flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onViewStats(r.id)}>
+                  <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Chi tiết</span>
+                </button>
+                {r.status !== 'COMPLETED' && r.status !== 'RESULT_CONFIRMED' && (
+                  <button className="btn flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px', color: '#d97706' }} onClick={() => onClosePred(r.id)}>
+                    <Lock className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Đóng cổng</span>
+                  </button>
+                )}
+                {r.status === 'RESULT_CONFIRMED' && (
+                  <button className="btn btnPrimary flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onOpenResultModal(r as any)}>
+                    <Coins className="w-3.5 h-3.5 text-white" />
+                    <span>Công bố kết quả</span>
+                  </button>
+                )}
+                {r.status === 'COMPLETED' && (
+                  <>
+                    <button className="btn btnPrimary flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onOpenResultModal(r as any)}>
+                      <Coins className="w-3.5 h-3.5 text-white" />
+                      <span>Công bố lại kết quả</span>
+                    </button>
+                    <button className="btn btnPrimary flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onSettlePred(r.id)}>
+                      <Coins className="w-3.5 h-3.5 text-white" />
+                      <span>Trả thưởng</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            )
+          }
+        ]}
+        sortColumn={sortColumn}
+        sortDirection={sortDirection}
+        onSort={handleSort}
+        columnFilters={columnFilters}
+        onColumnFilterChange={handleColumnFilterChange}
+        pagination={{
+          page: page,
+          pageSize: 10,
+          totalItems: filtered.length,
+          onPageChange: setPage,
+          pageSizeOptions: [10, 20, 50]
+        }}
+      />
     </div>
   )
 }

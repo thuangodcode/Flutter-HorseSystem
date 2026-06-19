@@ -436,6 +436,35 @@ export async function getRefereeRaces(): Promise<Race[]> {
   }))
 }
 
+export async function getRefereeInvites(): Promise<any[]> {
+  const res = await http.get(`${BE_BASE_URL}/referee/me/invitations?limit=100`)
+  const data = res.data.invitations || res.data || []
+  return data.map((inv: any) => {
+    const raceObj = inv.race || inv.raceId || {};
+    return {
+      id: inv._id || inv.id,
+      raceId: raceObj._id || raceObj.id || inv.raceId,
+      raceName: inv.raceName || raceObj.name || 'Chưa xác định',
+      raceScheduledAt: inv.raceScheduledAt || raceObj.scheduledAt || inv.scheduledAt || inv.scheduledTime,
+      raceDistance: inv.raceDistance || raceObj.distance || inv.distance,
+      status: inv.status === 'REJECTED' ? 'DECLINED' : inv.status,
+      message: inv.message || 'Mời làm trọng tài',
+      sentAt: inv.sentAt || inv.createdAt,
+      tournamentName: inv.tournamentName || raceObj.tournamentId?.name || 'Giải đấu',
+    }
+  })
+}
+
+export async function acceptRefereeInvite(inviteId: string): Promise<any> {
+  const res = await http.patch(`${BE_BASE_URL}/referee/me/invitations/${inviteId}/accept`)
+  return res.data
+}
+
+export async function rejectRefereeInvite(inviteId: string): Promise<any> {
+  const res = await http.patch(`${BE_BASE_URL}/referee/me/invitations/${inviteId}/reject`)
+  return res.data
+}
+
 // ============================================================================
 // 3. HỆ THỐNG API QUẢN TRỊ (ADMIN ONLY)
 // ============================================================================

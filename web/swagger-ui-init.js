@@ -1026,6 +1026,66 @@ window.onload = function() {
               "description": "Forbidden"
             }
           }
+        },
+        "post": {
+          "summary": "Admin tạo tài khoản cho OWNER, JOCKEY, REFEREE",
+          "tags": [
+            "Admin - Users"
+          ],
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "email",
+                    "password",
+                    "fullName",
+                    "role"
+                  ],
+                  "properties": {
+                    "email": {
+                      "type": "string"
+                    },
+                    "password": {
+                      "type": "string"
+                    },
+                    "fullName": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string",
+                      "enum": [
+                        "OWNER",
+                        "JOCKEY",
+                        "REFEREE"
+                      ]
+                    },
+                    "phone": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Created successfully"
+            },
+            "400": {
+              "description": "Invalid input or role"
+            },
+            "409": {
+              "description": "Email already exists"
+            }
+          }
         }
       },
       "/admin/users/{userId}": {
@@ -1348,7 +1408,7 @@ window.onload = function() {
       },
       "/auth/register": {
         "post": {
-          "summary": "Register a new account (Owner/Jockey/Spectator)",
+          "summary": "Register a new account (Spectator)",
           "tags": [
             "Auth"
           ],
@@ -1362,8 +1422,7 @@ window.onload = function() {
                   "required": [
                     "email",
                     "password",
-                    "fullName",
-                    "role"
+                    "fullName"
                   ],
                   "properties": {
                     "email": {
@@ -1374,14 +1433,6 @@ window.onload = function() {
                     },
                     "fullName": {
                       "type": "string"
-                    },
-                    "role": {
-                      "type": "string",
-                      "enum": [
-                        "OWNER",
-                        "JOCKEY",
-                        "SPECTATOR"
-                      ]
                     },
                     "phone": {
                       "type": "string"
@@ -1588,6 +1639,33 @@ window.onload = function() {
             },
             "404": {
               "description": "User not found"
+            }
+          }
+        }
+      },
+      "/auth/reset-points": {
+        "post": {
+          "summary": "Reset virtual points back to default balance (Spectator only)",
+          "tags": [
+            "Auth"
+          ],
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Points reset successfully"
+            },
+            "400": {
+              "description": "Not eligible to reset (has enough points or within 3 days limit)"
+            },
+            "401": {
+              "description": "Unauthorized"
+            },
+            "403": {
+              "description": "Forbidden (only Spectators allowed)"
             }
           }
         }
@@ -2251,7 +2329,7 @@ window.onload = function() {
       },
       "/races/{raceId}/predictions/open": {
         "get": {
-          "summary": "Check if race is still open for predictions",
+          "summary": "[Public] Check if race is still open for predictions",
           "tags": [
             "Prediction (Dự đoán kết quả)"
           ],
@@ -2278,7 +2356,7 @@ window.onload = function() {
       },
       "/races/{raceId}/predictions": {
         "post": {
-          "summary": "Spectator places a prediction (bet)",
+          "summary": "[Spectator] Places a prediction (bet)",
           "tags": [
             "Prediction (Dự đoán kết quả)"
           ],
@@ -2342,7 +2420,7 @@ window.onload = function() {
       },
       "/me/predictions": {
         "get": {
-          "summary": "Get all my predictions",
+          "summary": "[Spectator] Get all my predictions",
           "tags": [
             "Prediction (Dự đoán kết quả)"
           ],
@@ -2391,7 +2469,7 @@ window.onload = function() {
       },
       "/me/predictions/{predId}": {
         "get": {
-          "summary": "Get prediction details and result",
+          "summary": "[Spectator] Get prediction details and result",
           "tags": [
             "Prediction (Dự đoán kết quả)"
           ],
@@ -2425,7 +2503,7 @@ window.onload = function() {
       },
       "/me/notifications": {
         "get": {
-          "summary": "Get notifications about predictions",
+          "summary": "[Spectator] Get notifications about predictions",
           "tags": [
             "Prediction (Dự đoán kết quả)"
           ],
@@ -2468,7 +2546,7 @@ window.onload = function() {
       },
       "/admin/races/{raceId}/predictions/close": {
         "post": {
-          "summary": "Admin closes predictions for a race (before race starts)",
+          "summary": "[Admin] Closes predictions for a race (before race starts)",
           "tags": [
             "Prediction (Dự đoán kết quả)"
           ],
@@ -2502,7 +2580,7 @@ window.onload = function() {
       },
       "/admin/races/{raceId}/predictions/settle": {
         "post": {
-          "summary": "Admin settles predictions (after race result published)",
+          "summary": "[Admin] Settles predictions (after race result published)",
           "tags": [
             "Prediction (Dự đoán kết quả)"
           ],
@@ -2536,7 +2614,7 @@ window.onload = function() {
       },
       "/admin/predictions": {
         "get": {
-          "summary": "Admin manages all predictions",
+          "summary": "[Admin] Manages all predictions",
           "tags": [
             "Prediction (Dự đoán kết quả)"
           ],
@@ -2595,7 +2673,7 @@ window.onload = function() {
       },
       "/admin/predictions/stats": {
         "get": {
-          "summary": "Admin gets prediction statistics by race",
+          "summary": "[Admin] Gets prediction statistics by race",
           "tags": [
             "Prediction (Dự đoán kết quả)"
           ],
@@ -4250,7 +4328,7 @@ window.onload = function() {
       },
       "/races/{raceId}/stream": {
         "get": {
-          "summary": "Get HLS streaming URL for a race (SPECTATOR only)",
+          "summary": "Get HLS streaming URL for a race (All roles)",
           "tags": [
             "Streams"
           ],

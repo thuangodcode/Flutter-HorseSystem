@@ -20,6 +20,7 @@ import { AdminSchedulingPage } from './pages/admin/AdminSchedulingPage.tsx'
 import { RefereeRacesPage } from './pages/race_referee/RefereeRacesPage.tsx'
 import { RefereeRaceDetailPage } from './pages/race_referee/RefereeRaceDetailPage.tsx'
 import { RefereeReportPage } from './pages/race_referee/RefereeReportPage.tsx'
+import { RefereeInvitesPage } from './pages/race_referee/RefereeInvitesPage.tsx'
 import { LeaderboardPage } from './pages/LeaderboardPage.tsx'
 import { NotFoundPage } from './pages/NotFoundPage.tsx'
 import { JockeyRacesPage } from './pages/jockey/JockeyRacesPage'
@@ -102,6 +103,7 @@ const router = createBrowserRouter([
           { path: 'predictions', element: <AdminSchedulingPage tab="predictions" /> },
         ]
       },
+      { path: 'referee/invites', element: <RefereeInvitesPage /> },
       { path: 'referee/races', element: <RefereeRacesPage /> },
       { path: 'referee/races/:raceId', element: <RefereeRaceDetailPage /> },
       { path: 'referee/races/:raceId/report', element: <RefereeReportPage /> },
@@ -119,6 +121,7 @@ const router = createBrowserRouter([
   { path: '/predictions', element: <RequireAuth><Navigate to="/app/predictions" replace /></RequireAuth> },
   { path: '/admin/users', element: <RequireAuth><Navigate to="/app/admin/users" replace /></RequireAuth> },
   { path: '/admin/scheduling', element: <RequireAuth><Navigate to="/app/admin/scheduling" replace /></RequireAuth> },
+  { path: '/referee/invites', element: <RequireAuth><Navigate to="/app/referee/invites" replace /></RequireAuth> },
   { path: '/referee/races', element: <RequireAuth><Navigate to="/app/referee/races" replace /></RequireAuth> },
   { path: '/referee/races/:id', element: <RequireAuth><RefereeRaceRedirect /></RequireAuth> },
   { path: '/referee/report/:raceId', element: <RequireAuth><RefereeReportRedirect /></RequireAuth> },
