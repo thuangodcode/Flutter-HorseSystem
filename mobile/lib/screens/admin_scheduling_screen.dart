@@ -44,7 +44,7 @@ class _AdminSchedulingScreenState extends State<AdminSchedulingScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -89,7 +89,7 @@ class _AdminSchedulingScreenState extends State<AdminSchedulingScreen> {
   Widget _buildRacesList() {
     if (_loading && _races.isEmpty) {
       return ListView.builder(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
         itemCount: 3,
         itemBuilder: (_, index) => const Padding(
           padding: EdgeInsets.only(bottom: 16),
@@ -109,7 +109,7 @@ class _AdminSchedulingScreenState extends State<AdminSchedulingScreen> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
       itemCount: filtered.length,
       itemBuilder: (context, index) {
         final race = filtered[index];
