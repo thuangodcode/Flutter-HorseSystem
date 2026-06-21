@@ -52,7 +52,7 @@ const StarParticle = ({ style }: { style: React.CSSProperties }) => (
       width: 2,
       height: 2,
       borderRadius: "50%",
-      background: "rgba(255,255,255,0.8)",
+      background: "var(--text-muted)",
       ...style,
     }}
   />
@@ -351,7 +351,7 @@ export function AppLayout() {
               className="flex items-center gap-2.5 group transition-transform duration-200 active:scale-95 whitespace-nowrap"
             >
               <div className="w-8 h-8 rounded-lg bg-linear-to-tr from-sky-600 to-sky-400 flex items-center justify-center shadow-md shadow-sky-500/10 group-hover:scale-105 transition-all duration-300">
-                <span className="material-symbols-outlined text-white text-lg" data-icon="stadium">stadium</span>
+                <span className="material-symbols-outlined text-[color:var(--text)] text-lg" data-icon="stadium">stadium</span>
               </div>
               <div className="hidden sm:flex items-center gap-2">
                 <span className="text-sm font-black tracking-wide text-(--text) group-hover:text-sky-500 transition-colors duration-300 uppercase">
@@ -434,7 +434,7 @@ export function AppLayout() {
                 background: trackBg,
                 boxShadow: isDark
                   ? "0 0 0 1.5px #4a4a8a, 0 2px 8px rgba(80,60,160,0.3), inset 0 1px 2px rgba(0,0,0,0.4)"
-                  : "0 0 0 1.5px #f7b733, 0 2px 8px rgba(246,180,30,0.2), inset 0 1px 2px rgba(255,255,255,0.3)",
+                  : "0 0 0 1.5px #f7b733, 0 2px 8px rgba(246,180,30,0.2), inset 0 1px 2px var(--text-muted)",
               }}
             >
               {isDark &&
@@ -460,7 +460,7 @@ export function AppLayout() {
                       width: c.width,
                       height: c.height,
                       borderRadius: 10,
-                      background: "rgba(255,255,255,0.75)",
+                      background: "var(--text-muted)",
                       filter: "blur(1px)",
                     }}
                   />
@@ -687,12 +687,12 @@ export function AppLayout() {
                             >
                               {item.label}
                               {item.label === 'Livestream' && liveRaceCount > 0 && (
-                                <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black bg-red-500 text-white leading-none">
+                                <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black bg-red-500 text-[color:var(--text)] leading-none">
                                   {liveRaceCount}
                                 </span>
                               )}
                               {item.label === 'Lời mời' && pendingInvitesCount > 0 && (
-                                <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black bg-amber-500 text-white leading-none">
+                                <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-black bg-amber-500 text-[color:var(--text)] leading-none">
                                   {pendingInvitesCount}
                                 </span>
                               )}

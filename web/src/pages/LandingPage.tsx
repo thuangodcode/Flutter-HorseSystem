@@ -60,12 +60,12 @@ export function LandingPage() {
     >
       <style>{`
         .glass {
-          background: rgba(255, 255, 255, 0.7);
+          background: var(--text-muted);
           backdrop-filter: blur(16px);
           border: 1px solid rgba(14, 165, 233, 0.1);
         }
         .glass-darker {
-          background: rgba(255, 255, 255, 0.85);
+          background: var(--text-muted);
           backdrop-filter: blur(24px);
           border: 1px solid rgba(14, 165, 233, 0.15);
           transition: all 0.3s ease;
@@ -139,21 +139,21 @@ export function LandingPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="glass-darker p-8 rounded-3xl glow-subtle border-t border-white/50">
                 <div className="text-primary-container bg-primary p-3 rounded-2xl w-fit mb-6">
-                  <span className="material-symbols-outlined text-3xl text-white" data-icon="sports_score">sports_score</span>
+                  <span className="material-symbols-outlined text-3xl text-[color:var(--text)]" data-icon="sports_score">sports_score</span>
                 </div>
                 <h3 className="text-4xl font-extrabold text-on-surface">128+</h3>
                 <p className="text-on-surface-variant font-medium">Races Organized</p>
               </div>
               <div className="glass-darker p-8 rounded-3xl glow-subtle border-t border-white/50">
                 <div className="text-primary-container bg-tertiary p-3 rounded-2xl w-fit mb-6">
-                  <span className="material-symbols-outlined text-3xl text-white" data-icon="pets">pets</span>
+                  <span className="material-symbols-outlined text-3xl text-[color:var(--text)]" data-icon="pets">pets</span>
                 </div>
                 <h3 className="text-4xl font-extrabold text-on-surface">500+</h3>
                 <p className="text-on-surface-variant font-medium">Elite Horses</p>
               </div>
               <div className="glass-darker p-8 rounded-3xl glow-subtle border-t border-white/50">
                 <div className="text-primary-container bg-secondary p-3 rounded-2xl w-fit mb-6">
-                  <span className="material-symbols-outlined text-3xl text-white" data-icon="military_tech">military_tech</span>
+                  <span className="material-symbols-outlined text-3xl text-[color:var(--text)]" data-icon="military_tech">military_tech</span>
                 </div>
                 <h3 className="text-4xl font-extrabold text-on-surface">10+</h3>
                 <p className="text-on-surface-variant font-medium">Major Tournaments</p>

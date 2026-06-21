@@ -335,7 +335,7 @@ export function RaceDetailPage() {
         <div style={{ marginBottom: 16, padding: '14px 20px', background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(245,158,11,0.08))', borderRadius: 'var(--radius-md)', border: '1px solid var(--primary-ring)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 14 }}>⏳ Bắt đầu sau:</span>
           {[{ v: countdown.days, u: 'ngày' }, { v: countdown.hours, u: 'giờ' }, { v: countdown.mins, u: 'phút' }, { v: countdown.secs, u: 'giây' }].map(({ v, u }) => (
-            <div key={u} style={{ textAlign: 'center', minWidth: 52, padding: '6px 10px', background: 'rgba(255,255,255,0.06)', borderRadius: 8, border: '1px solid var(--border)' }}>
+            <div key={u} style={{ textAlign: 'center', minWidth: 52, padding: '6px 10px', background: 'var(--text-muted)', borderRadius: 8, border: '1px solid var(--border)' }}>
               <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--text)', lineHeight: 1.1 }}>{String(v).padStart(2, '0')}</div>
               <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{u}</div>
             </div>

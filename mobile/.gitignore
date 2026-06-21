@@ -39,3 +39,13 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+/linux
+/macos
+/windows
+
+# build outputs and tooling
+build/
+.dart_tool/
+.expo/
+dist/
+web-build/

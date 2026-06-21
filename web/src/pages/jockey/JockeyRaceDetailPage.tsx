@@ -122,15 +122,15 @@ export function JockeyRaceDetailPage() {
                   <div className="grid gap-4 md:grid-cols-3">
                     <div className="p-4 rounded-xl bg-[var(--bg2)]/40 border border-[var(--border)]/30 text-center">
                       <div className="text-xs uppercase font-extrabold text-[var(--muted)] mb-1">Tên ngựa</div>
-                      <div className="text-lg font-black text-white">{raceDetail.horse.name}</div>
+                      <div className="text-lg font-black text-[color:var(--text)]">{raceDetail.horse.name}</div>
                     </div>
                     <div className="p-4 rounded-xl bg-[var(--bg2)]/40 border border-[var(--border)]/30 text-center">
                       <div className="text-xs uppercase font-extrabold text-[var(--muted)] mb-1">Giống ngựa</div>
-                      <div className="text-lg font-black text-white">{raceDetail.horse.breed || 'Chưa rõ'}</div>
+                      <div className="text-lg font-black text-[color:var(--text)]">{raceDetail.horse.breed || 'Chưa rõ'}</div>
                     </div>
                     <div className="p-4 rounded-xl bg-[var(--bg2)]/40 border border-[var(--border)]/30 text-center">
                       <div className="text-xs uppercase font-extrabold text-[var(--muted)] mb-1">Giới tính</div>
-                      <div className="text-lg font-black text-white">{raceDetail.horse.gender === 'MALE' ? 'Đực' : raceDetail.horse.gender === 'FEMALE' ? 'Cái' : '—'}</div>
+                      <div className="text-lg font-black text-[color:var(--text)]">{raceDetail.horse.gender === 'MALE' ? 'Đực' : raceDetail.horse.gender === 'FEMALE' ? 'Cái' : '—'}</div>
                     </div>
                   </div>
                 </Card>
@@ -153,7 +153,7 @@ export function JockeyRaceDetailPage() {
                       </div>
                       <div className="min-w-0">
                         <div className="text-xs text-[var(--muted)] font-bold uppercase tracking-wider">Họ và tên</div>
-                        <div className="font-extrabold text-white text-base truncate">{raceDetail.owner.fullName}</div>
+                        <div className="font-extrabold text-[color:var(--text)] text-base truncate">{raceDetail.owner.fullName}</div>
                       </div>
                     </div>
 

@@ -327,10 +327,10 @@ export function LiquidMetalButton({
                 borderRadius: "100px",
                 boxShadow: isDarkMode
                   ? (isPressed
-                      ? "0px 0px 0px 1px rgba(255, 255, 255, 0.2), 0px 1px 2px 0px rgba(0, 0, 0, 0.3)"
+                      ? "0px 0px 0px 1px var(--text-muted), 0px 1px 2px 0px rgba(0, 0, 0, 0.3)"
                       : isHovered
-                        ? "0px 0px 0px 1px rgba(255, 255, 255, 0.3), 0px 12px 6px 0px rgba(0, 0, 0, 0.3), 0px 8px 5px 0px rgba(0, 0, 0, 0.4)"
-                        : "0px 0px 0px 1px rgba(255, 255, 255, 0.1), 0px 2px 5px 0px rgba(0, 0, 0, 0.5)")
+                        ? "0px 0px 0px 1px var(--text-muted), 0px 12px 6px 0px rgba(0, 0, 0, 0.3), 0px 8px 5px 0px rgba(0, 0, 0, 0.4)"
+                        : "0px 0px 0px 1px var(--text-muted), 0px 2px 5px 0px rgba(0, 0, 0, 0.5)")
                   : (isPressed
                       ? "0px 0px 0px 1px rgba(0, 0, 0, 0.05), 0px 1px 2px 0px rgba(0, 0, 0, 0.1)"
                       : isHovered
@@ -408,7 +408,7 @@ export function LiquidMetalButton({
                   height: "20px",
                   borderRadius: "50%",
                   background: isDarkMode
-                    ? "radial-gradient(circle, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 70%)"
+                    ? "radial-gradient(circle, var(--text-muted) 0%, rgba(255, 255, 255, 0) 70%)"
                     : "radial-gradient(circle, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0) 70%)",
                   pointerEvents: "none",
                   animation: "ripple-animation 0.6s ease-out",

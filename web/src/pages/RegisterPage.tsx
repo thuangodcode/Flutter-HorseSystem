@@ -51,7 +51,7 @@ export function RegisterPage() {
     >
       <style>{`
         .glass-darker {
-          background: rgba(255, 255, 255, 0.85);
+          background: var(--text-muted);
           backdrop-filter: blur(24px);
           border: 1px solid rgba(14, 165, 233, 0.15);
           box-shadow: 0 20px 50px rgba(14, 165, 233, 0.08);
@@ -60,10 +60,10 @@ export function RegisterPage() {
 
       <div className="glass-darker w-full max-w-6xl rounded-4xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 relative z-10">
         {/* Left Side Info Panel */}
-        <div className="lg:col-span-4 bg-linear-to-br from-sky-600 via-sky-800 to-slate-900 p-8 md:p-12 text-white flex flex-col justify-between relative overflow-hidden">
+        <div className="lg:col-span-4 bg-linear-to-br from-sky-600 via-sky-800 to-slate-900 p-8 md:p-12 text-[color:var(--text)] flex flex-col justify-between relative overflow-hidden">
           <div>
             {/* Logo */}
-            <Link to="/" className="inline-flex items-center gap-2 text-white no-underline mb-12">
+            <Link to="/" className="inline-flex items-center gap-2 text-[color:var(--text)] no-underline mb-12">
               <span className="material-symbols-outlined text-3xl text-sky-300">stadium</span>
               <span className="font-headline font-bold text-xl tracking-tight">ERMS</span>
             </Link>
@@ -200,7 +200,7 @@ export function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 px-4 bg-sky-500 hover:bg-sky-600 active:scale-[0.98] text-white rounded-2xl font-semibold transition-all shadow-lg shadow-sky-500/20 flex items-center justify-center gap-3 disabled:bg-slate-300 disabled:shadow-none disabled:cursor-not-allowed mb-4"
+                className="w-full py-4 px-4 bg-sky-500 hover:bg-sky-600 active:scale-[0.98] text-[color:var(--text)] rounded-2xl font-semibold transition-all shadow-lg shadow-sky-500/20 flex items-center justify-center gap-3 disabled:bg-slate-300 disabled:shadow-none disabled:cursor-not-allowed mb-4"
                 style={{
                   color: '#ffffff',
                   border: 'none',

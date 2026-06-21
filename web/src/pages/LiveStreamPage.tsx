@@ -163,7 +163,7 @@ export function LiveStreamPage() {
                         whileHover={{ scale: 1.1 }}
                       >
                         <div className="h-14 w-14 rounded-full bg-red-500/90 flex items-center justify-center shadow-lg shadow-red-500/30 group-hover:bg-red-500 transition-colors">
-                          <svg className="h-6 w-6 text-white ml-1" viewBox="0 0 24 24" fill="currentColor">
+                          <svg className="h-6 w-6 text-[color:var(--text)] ml-1" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M8 5v14l11-7z" />
                           </svg>
                         </div>
@@ -174,10 +174,10 @@ export function LiveStreamPage() {
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
                           <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
                         </span>
-                        <span className="text-[9px] font-black text-white uppercase tracking-widest">Live</span>
+                        <span className="text-[9px] font-black text-[color:var(--text)] uppercase tracking-widest">Live</span>
                       </div>
                       {/* Duration indicator */}
-                      <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded bg-black/70 text-[10px] font-bold text-white">
+                      <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded bg-black/70 text-[10px] font-bold text-[color:var(--text)]">
                         TRỰC TIẾP
                       </div>
                     </div>

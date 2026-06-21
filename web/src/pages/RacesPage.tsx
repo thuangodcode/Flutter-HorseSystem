@@ -9,7 +9,6 @@ import { SpotlightCard } from '@/components/ui/spotlight-card'
 import { DropdownMenu, DropdownMenuItem } from '@/components/ui/dropdown'
 import { Input } from '@/components/ui/input'
 import { getStatusClassName, getStatusLabel, RACE_STATUS_OPTIONS } from '@/lib/status'
-import { NumberCounter } from '@/components/ui/number-counter'
 import { ScrollReveal } from '@/components/ui/scroll-text'
 import { Magnetic } from '@/components/ui/magnetic'
 import { Clock3, RefreshCw, Search, ChevronDown, Ruler, Users, Award, Trophy, Radio } from 'lucide-react'
@@ -89,6 +88,10 @@ export function RacesPage() {
       const scheduledAt = new Date(race.scheduledAt).getTime()
       const now = Date.now()
 
+      if (timeFilter === 'all' && scheduledAt < now) {
+        return false
+      }
+
       if (timeFilter === 'upcoming') {
         if (!(['SCHEDULED', 'PENDING'].includes(race.status) || scheduledAt >= now)) return false
       }
@@ -151,6 +154,7 @@ export function RacesPage() {
   const liveCount = items.filter((race) => ['ONGOING', 'LIVE'].includes(race.status)).length
   const upcomingCount = items.filter((race) => ['SCHEDULED', 'PENDING'].includes(race.status)).length
   const completedCount = items.filter((race) => ['COMPLETED', 'CANCELLED', 'RESULT_CONFIRMED'].includes(race.status)).length
+  const allCount = items.filter((race) => new Date(race.scheduledAt).getTime() >= Date.now()).length
 
   return (
     <div className="space-y-6">
@@ -167,19 +171,32 @@ export function RacesPage() {
                   <div className="max-w-2xl text-sm font-semibold text-[var(--muted)]">Theo dõi các cuộc đua theo trạng thái và thời gian diễn ra.</div>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-300 font-semibold px-2.5 py-1 text-xs">
-                  Tổng <NumberCounter value={items.length} duration={1.2} easing="easeOut" />
-                </Badge>
-                <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 font-semibold px-2.5 py-1 text-xs">
-                  Đang diễn ra <NumberCounter value={liveCount} duration={1.2} delay={0.1} easing="easeOut" />
-                </Badge>
-                <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-300 font-semibold px-2.5 py-1 text-xs">
-                  Sắp diễn ra <NumberCounter value={upcomingCount} duration={1.2} delay={0.2} easing="easeOut" />
-                </Badge>
-                <Badge variant="outline" className="border-[var(--border)] bg-[var(--bg2)] text-[var(--muted)] font-semibold px-2.5 py-1 text-xs">
-                  Đã hoàn tất <NumberCounter value={completedCount} duration={1.2} delay={0.3} easing="easeOut" />
-                </Badge>
+              <div className="flex flex-wrap items-center gap-1.5 p-1 bg-[var(--surface-3)] rounded-xl w-fit mt-4 border border-[var(--border)]">
+                {TIME_OPTIONS.map((opt) => {
+                  const count = opt.value === 'all' ? allCount 
+                              : opt.value === 'live' ? liveCount 
+                              : opt.value === 'upcoming' ? upcomingCount 
+                              : completedCount;
+                  const isActive = timeFilter === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => setTimeFilter(opt.value)}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-all cursor-pointer ${
+                        isActive 
+                          ? 'bg-[var(--surface)] text-[var(--text)] shadow-sm' 
+                          : 'text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]'
+                      }`}
+                    >
+                      {opt.label}
+                      <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${
+                        isActive ? 'bg-[var(--primary)]/10 text-[var(--primary)]' : 'bg-[var(--surface-strong)] text-[var(--muted)]'
+                      }`}>
+                        {count}
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
@@ -210,20 +227,7 @@ export function RacesPage() {
                 ))}
               </DropdownMenu>
 
-              <DropdownMenu
-                trigger={
-                  <button className="h-11 w-[180px] flex items-center justify-between px-4 border border-[var(--border)] bg-[var(--bg2)] hover:bg-[var(--surface-strong)] text-[var(--text)] text-sm font-semibold rounded-xl transition-all cursor-pointer">
-                    <span className="truncate">{getOptionLabel(TIME_OPTIONS, timeFilter)}</span>
-                    <ChevronDown className="h-4 w-4 text-[var(--muted)]/60 shrink-0 ml-2" />
-                  </button>
-                }
-              >
-                {TIME_OPTIONS.map((option) => (
-                    <DropdownMenuItem key={option.value} onClick={() => setTimeFilter(option.value)} active={timeFilter === option.value}>
-                      {option.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenu>
+
 
               <DropdownMenu
                 trigger={
@@ -408,7 +412,7 @@ export function RacesPage() {
                 </button>
                 <button
                   onClick={() => { setNotStartedRace(null); navigate(`/races/${notStartedRace._id || notStartedRace.id}`) }}
-                  className="flex-1 h-10 rounded-xl bg-amber-500 text-white font-bold text-sm hover:bg-amber-600 transition-all cursor-pointer"
+                  className="flex-1 h-10 rounded-xl bg-amber-500 text-[color:var(--text)] font-bold text-sm hover:bg-amber-600 transition-all cursor-pointer"
                 >
                   Xem chi tiết
                 </button>

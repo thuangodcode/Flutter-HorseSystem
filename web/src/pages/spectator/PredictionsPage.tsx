@@ -787,7 +787,7 @@ export function PredictionsPage() {
           
           <div className="flex justify-center pb-2 relative z-10">
             <Button 
-              className="w-full sm:w-auto px-10 bg-emerald-500 hover:bg-emerald-600 text-white font-bold h-11 transition-transform active:scale-95"
+              className="w-full sm:w-auto px-10 bg-emerald-500 hover:bg-emerald-600 text-[color:var(--text)] font-bold h-11 transition-transform active:scale-95"
               onClick={() => setSuccessPredictionData(null)}
             >
               Đóng

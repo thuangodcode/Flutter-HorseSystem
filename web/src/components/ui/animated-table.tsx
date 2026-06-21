@@ -163,7 +163,7 @@ const ColumnVisibilityDropdown = <T,>({
                   className={cn(
                     "flex h-4 w-4 items-center justify-center rounded border transition-all",
                     visibleColumns.includes(column.id)
-                      ? "border-emerald-500 bg-emerald-500 text-white"
+                      ? "border-emerald-500 bg-emerald-500 text-[color:var(--text)]"
                       : "border-[var(--border-2)]",
                   )}
                 >
@@ -274,7 +274,7 @@ const TablePagination = ({
                 className={cn(
                   "flex h-8 w-8 items-center justify-center rounded text-xs transition-colors font-semibold",
                   page === pageNum
-                    ? "bg-emerald-500 text-white font-bold"
+                    ? "bg-emerald-500 text-[color:var(--text)] font-bold"
                     : "text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]",
                 )}
               >
@@ -540,7 +540,7 @@ const CheckboxCell = ({ checked, indeterminate, onChange }: CheckboxCellProps) =
     className={cn(
       "flex h-4 w-4 cursor-pointer items-center justify-center rounded border transition-all duration-150",
       checked || indeterminate
-        ? "border-emerald-500 bg-emerald-500 text-white"
+        ? "border-emerald-500 bg-emerald-500 text-[color:var(--text)]"
         : "border-[var(--border-2)] hover:border-emerald-500/55",
     )}
   >

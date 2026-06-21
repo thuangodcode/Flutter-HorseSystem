@@ -75,7 +75,7 @@ const ANIMATIONS_STYLE = `
   position: absolute;
   top: 0; left: -100%;
   width: 50%; height: 100%;
-  background: linear-gradient(to right, transparent, rgba(255,255,255,0.25), transparent);
+  background: linear-gradient(to right, transparent, var(--text-muted), transparent);
   transform: skewX(-25deg);
   animation: shine 4s ease-in-out infinite;
 }
@@ -174,8 +174,8 @@ export function ProfilePage() {
           bio: jData.bio || '',
           specialties: (jData.specialties || []).join(', ')
         })
-      } else {
-        // Fetch spectator/owner predictions history and stats
+      } else if (role === 'SPECTATOR') {
+        // Fetch spectator predictions history and stats
         const preds = await getPredictions()
         setPredictions(preds)
       }
@@ -336,7 +336,7 @@ export function ProfilePage() {
               <div className="absolute top-1/2 left-1/2 w-full h-full rounded-full border border-emerald-500/20 bg-emerald-500/5 -translate-x-1/2 -translate-y-1/2 animate-ripple-3 pointer-events-none z-0"></div>
 
               {/* Main Initials Icon */}
-              <div className={`relative z-10 w-20 h-20 rounded-3xl bg-gradient-to-tr ${theme.bg} shadow-lg flex items-center justify-center font-black text-3xl text-white select-none`}>
+              <div className={`relative z-10 w-20 h-20 rounded-3xl bg-gradient-to-tr ${theme.bg} shadow-lg flex items-center justify-center font-black text-3xl text-[color:var(--text)] select-none`}>
                 {getInitials(displayName)}
               </div>
               <div className="absolute bottom-2 right-2 w-5 h-5 rounded-full bg-emerald-500 border-4 border-[var(--bg)] dark:border-slate-950 animate-pulse z-20"></div>
@@ -350,7 +350,7 @@ export function ProfilePage() {
                   {theme.title}
                 </span>
               </div>
-              <p className="text-sm text-[var(--text-2)]/70 dark:text-white/60 font-medium flex items-center justify-center sm:justify-start gap-1.5">
+              <p className="text-sm text-[var(--text-2)]/70 dark:text-[color:var(--text)]/60 font-medium flex items-center justify-center sm:justify-start gap-1.5">
                 <Mail className="w-4 h-4 text-[var(--muted)]" />
                 {displayEmail}
               </p>
@@ -364,20 +364,22 @@ export function ProfilePage() {
           </div>
 
           {/* Wallet summary card */}
-          <div className="self-center md:self-auto w-full md:w-auto min-w-[260px] bg-[var(--surface-2)] border border-[var(--border)] rounded-2xl p-4 flex items-center justify-between gap-4 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 dark:text-amber-400">
-                <Wallet className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Số dư khả dụng</p>
-                <p className="text-2xl font-black text-amber-500 dark:text-amber-400 tracking-tight leading-tight mt-0.5">
-                  {new Intl.NumberFormat('vi-VN').format(balance)}
-                  <span className="text-sm font-bold text-amber-500/80 dark:text-amber-400/80 ml-1">Point</span>
-                </p>
+          {userRole === 'SPECTATOR' && (
+            <div className="self-center md:self-auto w-full md:w-auto min-w-[260px] bg-[var(--surface-2)] border border-[var(--border)] rounded-2xl p-4 flex items-center justify-between gap-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 dark:text-amber-400">
+                  <Wallet className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Số dư khả dụng</p>
+                  <p className="text-2xl font-black text-amber-500 dark:text-amber-400 tracking-tight leading-tight mt-0.5">
+                    {new Intl.NumberFormat('vi-VN').format(balance)}
+                    <span className="text-sm font-bold text-amber-500/80 dark:text-amber-400/80 ml-1">Point</span>
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -615,7 +617,7 @@ export function ProfilePage() {
                       </div>
                       <div className="flex gap-3 pt-4 border-t border-[var(--border)]">
                         <button 
-                          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold transition-all active:scale-95 disabled:opacity-50 cursor-pointer shadow-md shadow-orange-500/20 animate-shine" 
+                          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-[color:var(--text)] font-bold transition-all active:scale-95 disabled:opacity-50 cursor-pointer shadow-md shadow-orange-500/20 animate-shine" 
                           onClick={handleSaveJockey} 
                           disabled={saving}
                         >
@@ -732,7 +734,7 @@ export function ProfilePage() {
                     <div className="p-6 text-center bg-[var(--surface-2)] border border-dashed border-[var(--border)] rounded-2xl space-y-2">
                       <ShieldAlert className="w-8 h-8 text-[var(--muted)]/40 mx-auto" />
                       <p className="text-xs text-[var(--muted)] font-medium">Bạn chưa thực hiện lượt dự đoán nào.</p>
-                      <Link to="/app/predictions" className="inline-block px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg text-xs transition-colors">
+                      <Link to="/app/predictions" className="inline-block px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-[color:var(--text)] font-bold rounded-lg text-xs transition-colors">
                         Dự đoán ngay
                       </Link>
                     </div>
@@ -762,19 +764,21 @@ export function ProfilePage() {
                     </button>
                   </div>
 
-                  <div className="flex items-center justify-between p-3 bg-[var(--surface-2)] border border-[var(--border)] rounded-2xl hover:bg-[var(--surface-3)] transition-all">
-                    <div className="space-y-0.5">
-                      <p className="text-xs font-bold text-[var(--text)]">Xác nhận trước khi dự đoán</p>
-                      <p className="text-[10px] text-[var(--muted)]">Luôn hiển thị hộp thoại xác nhận khi đặt cược</p>
+                  {userRole === 'SPECTATOR' && (
+                    <div className="flex items-center justify-between p-3 bg-[var(--surface-2)] border border-[var(--border)] rounded-2xl hover:bg-[var(--surface-3)] transition-all">
+                      <div className="space-y-0.5">
+                        <p className="text-xs font-bold text-[var(--text)]">Xác nhận trước khi dự đoán</p>
+                        <p className="text-[10px] text-[var(--muted)]">Luôn hiển thị hộp thoại xác nhận khi đặt cược</p>
+                      </div>
+                      {/* Toggle Switch */}
+                      <button 
+                        onClick={() => setConfirmBets(!confirmBets)}
+                        className={`w-11 h-6 rounded-full transition-colors cursor-pointer flex items-center p-0.5 ${confirmBets ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-white/10'}`}
+                      >
+                        <div className={`w-5 h-5 rounded-full bg-white transition-transform ${confirmBets ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                      </button>
                     </div>
-                    {/* Toggle Switch */}
-                    <button 
-                      onClick={() => setConfirmBets(!confirmBets)}
-                      className={`w-11 h-6 rounded-full transition-colors cursor-pointer flex items-center p-0.5 ${confirmBets ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-white/10'}`}
-                    >
-                      <div className={`w-5 h-5 rounded-full bg-white transition-transform ${confirmBets ? 'translate-x-5' : 'translate-x-0'}`}></div>
-                    </button>
-                  </div>
+                  )}
                 </div>
               </div>
 
@@ -797,10 +801,12 @@ export function ProfilePage() {
                     <span className="text-xs font-semibold text-[var(--text)]/80">Xếp hạng</span>
                   </Link>
 
-                  <Link to="/app/predictions" className="p-3 bg-[var(--surface-2)] border border-[var(--border)] rounded-2xl hover:bg-[var(--surface-3)] hover:border-[var(--border-2)] transition-all text-center flex flex-col items-center gap-1.5 active:scale-95 group">
-                    <TrendingUp className="w-5 h-5 text-pink-500 dark:text-pink-400 group-hover:scale-110 transition-transform" />
-                    <span className="text-xs font-semibold text-[var(--text)]/80">Dự đoán</span>
-                  </Link>
+                  {userRole === 'SPECTATOR' && (
+                    <Link to="/app/predictions" className="p-3 bg-[var(--surface-2)] border border-[var(--border)] rounded-2xl hover:bg-[var(--surface-3)] hover:border-[var(--border-2)] transition-all text-center flex flex-col items-center gap-1.5 active:scale-95 group">
+                      <TrendingUp className="w-5 h-5 text-pink-500 dark:text-pink-400 group-hover:scale-110 transition-transform" />
+                      <span className="text-xs font-semibold text-[var(--text)]/80">Dự đoán</span>
+                    </Link>
+                  )}
                 </div>
               </div>
 
@@ -865,7 +871,7 @@ export function ProfilePage() {
             <div className="flex gap-3 pt-3 border-t border-[var(--border)]">
               <button 
                 onClick={handlePasswordChange}
-                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all cursor-pointer text-sm animate-shine"
+                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-[color:var(--text)] font-bold rounded-xl transition-all cursor-pointer text-sm animate-shine"
               >
                 Cập nhật
               </button>

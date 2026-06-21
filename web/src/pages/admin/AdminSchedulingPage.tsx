@@ -2948,18 +2948,18 @@ function PredictionRaceList({
                 )}
                 {r.status === 'RESULT_CONFIRMED' && (
                   <button className="btn btnPrimary flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onOpenResultModal(r as any)}>
-                    <Coins className="w-3.5 h-3.5 text-white" />
+                    <Coins className="w-3.5 h-3.5 text-[color:var(--text)]" />
                     <span>Công bố kết quả</span>
                   </button>
                 )}
                 {r.status === 'COMPLETED' && (
                   <>
                     <button className="btn btnPrimary flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onOpenResultModal(r as any)}>
-                      <Coins className="w-3.5 h-3.5 text-white" />
+                      <Coins className="w-3.5 h-3.5 text-[color:var(--text)]" />
                       <span>Công bố lại kết quả</span>
                     </button>
                     <button className="btn btnPrimary flex items-center gap-1" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => onSettlePred(r.id)}>
-                      <Coins className="w-3.5 h-3.5 text-white" />
+                      <Coins className="w-3.5 h-3.5 text-[color:var(--text)]" />
                       <span>Trả thưởng</span>
                     </button>
                   </>

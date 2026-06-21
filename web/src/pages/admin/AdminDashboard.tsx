@@ -259,14 +259,14 @@ export function AdminDashboard() {
           padding: 12px 18px;
           border-radius: 12px;
           background: rgba(15, 23, 42, 0.95);
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          border: 1px solid var(--text-muted);
           color: #ffffff;
           box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
           pointer-events: auto;
           animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         html.light .admin-toast {
-          background: rgba(255, 255, 255, 0.98);
+          background: var(--text-muted);
           color: #0f172a;
           border-color: rgba(0, 0, 0, 0.08);
           box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
@@ -282,14 +282,14 @@ export function AdminDashboard() {
           background: rgba(30, 41, 59, 0.45);
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.06);
+          border: 1px solid var(--text-muted);
           padding: 24px;
           box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.3);
           transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
           cursor: pointer;
         }
         html.light .metric-card-premium {
-          background: rgba(255, 255, 255, 0.7);
+          background: var(--text-muted);
           border-color: rgba(0, 0, 0, 0.07);
           box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05);
         }
@@ -583,7 +583,7 @@ export function AdminDashboard() {
           <Settings className="w-4 h-4 shrink-0" />
           <span>Vận hành & Phê duyệt</span>
           {pendingRegs.length > 0 && (
-            <span className="ml-1 px-1.5 py-0.5 text-2xs font-extrabold rounded-full bg-amber-500 text-white animate-pulse">
+            <span className="ml-1 px-1.5 py-0.5 text-2xs font-extrabold rounded-full bg-amber-500 text-[color:var(--text)] animate-pulse">
               {pendingRegs.length}
             </span>
           )}
@@ -636,7 +636,7 @@ export function AdminDashboard() {
                         y1={30 + g * 50} 
                         x2="470" 
                         y2={30 + g * 50} 
-                        stroke="rgba(255,255,255,0.06)" 
+                        stroke="var(--text-muted)" 
                         className="dark:stroke-white/5 stroke-black/5" 
                         strokeWidth="1" 
                       />
@@ -889,7 +889,7 @@ export function AdminDashboard() {
                             size="sm"
                             disabled={actionLoading !== null}
                             onClick={() => handleApprove(reg.id)}
-                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs rounded-lg px-3.5 py-1.5 cursor-pointer shadow-md shadow-emerald-500/10"
+                            className="bg-emerald-500 hover:bg-emerald-600 text-[color:var(--text)] font-extrabold text-xs rounded-lg px-3.5 py-1.5 cursor-pointer shadow-md shadow-emerald-500/10"
                           >
                             {actionLoading === reg.id ? 'Đang duyệt...' : 'Duyệt'}
                           </Button>
@@ -934,7 +934,7 @@ export function AdminDashboard() {
                         y1={25 + g * 50} 
                         x2="470" 
                         y2={25 + g * 50} 
-                        stroke="rgba(255,255,255,0.06)" 
+                        stroke="var(--text-muted)" 
                         className="dark:stroke-white/5 stroke-black/5" 
                         strokeWidth="1" 
                       />

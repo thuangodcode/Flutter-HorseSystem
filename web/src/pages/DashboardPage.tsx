@@ -22,7 +22,14 @@ export function DashboardPage() {
       getPublicTournaments()
         .then((data: any) => {
           const list = Array.isArray(data) ? data : (data?.tournaments || [])
-          const active = list.filter((t: Tournament) => ['ONGOING', 'ACTIVE', 'PUBLISHED', 'SCHEDULED'].includes(t.status || ''))
+          const active = list
+            .filter((t: Tournament) => {
+              if (!['ONGOING', 'ACTIVE', 'PUBLISHED', 'SCHEDULED'].includes(t.status || '')) return false
+              const endDate = new Date(t.endDate)
+              endDate.setHours(23, 59, 59, 999)
+              return endDate.getTime() >= Date.now()
+            })
+            .sort((a: Tournament, b: Tournament) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
           setActiveTournaments(active.slice(0, 3))
         })
         .catch(() => {})

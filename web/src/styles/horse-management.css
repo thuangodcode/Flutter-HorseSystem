@@ -1,0 +1,1090 @@
+:root { --text: #ffffff; --text-muted: rgba(255, 255, 255, 0.45); }
+html.light { --text: #0f172a; --text-muted: rgba(15, 23, 42, 0.55); }
+/* =====================================================
+   HORSE MANAGEMENT — Premium Dark Theme Design System
+   Inspired by: Linear, Vercel, Figma, Midjourney
+   ===================================================== */
+
+/* ── Keyframes ──────────────────────────────────────── */
+
+@keyframes hm-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes hm-slide-up-fade {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes hm-glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes hm-border-glow {
+  0%, 100% { border-color: rgba(139, 92, 246, 0.2); }
+  50% { border-color: rgba(139, 92, 246, 0.5); }
+}
+
+@keyframes hm-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes hm-dot-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.5; }
+}
+
+@keyframes hm-gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes hm-scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ── Glass Card ─────────────────────────────────────── */
+
+.hm-glass-card {
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.75) 0%,
+    rgba(20, 30, 52, 0.6) 50%,
+    rgba(15, 23, 42, 0.7) 100%
+  );
+  backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow:
+    0 4px 24px -4px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+  transition: all 350ms cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.hm-glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+}
+
+.hm-glass-card-hover:hover {
+  transform: translateY(-4px);
+  border-color: rgba(139, 92, 246, 0.25);
+  box-shadow:
+    0 12px 40px -8px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(139, 92, 246, 0.1) inset,
+    0 0 60px -15px rgba(139, 92, 246, 0.08);
+}
+
+/* ── Horse Selector Card ────────────────────────────── */
+
+.hm-horse-selector {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 4px 2px 8px;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.3) transparent;
+}
+
+.hm-horse-selector::-webkit-scrollbar {
+  height: 4px;
+}
+
+.hm-horse-selector::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.hm-horse-selector::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.3);
+  border-radius: 4px;
+}
+
+.hm-horse-chip {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 8px 8px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: fit-content;
+}
+
+.hm-horse-chip:hover {
+  border-color: rgba(139, 92, 246, 0.3);
+  background: rgba(20, 30, 52, 0.8);
+  transform: translateY(-2px);
+}
+
+.hm-horse-chip.active {
+  border-color: rgba(139, 92, 246, 0.5);
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.12) 0%,
+    rgba(16, 185, 129, 0.08) 100%
+  );
+  box-shadow:
+    0 0 20px -4px rgba(139, 92, 246, 0.2),
+    0 0 0 1px rgba(139, 92, 246, 0.15) inset;
+}
+
+.hm-horse-chip.active .hm-horse-chip-img {
+  ring: 2px solid rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.3);
+}
+
+.hm-horse-chip-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  transition: all 300ms ease;
+}
+
+.hm-horse-chip.active .hm-horse-chip-img {
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.3);
+}
+
+/* ── Status Dot ─────────────────────────────────────── */
+
+.hm-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.hm-status-dot.pending {
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+  animation: hm-dot-pulse 2s ease-in-out infinite;
+}
+
+.hm-status-dot.approved {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.hm-status-dot.rejected {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+.hm-status-dot.confirmed {
+  background: #8b5cf6;
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.5);
+}
+
+/* ── Status Badges with Glow ────────────────────────── */
+
+.hm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  transition: all 300ms ease;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.hm-badge-pending {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.25);
+  box-shadow: 0 0 12px -3px rgba(245, 158, 11, 0.15);
+}
+
+.hm-badge-approved {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.25);
+  box-shadow: 0 0 12px -3px rgba(16, 185, 129, 0.15);
+}
+
+.hm-badge-rejected {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.25);
+  box-shadow: 0 0 12px -3px rgba(239, 68, 68, 0.15);
+}
+
+.hm-badge-confirmed {
+  background: rgba(139, 92, 246, 0.12);
+  color: #a78bfa;
+  border-color: rgba(139, 92, 246, 0.25);
+  box-shadow: 0 0 12px -3px rgba(139, 92, 246, 0.15);
+}
+
+.hm-badge-info {
+  background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
+  border-color: rgba(59, 130, 246, 0.25);
+  box-shadow: 0 0 12px -3px rgba(59, 130, 246, 0.15);
+}
+
+.hm-badge-muted {
+  background: rgba(100, 116, 139, 0.12);
+  color: #94a3b8;
+  border-color: rgba(100, 116, 139, 0.2);
+}
+
+/* ── Filter Bar ─────────────────────────────────────── */
+
+.hm-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.7) 0%,
+    rgba(20, 30, 52, 0.5) 100%
+  );
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 24px;
+}
+
+.hm-filter-bar .hm-filter-group {
+  flex: 1;
+  min-width: 180px;
+}
+
+.hm-filter-bar label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 6px;
+}
+
+.hm-filter-bar select,
+.hm-filter-bar input {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.6);
+  color: #f1f5f9;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  outline: none;
+  transition: all 250ms ease;
+}
+
+.hm-filter-bar select:focus,
+.hm-filter-bar input:focus {
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+}
+
+/* ── Filter Chips ───────────────────────────────────── */
+
+.hm-chip-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.hm-chip {
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 0.5);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all 250ms ease;
+  white-space: nowrap;
+}
+
+.hm-chip:hover {
+  border-color: rgba(139, 92, 246, 0.3);
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(139, 92, 246, 0.08);
+}
+
+.hm-chip.active {
+  border-color: rgba(139, 92, 246, 0.5);
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, 0.15);
+  box-shadow: 0 0 12px -3px rgba(139, 92, 246, 0.2);
+}
+
+/* ── Jockey Grid ────────────────────────────────────── */
+
+.hm-jockey-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .hm-jockey-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  .hm-jockey-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 1536px) {
+  .hm-jockey-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+/* ── Jockey Card ────────────────────────────────────── */
+
+.hm-jockey-card {
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  border-radius: 16px;
+  background: linear-gradient(
+    180deg,
+    rgba(15, 23, 42, 0.7) 0%,
+    rgba(20, 30, 52, 0.5) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(8px);
+  transition: all 350ms cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.hm-jockey-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+}
+
+.hm-jockey-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(139, 92, 246, 0.2);
+  box-shadow:
+    0 12px 32px -8px rgba(0, 0, 0, 0.4),
+    0 0 40px -10px rgba(139, 92, 246, 0.06);
+}
+
+.hm-jockey-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: white;
+  flex-shrink: 0;
+  position: relative;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.2));
+  border: 2px solid rgba(139, 92, 246, 0.3);
+  transition: all 300ms ease;
+}
+
+.hm-jockey-card:hover .hm-jockey-avatar {
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+}
+
+.hm-jockey-avatar.available {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.15));
+}
+
+.hm-jockey-avatar.unavailable {
+  border-color: rgba(100, 116, 139, 0.3);
+  background: linear-gradient(135deg, rgba(100, 116, 139, 0.2), rgba(71, 85, 105, 0.15));
+}
+
+/* ── Win Rate Bar ───────────────────────────────────── */
+
+.hm-winrate-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.hm-winrate-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #f59e0b, #f97316);
+  transition: width 600ms cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
+}
+
+/* ── Race Card ──────────────────────────────────────── */
+
+.hm-race-card {
+  padding: 20px;
+  border-radius: 14px;
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.65) 0%,
+    rgba(20, 30, 52, 0.45) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.hm-race-card:hover {
+  border-color: rgba(139, 92, 246, 0.2);
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.75) 0%,
+    rgba(20, 30, 52, 0.55) 100%
+  );
+  box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+}
+
+/* ── Prize Display ──────────────────────────────────── */
+
+.hm-prize {
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 800;
+}
+
+/* ── CTA Button (Gradient Glow) ─────────────────────── */
+
+.hm-btn-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 20px;
+  border-radius: 12px;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  color: white;
+  background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+  box-shadow:
+    0 2px 12px -2px rgba(16, 185, 129, 0.35),
+    0 0 0 1px rgba(16, 185, 129, 0.1) inset;
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.hm-btn-cta:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow:
+    0 8px 24px -4px rgba(16, 185, 129, 0.4),
+    0 0 0 1px rgba(16, 185, 129, 0.2) inset;
+  background: linear-gradient(135deg, #34d399 0%, #22d3ee 100%);
+}
+
+.hm-btn-cta:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.hm-btn-cta:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.hm-btn-cta.danger {
+  background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+  box-shadow: 0 2px 12px -2px rgba(239, 68, 68, 0.35);
+}
+
+.hm-btn-cta.danger:hover {
+  box-shadow: 0 8px 24px -4px rgba(239, 68, 68, 0.4);
+  background: linear-gradient(135deg, #f87171 0%, #fb923c 100%);
+}
+
+.hm-btn-cta.violet {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  box-shadow: 0 2px 12px -2px rgba(139, 92, 246, 0.35);
+}
+
+.hm-btn-cta.violet:hover {
+  box-shadow: 0 8px 24px -4px rgba(139, 92, 246, 0.4);
+  background: linear-gradient(135deg, #a78bfa 0%, #818cf8 100%);
+}
+
+/* ── Skeleton/Shimmer Loading ───────────────────────── */
+
+.hm-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.hm-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(139, 92, 246, 0.04) 30%,
+    rgba(139, 92, 246, 0.08) 50%,
+    rgba(139, 92, 246, 0.04) 70%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: hm-shimmer 1.8s ease-in-out infinite;
+}
+
+/* ── Section Header ─────────────────────────────────── */
+
+.hm-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.hm-section-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  color: #a78bfa;
+  flex-shrink: 0;
+}
+
+/* ── Tournament Accordion ───────────────────────────── */
+
+.hm-accordion {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(15, 23, 42, 0.4);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.hm-accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  cursor: pointer;
+  transition: background 200ms ease;
+  user-select: none;
+}
+
+.hm-accordion-header:hover {
+  background: rgba(139, 92, 246, 0.04);
+}
+
+.hm-accordion-body {
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Invite Timeline ────────────────────────────────── */
+
+.hm-invite-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 14px;
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.6) 0%,
+    rgba(20, 30, 52, 0.4) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hm-invite-item:hover {
+  border-color: rgba(139, 92, 246, 0.2);
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.7) 0%,
+    rgba(20, 30, 52, 0.5) 100%
+  );
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Empty State ────────────────────────────────────── */
+
+.hm-empty {
+  text-align: center;
+  padding: 60px 24px;
+  border-radius: 16px;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.3);
+}
+
+.hm-empty-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  font-size: 28px;
+  animation: hm-float 3s ease-in-out infinite;
+}
+
+/* ── Registrations Grid ─────────────────────────────── */
+
+.hm-reg-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 768px) {
+  .hm-reg-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ── Scrollbar ──────────────────────────────────────── */
+
+.hm-page::-webkit-scrollbar {
+  width: 6px;
+}
+
+.hm-page::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.hm-page::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.2);
+  border-radius: 3px;
+}
+
+.hm-page::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.4);
+}
+
+/* ── Tab Counter Badge ──────────────────────────────── */
+
+.hm-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+  margin-left: 6px;
+}
+
+/* ── Misc Utilities ─────────────────────────────────── */
+
+.hm-text-gradient {
+  background: linear-gradient(135deg, #c4b5fd, #818cf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hm-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+  margin: 16px 0;
+}
+
+.hm-attention-pulse {
+  animation: hm-glow-pulse 2s ease-in-out infinite;
+}
+
+/* -- Light Mode Overrides ------------------------------ */
+html.light .hm-glass-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.8) 50%, rgba(255, 255, 255, 0.95) 100%);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.02) inset;
+}
+
+html.light .hm-glass-card-hover:hover {
+  box-shadow: 0 12px 40px -8px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(139, 92, 246, 0.1) inset;
+}
+
+html.light .hm-horse-chip {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #0f172a;
+}
+html.light .hm-horse-chip:hover {
+  background: rgba(248, 250, 252, 0.95);
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+/* Update text color overrides */
+html.light .hm-page .text-white {
+  color: #0f172a !important;
+}
+
+html.light .hm-page [style*="rgba(255,255,255,0.4)"],
+html.light .hm-page [style*="rgba(255,255,255,0.45)"],
+html.light .hm-page [style*="rgba(255,255,255,0.6)"] {
+  color: #64748b !important;
+}
+
+html.light .hm-filter-bar {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(248, 250, 252, 0.7) 100%);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+html.light .hm-filter-bar input,
+html.light .hm-filter-bar select {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #0f172a;
+}
+html.light .hm-chip {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #475569;
+}
+
+html.light .hm-jockey-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.7) 100%);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+html.light .hm-race-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(248, 250, 252, 0.6) 100%);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+html.light .hm-race-card:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.8) 100%);
+  box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.08);
+}
+
+html.light .hm-accordion {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+html.light .hm-invite-item {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(248, 250, 252, 0.6) 100%);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+html.light .hm-empty {
+  background: rgba(255, 255, 255, 0.5);
+  border-color: rgba(0, 0, 0, 0.1);
+  border-style: dashed;
+}
+html.light .hm-skeleton {
+  background: rgba(241, 245, 249, 0.8);
+  border-color: rgba(0, 0, 0, 0.04);
+}
+html.light .hm-skeleton::after {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.5) 50%, transparent 100%);
+}
+html.light .hm-divider {
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.08), transparent);
+}
+
+/* ── Sidebar & Grid Redesign ────────────────────────── */
+
+/* Horse Vertical Item (Selection) */
+.hm-horse-vertical-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.4);
+  cursor: pointer;
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hm-horse-vertical-item:hover {
+  border-color: rgba(139, 92, 246, 0.3);
+  background: rgba(20, 30, 52, 0.6);
+  transform: translateY(-2px);
+}
+
+.hm-horse-vertical-item.active {
+  border-color: rgba(139, 92, 246, 0.5);
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.12) 0%,
+    rgba(16, 185, 129, 0.08) 100%
+  );
+  box-shadow:
+    0 4px 20px -4px rgba(139, 92, 246, 0.15),
+    0 0 0 1px rgba(139, 92, 246, 0.15) inset;
+}
+
+.hm-sidebar-horses {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.3) transparent;
+}
+
+.hm-sidebar-horses::-webkit-scrollbar {
+  width: 4px;
+}
+
+.hm-sidebar-horses::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.hm-sidebar-horses::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.3);
+  border-radius: 4px;
+}
+
+/* Sidebar Select Box */
+.hm-sidebar-select {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.6);
+  color: #f1f5f9;
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+  transition: all 250ms ease;
+  cursor: pointer;
+}
+
+.hm-sidebar-select:focus {
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+}
+
+/* Modern Race Card */
+.hm-race-card-modern {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px;
+  border-radius: 16px;
+  background: linear-gradient(
+    135deg,
+    rgba(15, 23, 42, 0.75) 0%,
+    rgba(20, 30, 52, 0.6) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.hm-race-card-modern::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+}
+
+.hm-race-card-modern:hover {
+  transform: translateY(-4px);
+  border-color: rgba(139, 92, 246, 0.25);
+  background: linear-gradient(
+    135deg,
+    rgba(20, 30, 52, 0.8) 0%,
+    rgba(15, 23, 42, 0.75) 100%
+  );
+  box-shadow:
+    0 12px 32px -8px rgba(0, 0, 0, 0.4),
+    0 0 40px -10px rgba(139, 92, 246, 0.08);
+}
+
+.hm-race-card-badge-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.hm-race-card-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text);
+  margin: 4px 0 12px 0;
+  line-height: 1.4;
+}
+
+.hm-race-card-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.hm-race-card-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.hm-race-card-stat-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+}
+
+.hm-race-card-stat-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.hm-race-card-stat-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+.hm-race-card-stat-value {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 1px;
+  line-height: 1.2;
+}
+
+/* Light Mode Overrides */
+html.light .hm-horse-vertical-item {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+html.light .hm-horse-vertical-item:hover {
+  background: rgba(248, 250, 252, 0.95);
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+html.light .hm-horse-vertical-item.active {
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.06) 0%,
+    rgba(16, 185, 129, 0.04) 100%
+  );
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+html.light .hm-sidebar-select {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #0f172a;
+}
+
+html.light .hm-race-card-modern {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(248, 250, 252, 0.75) 100%);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+html.light .hm-race-card-modern:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.85) 100%);
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.08);
+}
+
+html.light .hm-race-card-stat-item {
+  background: rgba(0, 0, 0, 0.02);
+  border-color: rgba(0, 0, 0, 0.04);
+}
+
+/* Tabs Trigger hover and active animations */
+.hm-page [data-slot="tabs-trigger"] {
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.hm-page [data-slot="tabs-trigger"]:hover {
+  transform: translateY(-2px) scale(1.02);
+  color: var(--primary) !important;
+  background: rgba(139, 92, 246, 0.06);
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.08);
+}
+
+.hm-page [data-slot="tabs-trigger"]:active {
+  transform: translateY(0) scale(0.98);
+}
+

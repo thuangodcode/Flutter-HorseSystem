@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getStatusClassName, getStatusLabel, TOURNAMENT_STATUS_OPTIONS } from '@/lib/status'
-import { NumberCounter } from '@/components/ui/number-counter'
 import { ScrollReveal } from '@/components/ui/scroll-text'
 import { CalendarRange, MapPin, RefreshCw, Search, Trophy, Users } from 'lucide-react'
 import '@/styles/spectator.css'
@@ -19,6 +18,7 @@ const TIME_OPTIONS = [
 ]
 
 const SORT_OPTIONS = [
+  { value: 'nearest', label: 'Gần nhất trước' },
   { value: 'newest', label: 'Mới nhất' },
   { value: 'oldest', label: 'Cũ nhất' },
 ]
@@ -47,7 +47,7 @@ export function TournamentsPage() {
   const [statusFilter, setStatusFilter] = useState('PUBLISHED')
   const [timeFilter, setTimeFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [sortOrder, setSortOrder] = useState('newest')
+  const [sortOrder, setSortOrder] = useState('nearest')
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
@@ -74,19 +74,51 @@ export function TournamentsPage() {
       }
       const now = Date.now()
       const startDate = new Date(tournament.startDate).getTime()
-      const endDate = new Date(tournament.endDate).getTime()
+      const endDateObj = new Date(tournament.endDate)
+      endDateObj.setHours(23, 59, 59, 999)
+      const endDate = endDateObj.getTime()
+
+      if (timeFilter === 'all' && endDate < now) return false
+
       if (timeFilter === 'upcoming') return ['DRAFT', 'PUBLISHED'].includes(tournament.status || '') || startDate > now
       if (timeFilter === 'ongoing') return ['ONGOING', 'ACTIVE'].includes(tournament.status || '') || (startDate <= now && endDate >= now)
       if (timeFilter === 'completed') return ['COMPLETED', 'CANCELLED', 'RESULT_CONFIRMED'].includes(tournament.status || '') || endDate < now
       return true
     })
     .sort((a, b) => {
+      if (sortOrder === 'nearest') {
+        return new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+      }
       const diff = new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
       return sortOrder === 'oldest' ? diff : -diff
     })
 
-  const ongoingCount = items.filter((t) => ['ONGOING', 'ACTIVE'].includes(t.status || '')).length
-  const completedCount = items.filter((t) => ['COMPLETED', 'CANCELLED', 'RESULT_CONFIRMED'].includes(t.status || '')).length
+  const now = Date.now()
+  const ongoingCount = items.filter((t) => {
+    const startDate = new Date(t.startDate).getTime()
+    const endDateObj = new Date(t.endDate)
+    endDateObj.setHours(23, 59, 59, 999)
+    const endDate = endDateObj.getTime()
+    return ['ONGOING', 'ACTIVE'].includes(t.status || '') || (startDate <= now && endDate >= now)
+  }).length
+
+  const completedCount = items.filter((t) => {
+    const endDateObj = new Date(t.endDate)
+    endDateObj.setHours(23, 59, 59, 999)
+    const endDate = endDateObj.getTime()
+    return ['COMPLETED', 'CANCELLED', 'RESULT_CONFIRMED'].includes(t.status || '') || endDate < now
+  }).length
+
+  const upcomingCount = items.filter((t) => {
+    const startDate = new Date(t.startDate).getTime()
+    return ['DRAFT', 'PUBLISHED'].includes(t.status || '') || startDate > now
+  }).length
+
+  const allCount = items.filter((t) => {
+    const endDateObj = new Date(t.endDate)
+    endDateObj.setHours(23, 59, 59, 999)
+    return endDateObj.getTime() >= now
+  }).length
 
   return (
     <div className="space-y-8">
@@ -108,17 +140,33 @@ export function TournamentsPage() {
                 </div>
               </div>
 
-              {/* Summary Badges */}
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-400 font-bold">
-                  Tổng <NumberCounter value={items.length} duration={1} easing="easeOut" />
-                </Badge>
-                <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-bold">
-                  Đang diễn ra <NumberCounter value={ongoingCount} duration={1} delay={0.1} easing="easeOut" />
-                </Badge>
-                <Badge variant="outline" className="border-slate-500/30 bg-slate-500/10 text-slate-300 font-bold">
-                  Đã hoàn tất <NumberCounter value={completedCount} duration={1} delay={0.2} easing="easeOut" />
-                </Badge>
+              {/* Tabs / Filter by Time */}
+              <div className="flex flex-wrap items-center gap-1.5 p-1 bg-[var(--surface-3)] rounded-xl w-fit mt-4 border border-[var(--border)]">
+                {TIME_OPTIONS.map((opt) => {
+                  const count = opt.value === 'all' ? allCount 
+                              : opt.value === 'ongoing' ? ongoingCount 
+                              : opt.value === 'upcoming' ? upcomingCount 
+                              : completedCount;
+                  const isActive = timeFilter === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => setTimeFilter(opt.value)}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-all cursor-pointer ${
+                        isActive 
+                          ? 'bg-[var(--surface)] text-[var(--text)] shadow-sm' 
+                          : 'text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]'
+                      }`}
+                    >
+                      {opt.label}
+                      <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${
+                        isActive ? 'bg-[var(--primary)]/10 text-[var(--primary)]' : 'bg-[var(--surface-strong)] text-[var(--muted)]'
+                      }`}>
+                        {count}
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
@@ -158,16 +206,6 @@ export function TournamentsPage() {
               </button>
             ))}
             <div className="w-px h-6 bg-[var(--border)] mx-1 self-center" />
-            {/* Time filters */}
-            {TIME_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                className={`spectator-filter-pill ${option.value === timeFilter ? 'spectator-filter-pill-active' : ''}`}
-                onClick={() => setTimeFilter(option.value)}
-              >
-                {option.label}
-              </button>
-            ))}
             <div className="w-px h-6 bg-[var(--border)] mx-1 self-center" />
             {/* Sort */}
             {SORT_OPTIONS.map((option) => (

@@ -192,7 +192,7 @@ export function LiveStreamModal({ race, onClose }: LiveStreamModalProps) {
           {/* Stream Iframe or Video Player */}
           <div className={`relative bg-black ${isFullscreen ? 'flex-1' : 'aspect-video'} flex items-center justify-center`}>
             {loadingStream ? (
-              <div className="text-white/70 font-semibold animate-pulse">Đang tải luồng trực tiếp...</div>
+              <div className="text-[color:var(--text)]/70 font-semibold animate-pulse">Đang tải luồng trực tiếp...</div>
             ) : isYouTube ? (
               <iframe
                 src={streamUrl}
@@ -220,13 +220,13 @@ export function LiveStreamModal({ race, onClose }: LiveStreamModalProps) {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
               </span>
-              <span className="text-[10px] font-black text-white tracking-widest uppercase">Live</span>
+              <span className="text-[10px] font-black text-[color:var(--text)] tracking-widest uppercase">Live</span>
             </div>
 
             {/* Demo badge */}
             {!fetchedStreamUrl && !race?.playbackId && !race?.streamUrl && !loadingStream && (
               <div className="absolute bottom-3 right-3 px-2 py-1 rounded-md bg-black/70 backdrop-blur-sm border border-white/10 pointer-events-none">
-                <span className="text-[9px] font-bold text-white/60 uppercase tracking-wider">Demo Stream</span>
+                <span className="text-[9px] font-bold text-[color:var(--text)]/60 uppercase tracking-wider">Demo Stream</span>
               </div>
             )}
           </div>
