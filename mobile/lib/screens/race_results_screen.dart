@@ -35,7 +35,7 @@ class _RaceResultsScreenState extends State<RaceResultsScreen> {
     return AppScaffold(
       title: 'Kết quả vòng đua',
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
         children: [
           _buildHeader(),
           const SizedBox(height: 24),

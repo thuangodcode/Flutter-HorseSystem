@@ -91,6 +91,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  int _previousIndex = 0;
   String _searchQuery = '';
   List<Tournament>? _tournaments;
   List<Race>? _races;
@@ -164,8 +165,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = session.user;
     final navItems = _navItemsForRole(user.role);
 
+    Widget currentBody;
     if (_selectedIndex == 0) {
-      return AppBackground(
+      currentBody = AppBackground(
         child: Scaffold(
           backgroundColor: Colors.transparent,
           appBar: AppBar(
@@ -205,22 +207,61 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           body: SafeArea(
+            bottom: false,
             child: _buildHomeDashboard(context, user),
           ),
-          bottomNavigationBar: _buildBottomNav(context, navItems),
         ),
       );
     } else {
-      // Switch screen based on the item index route
       final selectedItem = navItems[_selectedIndex];
-      final childWidget = _buildChildScreen(selectedItem.routeName);
-
-      return Scaffold(
-        backgroundColor: Colors.transparent,
-        body: childWidget,
-        bottomNavigationBar: _buildBottomNav(context, navItems),
-      );
+      currentBody = _buildChildScreen(selectedItem.routeName);
     }
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) {
+                final childKey = child.key as ValueKey<int>?;
+                final childIndex = childKey?.value ?? 0;
+                final isIncoming = childIndex == _selectedIndex;
+                final isMovingRight = _selectedIndex > _previousIndex;
+                
+                Offset beginOffset;
+                if (isIncoming) {
+                  beginOffset = Offset(isMovingRight ? 1.0 : -1.0, 0.0);
+                } else {
+                  beginOffset = Offset(isMovingRight ? -1.0 : 1.0, 0.0);
+                }
+
+                return SlideTransition(
+                  position: Tween<Offset>(
+                    begin: beginOffset,
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                );
+              },
+              child: KeyedSubtree(
+                key: ValueKey<int>(_selectedIndex),
+                child: currentBody,
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _buildBottomNav(context, navItems),
+          ),
+        ],
+      ),
+    );
   }
 
   // ── Top header with brand ──────────────────────────
@@ -261,23 +302,95 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── Bottom Nav Bar ───────────────────────────────────────────
 
   Widget _buildBottomNav(BuildContext context, List<_NavItem> navItems) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(
-            color: context.isDark ? context.colors.border : const Color(0x1F000000),
-            width: 1,
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(32),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: context.isDark ? const Color(0xB304100C) : const Color(0xD9FFFFFF),
+                  borderRadius: BorderRadius.circular(32),
+                  border: Border.all(
+                    color: context.isDark ? const Color(0x33FFFFFF) : Colors.white,
+                    width: 1.5,
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: List.generate(navItems.length, (index) {
+                    final item = navItems[index];
+                    final isSelected = _selectedIndex == index;
+
+                    return GestureDetector(
+                      onTap: () {
+                        if (_selectedIndex == index) return;
+                        setState(() {
+                          _previousIndex = _selectedIndex;
+                          _selectedIndex = index;
+                        });
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOutCubic,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected 
+                              ? context.colors.primary.withValues(alpha: 0.15) 
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 250),
+                              transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
+                              child: Icon(
+                                isSelected ? item.activeIcon : item.icon,
+                                key: ValueKey<bool>(isSelected),
+                                color: isSelected 
+                                    ? context.colors.primary 
+                                    : context.colors.text2.withValues(alpha: 0.6),
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              item.label,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                color: isSelected 
+                                    ? context.colors.primary 
+                                    : context.colors.text2.withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ),
           ),
         ),
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        items: navItems.map((item) => BottomNavigationBarItem(
-          icon: Icon(item.icon),
-          activeIcon: Icon(item.activeIcon),
-          label: item.label,
-        )).toList(),
       ),
     );
   }
@@ -405,7 +518,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildDashboardContent(BuildContext context, User user) {
     if (_loadingData && (_tournaments == null || _races == null)) {
       return ListView.builder(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
         itemCount: 3,
         itemBuilder: (_, i) => Padding(
           padding: const EdgeInsets.only(bottom: 16),
@@ -435,7 +548,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
       itemCount: filteredTournaments.length,
       itemBuilder: (context, index) {
         final tournament = filteredTournaments[index];

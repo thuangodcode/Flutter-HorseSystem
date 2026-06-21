@@ -72,7 +72,7 @@ class _RefereeReportScreenState extends State<RefereeReportScreen> {
     }
 
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
       children: [
         Text(widget.race.name, style: context.typography.h1),
         const SizedBox(height: 6),

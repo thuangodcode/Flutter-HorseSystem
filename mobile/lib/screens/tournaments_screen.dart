@@ -48,7 +48,7 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
       );
     }
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
       itemCount: _items!.length + 1,
       itemBuilder: (context, index) {
         if (index == 0) return _buildSectionHeader();
@@ -79,7 +79,7 @@ class _TournamentsScreenState extends State<TournamentsScreen> {
 
   Widget _buildLoading() {
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
       itemCount: 4,
       itemBuilder: (context, i) => Padding(
         padding: const EdgeInsets.only(bottom: 12),

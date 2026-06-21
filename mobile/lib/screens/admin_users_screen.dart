@@ -69,7 +69,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   Widget _buildList() {
     if (_items == null) {
       return ListView.builder(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
         itemCount: 5,
         itemBuilder: (_, i) => Padding(
           padding: const EdgeInsets.only(bottom: 10),

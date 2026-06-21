@@ -41,7 +41,7 @@ class _JockeyScheduleScreenState extends State<JockeyScheduleScreen> {
   Widget _buildBody() {
     if (_items == null) {
       return ListView.builder(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
         itemCount: 4,
         itemBuilder: (_, i) => Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -95,7 +95,7 @@ class _JockeyScheduleScreenState extends State<JockeyScheduleScreen> {
                 subtitle: 'Bạn chưa có lịch thi đấu nào sắp tới.',
               )
             : ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
                 itemCount: _items!.length + 1,
                 itemBuilder: (context, index) {
                   if (index == _items!.length) {
@@ -159,7 +159,7 @@ class _JockeyScheduleScreenState extends State<JockeyScheduleScreen> {
                         );
                       },
                       child: GlassCard(
-                        padding: const EdgeInsets.all(20),
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [

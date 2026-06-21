@@ -67,7 +67,7 @@ class _InvitesScreenState extends State<InvitesScreen> {
   Widget _buildBody() {
     if (_items == null) {
       return ListView.builder(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
         itemCount: 4,
         itemBuilder: (_, i) => Padding(
           padding: const EdgeInsets.only(bottom: 16),
@@ -100,7 +100,7 @@ class _InvitesScreenState extends State<InvitesScreen> {
                 subtitle: 'Bạn hiện không có lời mời thi đấu nào.',
               )
             : ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
                 itemCount: _items!.length,
                 itemBuilder: (context, index) {
                   final invite = _items![index];
@@ -109,7 +109,7 @@ class _InvitesScreenState extends State<InvitesScreen> {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 24),
                     child: GlassCard(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

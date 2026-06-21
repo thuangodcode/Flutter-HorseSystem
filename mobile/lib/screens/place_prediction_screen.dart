@@ -55,7 +55,7 @@ class _PlacePredictionScreenState extends State<PlacePredictionScreen> {
       title: 'Đặt dự đoán',
       resizeToAvoidBottomInset: true,
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
         children: [
           _buildHeader(),
           const SizedBox(height: 24),

@@ -42,7 +42,7 @@ class _RefereeRacesScreenState extends State<RefereeRacesScreen> {
   Widget _buildBody() {
     if (_items == null) {
       return ListView.builder(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
         itemCount: 4,
         itemBuilder: (_, i) => Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -58,7 +58,7 @@ class _RefereeRacesScreenState extends State<RefereeRacesScreen> {
       );
     }
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
       itemCount: _items!.length + 1,
       itemBuilder: (context, index) {
         if (index == 0) {
