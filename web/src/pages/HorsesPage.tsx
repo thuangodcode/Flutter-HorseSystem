@@ -1,5 +1,5 @@
 import { useEffect, useState, startTransition, useMemo } from 'react'
-import type { Horse, Race, Jockey } from '../types'
+import type { Horse, Race, Jockey, Tournament } from '../types'
 import {
   getHorses,
   createHorse,
@@ -7,7 +7,8 @@ import {
   deleteHorse,
   getRaces,
   getRaceHorses,
-  registerHorseRace,
+  registerHorseForTournament,
+  getTournaments,
   searchJockeys,
   sendJockeyInvitation,
   getHorseJockeys,
@@ -59,6 +60,7 @@ export function HorsesPage() {
 
   const [horses, setHorses] = useState<Horse[]>([])
   const [races, setRaces] = useState<Race[]>([])
+  const [tournaments, setTournaments] = useState<Tournament[]>([])
   const [jockeys, setJockeys] = useState<Jockey[]>([])
   const [invitations, setInvitations] = useState<any[]>([])
 
@@ -126,22 +128,23 @@ export function HorsesPage() {
   const [regFilterStatus, setRegFilterStatus] = useState<string>('')
   const [regFilterTournament, setRegFilterTournament] = useState<string>('')
 
-  // Filter for Race Registration tab
-  const [raceFilterTournament, setRaceFilterTournament] = useState<string>('')
-
   // Filter for Invitations tab
   const [invFilterStatus, setInvFilterStatus] = useState<string>('')
   const [invFilterTournament, setInvFilterTournament] = useState<string>('')
 
   const derivedTournaments = useMemo(() => {
     const map = new Map<string, string>()
+    tournaments.forEach(t => {
+      const id = String(t.id || t._id || '')
+      if (id && t.name) map.set(id, t.name)
+    })
     races.forEach(r => {
       const t = r.tournamentId as any
       if (t?.id && t?.name) map.set(t.id, t.name)
       else if (t?._id && t?.name) map.set(t._id, t.name)
     })
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }))
-  }, [races])
+  }, [races, tournaments])
 
   const handleResultsSort = (columnId: string, direction: SortDirection) => {
     setResultsSortColumn(columnId)
@@ -199,8 +202,16 @@ export function HorsesPage() {
     try {
       const hList = await getHorses().catch(() => { partialErrors.push('Không tải được danh sách ngựa'); return [] })
       setHorses(hList)
-      
-      const rList = await getRaces().catch(() => { partialErrors.push('Không tải được danh sách giải đấu'); return [] })
+
+      // Load tournaments & races song song
+      const [tList, rList] = await Promise.all([
+        getTournaments().catch(() => { partialErrors.push('Không tải được danh sách giải đấu'); return [] as Tournament[] }),
+        getRaces().catch(() => { partialErrors.push('Không tải được danh sách vòng đua'); return [] as Race[] }),
+      ])
+      // Chỉ hiển thị giải đấu đang mở đăng ký (PUBLISHED / ONGOING)
+      const openTournaments = tList.filter((t) => ['PUBLISHED', 'ONGOING', 'DRAFT'].includes(t.status?.toUpperCase?.() || ''))
+      setTournaments(openTournaments)
+
       const jList = await searchJockeys({ limit: 100 }).catch(() => { partialErrors.push('Không tải được danh sách nài ngựa'); return [] })
       setJockeys(jList)
       
@@ -230,7 +241,6 @@ export function HorsesPage() {
             })
           } catch {
             console.warn(`Error loading horses for race ${race.id}`)
-            partialErrors.push(`Lỗi tải dữ liệu cho giải đấu: ${race.name}`)
           }
         })
       )
@@ -244,9 +254,7 @@ export function HorsesPage() {
         })
       }
 
-      if (activeTab === 'race-registration') {
-        setRaces(rList.filter((r) => r.status === 'SCHEDULED'))
-      } else if (activeTab === 'hire-jockey') {
+      if (activeTab === 'hire-jockey') {
         const availableRaces = rList.filter((race) => ['SCHEDULED', 'CONFIRMED', 'UPCOMING'].includes(race.status?.toUpperCase() || ''))
         setRaces(availableRaces)
         if (availableRaces.length > 0 && !inviteRaceId) {
@@ -342,16 +350,31 @@ export function HorsesPage() {
   }
 
   // ── Actions ─────────────────────────────────────────────────────────────────
-  const handleRegisterRace = async (race: Race) => {
+  /**
+   * Đăng ký ngựa vào một Giải Đấu (Tournament).
+   * FE tự động đăng ký ngựa vào tất cả các Race SCHEDULED thuộc giải đó.
+   * Admin sau đó sẽ phân bổ ngựa vào các vòng đấu cụ thể.
+   */
+  const handleRegisterTournament = async (tournament: Tournament) => {
     if (!selectedHorseId) return showToast('Vui lòng chọn ngựa', 'warning')
     const horse = horses.find((h) => String(h.id || h._id) === selectedHorseId)
-    if (horse?.status !== 'APPROVED') return showToast('Chỉ ngựa đã được Admin duyệt mới có thể đăng ký', 'warning')
+    if (horse?.status !== 'APPROVED') return showToast('Chỉ ngựa đã được Admin duyệt mới có thể đăng ký giải', 'warning')
     try {
-      await registerHorseRace(selectedHorseId, race.id)
-      showToast(`Đã đăng ký ngựa vào "${race.name}"`)
+      const result = await registerHorseForTournament(selectedHorseId, String(tournament.id))
+      const totalNew = result.success.length
+      const totalAlready = result.alreadyRegistered.length
+      const totalFailed = result.failed.length
+      if (totalNew > 0) {
+        showToast(`Đã gửi đăng ký tham gia giải "${tournament.name}". Admin sẽ phân bổ vào vòng đấu phù hợp.`, 'success')
+      } else if (totalAlready > 0 && totalNew === 0) {
+        showToast(`Ngựa đã có đăng ký trong giải "${tournament.name}" trước đó rồi.`, 'info')
+      } else if (totalFailed > 0 && totalNew === 0) {
+        showToast(`Không thể đăng ký ngựa vào giải "${tournament.name}". Vui lòng thử lại.`, 'error')
+        return
+      }
       loadData()
     } catch (err: any) {
-      showToast(err.response?.data?.message || 'Không thể đăng ký cuộc đua', 'error')
+      showToast(err.message || err.response?.data?.message || 'Không thể đăng ký giải đấu', 'error')
     }
   }
 
@@ -530,12 +553,26 @@ export function HorsesPage() {
 
   const selectedHorseObj = horses.find((h) => String(h.id || h._id) === selectedHorseId)
 
+  const getRegistrationTournamentId = (reg: { race: Race }) => {
+    const tournament = reg.race?.tournamentId as any
+    return String(tournament?.id || tournament?._id || tournament || '')
+  }
+
+  const getRegistrationTournamentName = (reg: { race: Race }) => {
+    const tournament = reg.race?.tournamentId as any
+    const tournamentId = getRegistrationTournamentId(reg)
+    return tournament?.name || tournaments.find((t) => String(t.id || t._id) === tournamentId)?.name || 'Giải đấu'
+  }
+
   // Filtered registrations for My Registrations tab
   const filteredRegistrations = registrations.filter(reg => {
     if (regFilterHorse && String(reg.horseId).trim() !== regFilterHorse) return false
-    if (regFilterStatus && reg.status !== regFilterStatus) return false
+    if (regFilterStatus) {
+      const normalizedStatus = reg.status === 'PENDING_APPROVAL' ? 'PENDING' : reg.status
+      if (reg.status !== regFilterStatus && normalizedStatus !== regFilterStatus) return false
+    }
     if (regFilterTournament) {
-      const tId = String(reg.race?.tournamentId?.id || reg.race?.tournamentId?._id || '')
+      const tId = getRegistrationTournamentId(reg)
       if (tId !== regFilterTournament) return false
     }
     return true
@@ -551,18 +588,98 @@ export function HorsesPage() {
     return true
   })
 
-  // Filtered races for Race Registration tab
-  const filteredRaces = races
-    .filter(r => {
-      const scheduledTime = new Date(r.scheduledAt).getTime()
-      const now = Date.now()
-      if (scheduledTime < now) return false
-      
-      if (!raceFilterTournament) return true
-      const tId = String(r.tournamentId?.id || r.tournamentId?._id || '')
-      return tId === raceFilterTournament
+  // Giải đấu hiển thị trong tab Đăng Ký Giải
+  const filteredTournaments = tournaments
+
+  // registrationsByTournament: map tournamentId -> trạng thái đăng ký của selectedHorse
+  const registrationsByTournament = useMemo(() => {
+    if (!selectedHorseId) return {}
+    const map: Record<string, { status: string; raceCount: number; approvedCount: number; pendingCount: number; rejectedCount: number; confirmedCount: number }> = {}
+    registrations
+      .filter((r) => String(r.horseId).trim() === String(selectedHorseId).trim())
+      .forEach((r) => {
+        const tId = String(r.race?.tournamentId?.id || r.race?.tournamentId?._id || r.race?.tournamentId || '')
+        if (!tId) return
+        if (!map[tId]) map[tId] = { status: 'PENDING_APPROVAL', raceCount: 0, approvedCount: 0, pendingCount: 0, rejectedCount: 0, confirmedCount: 0 }
+        map[tId].raceCount++
+        const s = String(r.status || '').toUpperCase()
+        if (s === 'APPROVED') map[tId].approvedCount++
+        else if (s === 'PENDING' || s === 'PENDING_APPROVAL') map[tId].pendingCount++
+        else if (s === 'REJECTED') map[tId].rejectedCount++
+        else if (s === 'CONFIRMED') map[tId].confirmedCount++
+      })
+    // Tính status tổng hợp
+    Object.keys(map).forEach((tId) => {
+      const m = map[tId]
+      if (m.confirmedCount > 0) m.status = 'CONFIRMED'
+      else if (m.approvedCount > 0) m.status = 'APPROVED'
+      else if (m.pendingCount > 0) m.status = 'PENDING_APPROVAL'
+      else if (m.rejectedCount === m.raceCount) m.status = 'REJECTED'
     })
-    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+    return map
+  }, [registrations, selectedHorseId])
+
+  const registeredTournamentGroups = useMemo(() => {
+    type Group = {
+      key: string
+      tournamentId: string
+      tournamentName: string
+      horseId: string
+      horseName: string
+      registrations: typeof filteredRegistrations
+      status: string
+      pendingCount: number
+      approvedCount: number
+      confirmedCount: number
+      rejectedCount: number
+    }
+
+    const map = new Map<string, Group>()
+    filteredRegistrations.forEach((reg) => {
+      const tournamentId = getRegistrationTournamentId(reg) || `race-${reg.race?.id || reg.raceId}`
+      const horseId = String(reg.horseId || '')
+      const key = `${tournamentId}:${horseId}`
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          tournamentId,
+          tournamentName: getRegistrationTournamentName(reg),
+          horseId,
+          horseName: reg.horseName,
+          registrations: [],
+          status: 'PENDING_APPROVAL',
+          pendingCount: 0,
+          approvedCount: 0,
+          confirmedCount: 0,
+          rejectedCount: 0,
+        })
+      }
+      map.get(key)!.registrations.push(reg)
+    })
+
+    const groups = Array.from(map.values()).map((group) => {
+      group.registrations.forEach((reg) => {
+        const status = String(reg.status || '').toUpperCase()
+        if (status === 'CONFIRMED') group.confirmedCount += 1
+        else if (status === 'APPROVED') group.approvedCount += 1
+        else if (status === 'REJECTED') group.rejectedCount += 1
+        else group.pendingCount += 1
+      })
+
+      if (group.confirmedCount > 0) group.status = 'CONFIRMED'
+      else if (group.approvedCount > 0) group.status = 'APPROVED'
+      else if (group.pendingCount > 0) group.status = 'PENDING_APPROVAL'
+      else if (group.rejectedCount === group.registrations.length) group.status = 'REJECTED'
+
+      return group
+    })
+
+    return groups.sort((a, b) => {
+      const aDate = Math.min(...a.registrations.map((reg) => reg.race?.scheduledAt ? new Date(reg.race.scheduledAt).getTime() : Number.MAX_SAFE_INTEGER))
+      const bDate = Math.min(...b.registrations.map((reg) => reg.race?.scheduledAt ? new Date(reg.race.scheduledAt).getTime() : Number.MAX_SAFE_INTEGER))
+      return aDate - bDate
+    })
+  }, [filteredRegistrations, tournaments])
 
   // ═══════════════════════════════════════════════════════════════════════════
   // RENDER
@@ -606,7 +723,7 @@ export function HorsesPage() {
           <div className="mb-8">
             <TabsList className="!bg-[var(--surface-2)] border border-[var(--border)] p-1.5 rounded-2xl shadow-inner flex flex-wrap gap-1 h-auto w-fit m-0 backdrop-blur-md">
               <TabsTrigger value="my-horses" className="py-2.5 px-4 rounded-xl font-bold transition-all text-sm text-[var(--text-2)] data-active:!bg-[var(--surface)] data-active:!text-[var(--primary)] data-active:!shadow-sm"><Trophy className="w-4 h-4 mr-2" /> Hồ Sơ Ngựa</TabsTrigger>
-              <TabsTrigger value="race-registration" className="py-2.5 px-4 rounded-xl font-bold transition-all text-sm text-[var(--text-2)] data-active:!bg-[var(--surface)] data-active:!text-[var(--primary)] data-active:!shadow-sm"><Zap className="w-4 h-4 mr-2" /> Đăng Ký Đua</TabsTrigger>
+              <TabsTrigger value="race-registration" className="py-2.5 px-4 rounded-xl font-bold transition-all text-sm text-[var(--text-2)] data-active:!bg-[var(--surface)] data-active:!text-[var(--primary)] data-active:!shadow-sm"><Zap className="w-4 h-4 mr-2" /> Đăng Ký Giải</TabsTrigger>
               <TabsTrigger value="my-registrations" className="py-2.5 px-4 rounded-xl font-bold transition-all text-sm text-[var(--text-2)] data-active:!bg-[var(--surface)] data-active:!text-[var(--primary)] data-active:!shadow-sm">
                 <FileCheck className="w-4 h-4 mr-2" /> Đã Đăng Ký
                 {registrations.length > 0 && <span className="hm-tab-count">{registrations.length}</span>}
@@ -717,7 +834,7 @@ export function HorsesPage() {
         </TabsContent>
 
         {/* ═══════════════════════════════════════════════════════════════════
-            TAB 2: Đăng Ký Đua (Race Registration)
+            TAB 2: Đăng Ký Giải Đấu (Tournament Registration)
         ═══════════════════════════════════════════════════════════════════ */}
         <TabsContent value="race-registration">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -767,79 +884,99 @@ export function HorsesPage() {
                 </div>
               </div>
 
-              {/* Tournament Filter Section */}
+              {/* Info Panel */}
               <div className="hm-glass-card p-5">
                 <div className="flex items-center gap-2 mb-3">
-                  <Activity className="w-4 h-4 text-violet-400" />
-                  <span className="text-xs font-bold uppercase tracking-widest text-[color:var(--text-muted)]">Giải Đấu</span>
+                  <Sparkles className="w-4 h-4 text-violet-400" />
+                  <span className="text-xs font-bold uppercase tracking-widest text-[color:var(--text-muted)]">Cách Thức Đăng Ký</span>
                 </div>
-                <select 
-                  className="hm-sidebar-select" 
-                  value={raceFilterTournament} 
-                  onChange={(e) => setRaceFilterTournament(e.target.value)}
-                >
-                  <option value="">🏆 Tất cả giải đấu</option>
-                  {derivedTournaments.map((t) => (
-                    <option key={t.id} value={t.id}>🏁 {t.name}</option>
-                  ))}
-                </select>
+                <div className="space-y-2.5 text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>
+                  <div className="flex items-start gap-2">
+                    <span className="text-violet-400 font-black shrink-0 mt-0.5">1.</span>
+                    <span>Chọn ngựa đã được Admin duyệt hồ sơ (<span className="text-emerald-400 font-bold">APPROVED</span>)</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-violet-400 font-black shrink-0 mt-0.5">2.</span>
+                    <span>Chọn giải đấu muốn tham gia và nhấn <span className="text-violet-400 font-bold">Đăng Ký Tham Gia Giải</span></span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-violet-400 font-black shrink-0 mt-0.5">3.</span>
+                    <span>Admin sẽ xét duyệt và <span className="text-amber-400 font-bold">tự động phân bổ</span> ngựa vào các vòng đấu phù hợp</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-violet-400 font-black shrink-0 mt-0.5">4.</span>
+                    <span>Theo dõi trạng thái ở tab <span className="text-sky-400 font-bold">Đã Đăng Ký</span></span>
+                  </div>
+                </div>
               </div>
 
             </div>
 
-            {/* Right Showcase: Races Grid */}
+            {/* Right Showcase: Tournaments Grid */}
             <div className="lg:col-span-8 space-y-4">
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-6 rounded bg-violet-500" />
-                  <h3 className="text-lg font-black text-[color:var(--text)] tracking-tight">Danh Sách Cuộc Đua Sắp Tới</h3>
+                  <h3 className="text-lg font-black text-[color:var(--text)] tracking-tight">Danh Sách Giải Đấu Đang Mở</h3>
                 </div>
                 <div className="text-xs font-bold text-[color:var(--text-2)] bg-[var(--surface-3)] px-3 py-1.5 rounded-xl border border-[var(--border)]">
-                  Có <span className="text-violet-400 font-extrabold">{filteredRaces.length}</span> cuộc đua
+                  Có <span className="text-violet-400 font-extrabold">{filteredTournaments.length}</span> giải đấu
                 </div>
               </div>
 
               {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[1, 2, 3, 4].map((i) => <div key={i} className="hm-skeleton h-48 rounded-2xl" />)}
+                  {[1, 2, 3, 4].map((i) => <div key={i} className="hm-skeleton h-56 rounded-2xl" />)}
                 </div>
-              ) : filteredRaces.length === 0 ? (
+              ) : filteredTournaments.length === 0 ? (
                 <div className="hm-empty">
-                  <div className="hm-empty-icon">🏁</div>
-                  <h3 className="text-lg font-bold text-[color:var(--text)] mb-1">Không có cuộc đua nào khả dụng</h3>
-                  <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Hiện không có cuộc đua nào đang trong trạng thái mở đăng ký theo bộ lọc này.</p>
+                  <div className="hm-empty-icon">🏆</div>
+                  <h3 className="text-lg font-bold text-[color:var(--text)] mb-1">Không có giải đấu nào đang mở</h3>
+                  <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Hiện tại chưa có giải đấu nào đang nhận đăng ký. Vui lòng quay lại sau.</p>
                   {error && <div className="text-red-400 text-xs mt-3 font-semibold">{error}</div>}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredRaces.map((r, idx) => {
-                    const reg = registrations.find((reg) => reg.race.id === r.id && String(reg.horseId).trim() === String(selectedHorseId).trim())
-                    const isRegistered = !!reg
-                    const status = String(reg?.status || '').toUpperCase()
+                  {filteredTournaments.map((t, idx) => {
+                    const tId = String(t.id)
+                    const regInfo = registrationsByTournament[tId]
+                    const isRegistered = !!regInfo
+                    const regStatus = regInfo?.status || ''
+
+                    // Status badge for the tournament registration
+                    let statusBadge: React.ReactNode = null
+                    if (!isRegistered) {
+                      statusBadge = null
+                    } else if (regStatus === 'CONFIRMED') {
+                      statusBadge = <span className="hm-badge hm-badge-confirmed text-[9.5px]"><Check className="w-3 h-3 mr-0.5" /> Đã chốt</span>
+                    } else if (regStatus === 'APPROVED') {
+                      statusBadge = <span className="hm-badge hm-badge-approved text-[9.5px]"><Check className="w-3 h-3 mr-0.5" /> Đã duyệt</span>
+                    } else if (regStatus === 'PENDING_APPROVAL') {
+                      statusBadge = <span className="hm-badge hm-badge-pending text-[9.5px]"><Clock className="w-3 h-3 mr-0.5" /> Chờ duyệt</span>
+                    } else if (regStatus === 'REJECTED') {
+                      statusBadge = <span className="hm-badge hm-badge-rejected text-[9.5px]"><X className="w-3 h-3 mr-0.5" /> Bị từ chối</span>
+                    }
 
                     return (
-                      <ScrollReveal key={r.id} direction="up" distance={16} delay={idx * 0.04}>
+                      <ScrollReveal key={tId} direction="up" distance={16} delay={idx * 0.04}>
                         <div className="hm-race-card-modern">
-                          {/* Header / Tournament */}
+                          {/* Header */}
                           <div className="hm-race-card-badge-container">
-                            {r.tournamentId?.name ? (
-                              <span className="text-[9.5px] font-extrabold uppercase tracking-widest text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-md border border-violet-500/20 truncate max-w-[70%]">
-                                🏆 {r.tournamentId.name}
-                              </span>
-                            ) : (
-                              <span className="text-[9.5px] font-extrabold uppercase tracking-widest text-[color:var(--text-muted)] bg-[var(--surface-3)] px-2 py-0.5 rounded-md border border-[var(--border)]">
-                                Giải đấu lẻ
-                              </span>
-                            )}
-                            <span className="text-[11px] font-bold text-[color:var(--text-muted)]">
-                              Max: {r.maxHorses} 🐴
+                            <span className="text-[9.5px] font-extrabold uppercase tracking-widest text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-md border border-violet-500/20">
+                              🏆 Giải Đấu
                             </span>
+                            {isRegistered && statusBadge}
                           </div>
 
-                          {/* Race Title */}
-                          <h4 className="hm-race-card-title truncate" title={r.name}>
-                            {r.name}
+                          {/* Title */}
+                          <h4 className="hm-race-card-title truncate" title={t.name}>
+                            {t.name}
                           </h4>
+
+                          {/* Description */}
+                          {t.description && (
+                            <p className="text-[11px] font-medium mb-3 line-clamp-2" style={{ color: 'var(--text-muted)' }}>{t.description}</p>
+                          )}
 
                           {/* Stats Grid */}
                           <div className="hm-race-card-stats">
@@ -848,10 +985,8 @@ export function HorsesPage() {
                                 <CalendarRange className="w-3.5 h-3.5" />
                               </div>
                               <div className="hm-race-card-stat-text">
-                                <span className="hm-race-card-stat-label">Thời gian</span>
-                                <span className="hm-race-card-stat-value truncate" title={new Date(r.scheduledAt).toLocaleString('vi-VN')}>
-                                  {new Date(r.scheduledAt).toLocaleDateString('vi-VN')} {new Date(r.scheduledAt).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}
-                                </span>
+                                <span className="hm-race-card-stat-label">Bắt đầu</span>
+                                <span className="hm-race-card-stat-value">{new Date(t.startDate).toLocaleDateString('vi-VN')}</span>
                               </div>
                             </div>
 
@@ -860,8 +995,8 @@ export function HorsesPage() {
                                 <MapPin className="w-3.5 h-3.5" />
                               </div>
                               <div className="hm-race-card-stat-text">
-                                <span className="hm-race-card-stat-label">Quãng đường</span>
-                                <span className="hm-race-card-stat-value">{r.distance}m</span>
+                                <span className="hm-race-card-stat-label">Địa điểm</span>
+                                <span className="hm-race-card-stat-value truncate">{t.venue || t.location || 'Chưa rõ'}</span>
                               </div>
                             </div>
 
@@ -870,15 +1005,31 @@ export function HorsesPage() {
                                 <Trophy className="w-3.5 h-3.5" />
                               </div>
                               <div className="hm-race-card-stat-text">
-                                <span className="hm-race-card-stat-label">Giải thưởng thứ nhất</span>
+                                <span className="hm-race-card-stat-label">Tổng giải thưởng</span>
                                 <span className="hm-race-card-stat-value text-amber-400 font-extrabold">
-                                  {r.prizeFirst?.toLocaleString('vi-VN')} đ
+                                  {t.prizePool?.toLocaleString('vi-VN')} {t.currency || 'VND'}
                                 </span>
                               </div>
                             </div>
                           </div>
 
-                          {/* Action Button at the bottom */}
+                          {/* Registration progress (if registered) */}
+                          {isRegistered && regInfo && (
+                            <div className="mt-3 p-2.5 rounded-xl bg-[var(--surface-3)] border border-[var(--border)] text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>
+                              <div className="flex justify-between items-center mb-1.5">
+                                <span>Trạng thái đăng ký vòng đua</span>
+                                <span className="text-violet-400">{regInfo.raceCount} vòng</span>
+                              </div>
+                              <div className="flex gap-1.5 flex-wrap">
+                                {regInfo.pendingCount > 0 && <span className="hm-badge hm-badge-pending text-[8px] py-0.5">{regInfo.pendingCount} chờ duyệt</span>}
+                                {regInfo.approvedCount > 0 && <span className="hm-badge hm-badge-approved text-[8px] py-0.5">{regInfo.approvedCount} đã duyệt</span>}
+                                {regInfo.confirmedCount > 0 && <span className="hm-badge hm-badge-confirmed text-[8px] py-0.5">{regInfo.confirmedCount} đã chốt</span>}
+                                {regInfo.rejectedCount > 0 && <span className="hm-badge hm-badge-rejected text-[8px] py-0.5">{regInfo.rejectedCount} từ chối</span>}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Action Button */}
                           <div className="mt-auto pt-3 border-t border-[var(--border)] flex items-center justify-end w-full">
                             {!selectedHorseId ? (
                               <button disabled className="hm-btn-cta w-full" style={{ opacity: 0.3, cursor: 'not-allowed', background: 'var(--text-muted)', boxShadow: 'none' }}>
@@ -889,36 +1040,31 @@ export function HorsesPage() {
                                 <AlertTriangle className="w-3.5 h-3.5 mr-1" /> Yêu cầu ngựa đã duyệt
                               </span>
                             ) : !isRegistered ? (
-                              <button onClick={() => handleRegisterRace(r)} className="hm-btn-cta w-full">
-                                <Zap className="w-4 h-4 mr-1" /> Ghi Danh Ngay
+                              <button onClick={() => handleRegisterTournament(t)} className="hm-btn-cta w-full">
+                                <Zap className="w-4 h-4 mr-1" /> Đăng Ký Tham Gia Giải
                               </button>
-                            ) : (status === 'PENDING' || status === 'PENDING_APPROVAL') ? (
+                            ) : regStatus === 'PENDING_APPROVAL' ? (
                               <div className="flex flex-col items-center justify-center w-full gap-1">
-                                <span className="hm-badge hm-badge-pending w-full justify-center"><Clock className="w-3.5 h-3.5 mr-1" /> Đang chờ duyệt</span>
+                                <span className="hm-badge hm-badge-pending w-full justify-center"><Clock className="w-3.5 h-3.5 mr-1" /> Đang chờ Admin phân bổ vòng đua</span>
                               </div>
-                            ) : status === 'APPROVED' && !reg.confirmedByOwner ? (
-                              <div className="flex flex-col items-center w-full gap-1.5">
-                                <span className="hm-badge hm-badge-approved w-full justify-center"><Check className="w-3.5 h-3.5 mr-1" /> Đã duyệt (Chờ xác nhận)</span>
-                                <button onClick={() => handleConfirmRace(selectedHorseId, r.id)} className="hm-btn-cta hm-attention-pulse text-xs py-1.5 px-3 w-full justify-center">
-                                  <Check className="w-3.5 h-3.5 mr-1" /> Xác nhận đua
+                            ) : regStatus === 'APPROVED' ? (
+                              <div className="flex flex-col items-center justify-center w-full gap-1">
+                                <span className="hm-badge hm-badge-approved w-full justify-center"><Check className="w-3.5 h-3.5 mr-1" /> Đã được xếp vào vòng đua</span>
+                              </div>
+                            ) : regStatus === 'CONFIRMED' ? (
+                              <div className="flex flex-col items-center justify-center w-full gap-1">
+                                <span className="hm-badge hm-badge-confirmed w-full justify-center"><Check className="w-3.5 h-3.5 mr-1" /> Đã chốt tham gia giải</span>
+                              </div>
+                            ) : regStatus === 'REJECTED' ? (
+                              <div className="flex flex-col items-center justify-center w-full gap-1">
+                                <span className="hm-badge hm-badge-rejected w-full justify-center"><X className="w-3.5 h-3.5 mr-1" /> Đăng ký bị từ chối</span>
+                                <button onClick={() => handleRegisterTournament(t)} className="hm-btn-cta text-xs py-1.5 px-3 w-full justify-center">
+                                  <Zap className="w-3.5 h-3.5 mr-1" /> Đăng ký lại
                                 </button>
                               </div>
-                            ) : status === 'CONFIRMED' || (status === 'APPROVED' && reg.confirmedByOwner) ? (
-                              <div className="flex flex-col items-center justify-center w-full gap-1">
-                                <span className="hm-badge hm-badge-confirmed w-full justify-center"><Check className="w-3.5 h-3.5 mr-1" /> Đã chốt đua</span>
-                              </div>
-                            ) : status === 'REJECTED' ? (
-                              <div className="flex flex-col items-center justify-center w-full gap-1">
-                                <span className="hm-badge hm-badge-rejected w-full justify-center"><X className="w-3.5 h-3.5 mr-1" /> Bị từ chối</span>
-                                {reg.rejectionReason && (
-                                  <span className="text-[10px] font-semibold truncate max-w-full text-red-400" title={reg.rejectionReason}>
-                                    Lý do: {reg.rejectionReason}
-                                  </span>
-                                )}
-                              </div>
                             ) : (
-                              <button onClick={() => handleRegisterRace(r)} className="hm-btn-cta w-full">
-                                <Zap className="w-4 h-4 mr-1" /> Ghi Danh Ngay
+                              <button onClick={() => handleRegisterTournament(t)} className="hm-btn-cta w-full">
+                                <Zap className="w-4 h-4 mr-1" /> Đăng Ký Tham Gia Giải
                               </button>
                             )}
                           </div>
@@ -1043,7 +1189,7 @@ export function HorsesPage() {
                   <h3 className="text-lg font-black text-[color:var(--text)] tracking-tight">Lịch Sử Đăng Ký Của Bạn</h3>
                 </div>
                 <div className="text-xs font-bold text-[color:var(--text-2)] bg-[var(--surface-3)] px-3 py-1.5 rounded-xl border border-[var(--border)]">
-                  Có <span className="text-violet-400 font-extrabold">{filteredRegistrations.length}</span> lượt đăng ký
+                  Có <span className="text-violet-400 font-extrabold">{registeredTournamentGroups.length}</span> giải đăng ký
                 </div>
               </div>
 
@@ -1051,51 +1197,67 @@ export function HorsesPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[1, 2, 3, 4].map((i) => <div key={i} className="hm-skeleton h-36 rounded-2xl" />)}
                 </div>
-              ) : filteredRegistrations.length === 0 ? (
+              ) : registeredTournamentGroups.length === 0 ? (
                 <div className="hm-empty">
                   <div className="hm-empty-icon">📋</div>
                   <h3 className="text-lg font-bold text-[color:var(--text)] mb-1">Chưa có đăng ký nào</h3>
-                  <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Đăng ký ngựa vào cuộc đua ở tab "Đăng Ký Đua" để xem tại đây.</p>
+                  <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Đăng ký ngựa vào giải đấu ở tab "Đăng Ký Giải" để xem tại đây.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredRegistrations.map((reg, idx) => {
-                    const sc = statusConfig(reg.status)
-                    const isPending = reg.status === 'PENDING' || reg.status === 'PENDING_APPROVAL'
-                    const isApproved = reg.status === 'APPROVED'
-                    const isConfirmed = reg.status === 'CONFIRMED'
-                    const isRejected = reg.status === 'REJECTED'
+                  {registeredTournamentGroups.map((group, idx) => {
+                    const sc = statusConfig(group.status === 'PENDING_APPROVAL' ? 'PENDING' : group.status)
+                    const confirmableReg = group.registrations.find((reg) => reg.status === 'APPROVED' && !reg.confirmedByOwner)
+                    const assignedRegs = group.registrations.filter((reg) => reg.status === 'APPROVED' || reg.status === 'CONFIRMED')
+                    const pendingRegs = group.registrations.filter((reg) => reg.status === 'PENDING' || reg.status === 'PENDING_APPROVAL')
+                    const rejectedRegs = group.registrations.filter((reg) => reg.status === 'REJECTED')
 
                     return (
-                      <ScrollReveal key={idx} direction="up" distance={16} delay={idx * 0.04}>
+                      <ScrollReveal key={group.key} direction="up" distance={16} delay={idx * 0.04}>
                         <div className="hm-glass-card hm-glass-card-hover p-5 h-full flex flex-col justify-between">
                           <div>
                             <div className="flex items-start gap-4 mb-3">
-                              <img src={horseAvatarUrl(reg.horseName)} alt={reg.horseName} className="w-11 h-11 rounded-lg object-cover shrink-0 border border-white/10" />
+                              <img src={horseAvatarUrl(group.horseName)} alt={group.horseName} className="w-11 h-11 rounded-lg object-cover shrink-0 border border-white/10" />
                               <div className="flex-1 min-w-0">
                                 <div className="flex justify-between items-start gap-2 mb-1">
-                                  <h4 className="font-extrabold text-[color:var(--text)] text-sm truncate m-0">{reg.horseName}</h4>
+                                  <h4 className="font-extrabold text-[color:var(--text)] text-sm truncate m-0">{group.horseName}</h4>
                                   <span className={`hm-badge ${sc.badgeCls} text-[9px] shrink-0`}>
                                     <span className={`hm-status-dot ${sc.dotCls}`} style={{ width: 6, height: 6 }} /> {sc.label}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1 text-[11px] font-bold text-violet-400 truncate">
-                                  🏆 {reg.race.name}
+                                  🏆 {group.tournamentName}
                                 </div>
                               </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-[var(--border)]">
                               <div className="p-2 rounded-lg bg-[var(--surface-3)] border border-[var(--border)]">
-                                <span className="block text-[8px] font-extrabold uppercase text-[color:var(--text-muted)] tracking-wider">Thời gian</span>
-                                <span className="text-[10px] font-bold text-[color:var(--text-2)] truncate block">
-                                  {new Date(reg.race.scheduledAt).toLocaleDateString('vi-VN')} {new Date(reg.race.scheduledAt).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}
-                                </span>
+                                <span className="block text-[8px] font-extrabold uppercase text-[color:var(--text-muted)] tracking-wider">Đã xếp vòng</span>
+                                <span className="text-[10px] font-bold text-[color:var(--text-2)] truncate block">{assignedRegs.length} vòng đua</span>
                               </div>
                               <div className="p-2 rounded-lg bg-[var(--surface-3)] border border-[var(--border)]">
-                                <span className="block text-[8px] font-extrabold uppercase text-[color:var(--text-muted)] tracking-wider">Quãng đường</span>
-                                <span className="text-[10px] font-bold text-[color:var(--text-2)] block">{reg.race.distance}m</span>
+                                <span className="block text-[8px] font-extrabold uppercase text-[color:var(--text-muted)] tracking-wider">Chờ phân bổ</span>
+                                <span className="text-[10px] font-bold text-[color:var(--text-2)] block">{pendingRegs.length} vòng đua</span>
                               </div>
+                            </div>
+
+                            <div className="mt-3 space-y-1.5">
+                              {assignedRegs.map((reg) => (
+                                <div key={reg.registrationId || reg.race.id} className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                                  Được xếp vào: {reg.race.name} ({new Date(reg.race.scheduledAt).toLocaleDateString('vi-VN')})
+                                </div>
+                              ))}
+                              {pendingRegs.length > 0 && (
+                                <div className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                                  Đang chờ Admin tự phân bổ vòng đua
+                                </div>
+                              )}
+                              {rejectedRegs.length > 0 && assignedRegs.length === 0 && (
+                                <div className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
+                                  Đăng ký giải bị từ chối hoặc chưa được xếp vòng phù hợp
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -1104,21 +1266,15 @@ export function HorsesPage() {
                             <div className="text-[10px] font-bold text-[color:var(--text-muted)] flex items-center justify-between">
                               <span>Trạng thái:</span>
                               <span className="text-[color:var(--text-2)]">
-                                {isPending && '⏳ Đang chờ Admin duyệt'}
-                                {isApproved && (reg.confirmedByOwner ? '✅ Đã xác nhận tham gia' : '⚠️ Cần xác nhận tham gia')}
-                                {isConfirmed && '🏆 Đã chốt danh sách'}
-                                {isRejected && '❌ Đăng ký bị từ chối'}
+                                {group.status === 'PENDING_APPROVAL' && 'Đang chờ Admin phân bổ'}
+                                {group.status === 'APPROVED' && (confirmableReg ? 'Cần xác nhận tham gia vòng đã xếp' : 'Đã được xếp vòng đua')}
+                                {group.status === 'CONFIRMED' && 'Đã chốt danh sách'}
+                                {group.status === 'REJECTED' && 'Đăng ký bị từ chối'}
                               </span>
                             </div>
 
-                            {isRejected && reg.rejectionReason && (
-                              <div className="mt-2 text-[10px] font-bold px-2.5 py-1.5 rounded-lg text-red-400 bg-red-500/10 border border-red-500/20 max-w-full truncate" title={reg.rejectionReason}>
-                                Lý do: {reg.rejectionReason}
-                              </div>
-                            )}
-
-                            {isApproved && !reg.confirmedByOwner && (
-                              <button onClick={() => handleConfirmRace(reg.horseId, reg.race.id)} className="hm-btn-cta mt-3 w-full text-xs py-2 hm-attention-pulse">
+                            {confirmableReg && (
+                              <button onClick={() => handleConfirmRace(confirmableReg.horseId, confirmableReg.race.id)} className="hm-btn-cta mt-3 w-full text-xs py-2 hm-attention-pulse">
                                 <Check className="w-3.5 h-3.5 mr-1" /> Xác Nhận Tham Gia
                               </button>
                             )}

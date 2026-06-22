@@ -330,9 +330,11 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
         setReferees(refList)
         setRaces(allRaces)
       } else if (activeTab === 'registrations') {
-        const [list, hList] = await Promise.all([
+        const [list, hList, tList, rList] = await Promise.all([
           getRaceRegistrations(),
-          getAdminHorses()
+          getAdminHorses(),
+          getTournaments(),
+          getRaces()
         ])
         const ownerMap: Record<string, { fullName?: string; phone?: string }> = {}
         hList.forEach((h) => {
@@ -355,6 +357,8 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
         })
         setRegistrations(sortedRegs)
         setRegistrationOwners(ownerMap)
+        setTournaments(tList)
+        setRaces(rList)
       } else if (activeTab === 'horses-jockeys') {
         const [hList, jList] = await Promise.all([
           getAdminHorses(),
@@ -608,6 +612,36 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
   // ---------------------------------------------------------
   // REGISTRATION ACTIONS
   // ---------------------------------------------------------
+  const getRegId = (reg: RaceRegistration) => String(reg.id || reg._id || '')
+
+  const getRegHorseId = (reg: RaceRegistration) => String(
+    typeof reg.horseId === 'object' ? reg.horseId?._id || reg.horseId?.id || '' : reg.horseId || ''
+  )
+
+  const getRegRaceId = (reg: RaceRegistration) => String(
+    typeof reg.raceId === 'object' ? reg.raceId?._id || reg.raceId?.id || '' : reg.raceId || ''
+  )
+
+  const getRaceForRegistration = (reg: RaceRegistration) => {
+    const raceId = getRegRaceId(reg)
+    return races.find((race) => String(race.id || race._id) === raceId)
+      || (typeof reg.raceId === 'object' ? reg.raceId as Race : undefined)
+  }
+
+  const getTournamentIdForRegistration = (reg: RaceRegistration) => {
+    const race = getRaceForRegistration(reg)
+    const tournament = race?.tournamentId as any
+    return String(tournament?._id || tournament?.id || tournament || '')
+  }
+
+  const getTournamentNameById = (tournamentId: string) => {
+    return tournaments.find((t) => String(t.id || t._id) === String(tournamentId))?.name || 'giải đấu'
+  }
+
+  const isPendingRegistration = (reg: RaceRegistration) => {
+    return reg.status === 'PENDING_APPROVAL' || (reg.status as string) === 'PENDING'
+  }
+
   const handleApproveReg = async (regId: string) => {
     try {
       await approveRaceRegistration(regId)
@@ -629,6 +663,120 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
       loadTabData(undefined, undefined, regId, undefined)
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Từ chối thất bại', 'error')
+    }
+  }
+
+  const handleAutoAssignTournamentRegistrations = async () => {
+    const pendingRegs = registrations.filter((reg) => {
+      if (!isPendingRegistration(reg)) return false
+      if (filterRegTourn === 'ALL') return true
+      return getTournamentIdForRegistration(reg) === filterRegTourn
+    })
+
+    if (pendingRegs.length === 0) {
+      showToast('Không có đăng ký giải nào đang chờ phân bổ', 'info')
+      return
+    }
+
+    const scopeName = filterRegTourn === 'ALL' ? 'tất cả giải đấu' : getTournamentNameById(filterRegTourn)
+    if (!window.confirm(`Tự phân bổ ${pendingRegs.length} lượt đăng ký đang chờ trong ${scopeName}?`)) return
+
+    const raceLoad = new Map<string, number>()
+    registrations.forEach((reg) => {
+      if (reg.status !== 'APPROVED' && reg.status !== 'CONFIRMED') return
+      const raceId = getRegRaceId(reg)
+      if (!raceId) return
+      raceLoad.set(raceId, (raceLoad.get(raceId) || 0) + 1)
+    })
+
+    const byTournament = new Map<string, RaceRegistration[]>()
+    pendingRegs.forEach((reg) => {
+      const tournamentId = getTournamentIdForRegistration(reg)
+      if (!tournamentId) return
+      if (!byTournament.has(tournamentId)) byTournament.set(tournamentId, [])
+      byTournament.get(tournamentId)!.push(reg)
+    })
+
+    let approvedCount = 0
+    let rejectedCount = 0
+    let skippedCount = 0
+    let lastChangedRegId: string | undefined
+
+    setLoading(true)
+    try {
+      for (const [, tournamentRegs] of byTournament) {
+        const byHorse = new Map<string, RaceRegistration[]>()
+        tournamentRegs.forEach((reg) => {
+          const horseId = getRegHorseId(reg)
+          if (!horseId) return
+          if (!byHorse.has(horseId)) byHorse.set(horseId, [])
+          byHorse.get(horseId)!.push(reg)
+        })
+
+        for (const [, horseRegs] of byHorse) {
+          const candidates = horseRegs
+            .map((reg) => ({ reg, race: getRaceForRegistration(reg) }))
+            .filter(({ race }) => race && !['COMPLETED', 'CANCELLED'].includes(String(race.status || '').toUpperCase()))
+            .sort((a, b) => {
+              const aRaceId = String(a.race?.id || a.race?._id || '')
+              const bRaceId = String(b.race?.id || b.race?._id || '')
+              const byLoad = (raceLoad.get(aRaceId) || 0) - (raceLoad.get(bRaceId) || 0)
+              if (byLoad !== 0) return byLoad
+              const aTime = a.race?.scheduledAt ? new Date(a.race.scheduledAt).getTime() : Number.MAX_SAFE_INTEGER
+              const bTime = b.race?.scheduledAt ? new Date(b.race.scheduledAt).getTime() : Number.MAX_SAFE_INTEGER
+              return aTime - bTime
+            })
+
+          const chosen = candidates.find(({ race }) => {
+            const raceId = String(race?.id || race?._id || '')
+            const maxHorses = Number(race?.maxHorses || 0)
+            return raceId && (!maxHorses || (raceLoad.get(raceId) || 0) < maxHorses)
+          })
+
+          if (!chosen) {
+            for (const reg of horseRegs) {
+              const regId = getRegId(reg)
+              if (!regId) {
+                skippedCount += 1
+                continue
+              }
+              await rejectRaceRegistration(regId, 'Không còn vòng đua phù hợp trong giải đấu')
+              lastChangedRegId = regId
+              rejectedCount += 1
+            }
+            continue
+          }
+
+          const chosenRegId = getRegId(chosen.reg)
+          const chosenRaceId = String(chosen.race?.id || chosen.race?._id || '')
+          const chosenRaceName = chosen.race?.name || chosen.reg.raceName || 'vòng đua phù hợp'
+
+          if (chosenRegId && chosenRaceId) {
+            await approveRaceRegistration(chosenRegId)
+            raceLoad.set(chosenRaceId, (raceLoad.get(chosenRaceId) || 0) + 1)
+            lastChangedRegId = chosenRegId
+            approvedCount += 1
+          } else {
+            skippedCount += 1
+          }
+
+          for (const reg of horseRegs) {
+            const regId = getRegId(reg)
+            if (!regId || regId === chosenRegId) continue
+            await rejectRaceRegistration(regId, `Đã được tự động phân bổ sang ${chosenRaceName}`)
+            lastChangedRegId = regId
+            rejectedCount += 1
+          }
+        }
+      }
+
+      const skippedText = skippedCount > 0 ? ` Bỏ qua ${skippedCount} đăng ký thiếu dữ liệu.` : ''
+      showToast(`Đã tự phân bổ: ${approvedCount} đăng ký được xếp vòng, ${rejectedCount} đăng ký trùng được loại.${skippedText}`, 'success')
+      await loadTabData(undefined, undefined, lastChangedRegId, undefined)
+      loadDashboardStats()
+    } catch (err: any) {
+      showToast(err.response?.data?.message || 'Không thể tự phân bổ đăng ký giải', 'error')
+      setLoading(false)
     }
   }
 
@@ -842,15 +990,7 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
     if (filterRegStatus !== 'ALL' && reg.status !== filterRegStatus) return false
     
     if (filterRegTourn !== 'ALL') {
-      const resolvedTournId = typeof reg.raceId === 'object'
-        ? (typeof reg.raceId?.tournamentId === 'object' ? reg.raceId?.tournamentId?._id || reg.raceId?.tournamentId?.id : reg.raceId?.tournamentId)
-        : (() => {
-            const raceObj = races.find(r => r.id === reg.raceId)
-            if (raceObj) {
-              return typeof raceObj.tournamentId === 'object' ? raceObj.tournamentId?._id || raceObj.tournamentId?.id : raceObj.tournamentId
-            }
-            return undefined
-          })()
+      const resolvedTournId = getTournamentIdForRegistration(reg)
       if (resolvedTournId !== filterRegTourn) return false
     }
 
@@ -867,11 +1007,17 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
     return true
   })
 
+  const pendingAutoAssignCount = registrations.filter((reg) => {
+    if (!isPendingRegistration(reg)) return false
+    if (filterRegTourn === 'ALL') return true
+    return getTournamentIdForRegistration(reg) === filterRegTourn
+  }).length
+
   const { toasts, show: showToast } = useToast()
 
   const tabHeaders: Record<string, { title: string; desc: string; icon: any }> = {
     tournaments: { title: 'Giải Đấu & Lịch Trình', desc: 'Quản lý thông tin giải đấu và xếp lịch các chặng đua.', icon: Trophy },
-    registrations: { title: 'Duyệt Đăng Ký Đua', desc: 'Duyệt hoặc từ chối đơn đăng ký tham gia thi đấu của ngựa.', icon: ClipboardList },
+    registrations: { title: 'Duyệt Đăng Ký Giải', desc: 'Tự phân bổ ngựa đã đăng ký giải vào các vòng đua phù hợp.', icon: ClipboardList },
     'horses-jockeys': { title: 'Ngựa & Jockeys', desc: 'Xét duyệt hồ sơ ngựa chiến mới và danh sách nài ngựa.', icon: Sparkles },
     'referee-results': { title: 'Trọng Tài & Kết Quả', desc: 'Chỉ định trọng tài điều khiển và công bố kết quả cuộc đua.', icon: Scale },
     predictions: { title: 'Dự Đoán (Bets)', desc: 'Theo dõi các hoạt động đặt cược và thanh quyết toán kết quả.', icon: Target }
@@ -1200,8 +1346,8 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
           --------------------------------------------------------- */}
       {activeTab === 'registrations' && (
         <div className="card">
-          <h2>Duyệt Đăng Ký Tham Gia Cuộc Đua</h2>
-          <p className="muted">Xem các yêu cầu đăng ký đua ngựa của chủ ngựa và tiến hành duyệt hoặc từ chối.</p>
+          <h2>Duyệt Đăng Ký Tham Gia Giải Đấu</h2>
+          <p className="muted">Xem các yêu cầu đăng ký giải của chủ ngựa và tự phân bổ ngựa vào vòng đua phù hợp.</p>
 
           {/* Filter Bar */}
           <div className="flex flex-wrap gap-4 items-end mb-6 bg-white/[0.01] border border-white/[0.03] p-4 rounded-xl">
@@ -1241,6 +1387,21 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                   <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
               </select>
+            </div>
+            <div className="form-group min-w-[180px]" style={{ margin: 0 }}>
+              <label className="text-xs font-bold mb-1.5 block">Phân bổ vòng đấu</label>
+              <button
+                type="button"
+                className="btn btnPrimary h-10 w-full"
+                disabled={pendingAutoAssignCount === 0 || loading}
+                onClick={handleAutoAssignTournamentRegistrations}
+                style={{
+                  opacity: pendingAutoAssignCount === 0 || loading ? 0.55 : 1,
+                  cursor: pendingAutoAssignCount === 0 || loading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Tự phân bổ ({pendingAutoAssignCount})
+              </button>
             </div>
           </div>
 

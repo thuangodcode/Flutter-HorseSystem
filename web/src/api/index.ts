@@ -197,6 +197,54 @@ export async function registerHorseRace(horseId: string, raceId: string): Promis
   return res.data
 }
 
+/**
+ * Đăng ký ngựa vào giải đấu (tournament).
+ * Lấy danh sách race SCHEDULED thuộc giải → đăng ký ngựa vào từng race.
+ * Admin sẽ phê duyệt và phân bổ ngựa vào các vòng đấu cụ thể sau.
+ */
+export async function registerHorseForTournament(horseId: string, tournamentId: string): Promise<{
+  success: { raceId: string; raceName: string }[]
+  alreadyRegistered: { raceId: string; raceName: string }[]
+  failed: { raceId: string; raceName: string; error: string }[]
+}> {
+  const hId = String(horseId || '').trim()
+  const tId = String(tournamentId || '').trim()
+
+  // Lấy danh sách race thuộc tournament
+  const racesRes = await http.get(`${BE_BASE_URL}/races?tournamentId=${tId}&limit=1000`)
+  const rawRaces = racesRes.data.races || racesRes.data.data || (Array.isArray(racesRes.data) ? racesRes.data : [])
+  const scheduledRaces = rawRaces.filter((r: any) => r.status === 'SCHEDULED')
+
+  if (scheduledRaces.length === 0) {
+    throw new Error('Giải đấu này hiện chưa có vòng đua nào được lên lịch.')
+  }
+
+  const success: { raceId: string; raceName: string }[] = []
+  const alreadyRegistered: { raceId: string; raceName: string }[] = []
+  const failed: { raceId: string; raceName: string; error: string }[] = []
+
+  await Promise.all(
+    scheduledRaces.map(async (race: any) => {
+      const rId = String(race._id || race.id || '').trim()
+      const raceName = race.name || 'Vòng đua'
+      try {
+        await http.post(`${BE_BASE_URL}/horses/${hId}/register-race`, { raceId: rId })
+        success.push({ raceId: rId, raceName })
+      } catch (err: any) {
+        const status = err?.response?.status
+        const msg = err?.response?.data?.message || ''
+        if (status === 409 || msg === 'HORSE_ALREADY_REGISTERED' || msg.toLowerCase().includes('already')) {
+          alreadyRegistered.push({ raceId: rId, raceName })
+        } else {
+          failed.push({ raceId: rId, raceName, error: msg || 'Lỗi không xác định' })
+        }
+      }
+    })
+  )
+
+  return { success, alreadyRegistered, failed }
+}
+
 export async function confirmRaceParticipation(horseId: string, raceId: string): Promise<any> {
   const hId = String(horseId || '').trim()
   const rId = String(raceId || '').trim()
