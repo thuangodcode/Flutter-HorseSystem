@@ -25,7 +25,7 @@ import { AnimatedTable, type SortDirection } from '@/components/ui/animated-tabl
 import {
   CalendarRange, Search, Trophy, Activity, FileCheck, Check, X, Users,
   TrendingUp, AlertTriangle, Edit, Trash2, Plus, ShieldCheck, RefreshCw,
-  Sparkles, Zap, Clock, MapPin, Star, Send, UserCheck, Award
+  Sparkles, Zap, Clock, MapPin, Star, Send, UserCheck
 } from 'lucide-react'
 import '@/styles/horse-management.css'
 
@@ -76,7 +76,16 @@ export function HorsesPage() {
   const PAGE_SIZE = 6
   
   const [jockeyPage, setJockeyPage] = useState(1)
-  const JOCKEY_PAGE_SIZE = 20
+  const JOCKEY_PAGE_SIZE = 10
+
+  const [tournamentPage, setTournamentPage] = useState(1)
+  const TOURNAMENT_PAGE_SIZE = 10
+
+  const [registrationPage, setRegistrationPage] = useState(1)
+  const REGISTRATION_PAGE_SIZE = 10
+
+  const [invitationPage, setInvitationPage] = useState(1)
+  const INVITATION_PAGE_SIZE = 10
 
   const [occupiedJockeys, setOccupiedJockeys] = useState<Set<string>>(new Set())
 
@@ -124,27 +133,44 @@ export function HorsesPage() {
   const [resultsPage, setResultsPage] = useState(1)
 
   // Filters for My Registrations tab
-  const [regFilterHorse, setRegFilterHorse] = useState<string>('')
-  const [regFilterStatus, setRegFilterStatus] = useState<string>('')
-  const [regFilterTournament, setRegFilterTournament] = useState<string>('')
+  const [regSearch, setRegSearch] = useState<string>('')
+
+  // Filter for Tournaments tab (Tab 2)
+  const [tournamentSearch, setTournamentSearch] = useState<string>('')
 
   // Filter for Invitations tab
-  const [invFilterStatus, setInvFilterStatus] = useState<string>('')
-  const [invFilterTournament, setInvFilterTournament] = useState<string>('')
+  const [inviteSearch, setInviteSearch] = useState<string>('')
 
-  const derivedTournaments = useMemo(() => {
-    const map = new Map<string, string>()
-    tournaments.forEach(t => {
-      const id = String(t.id || t._id || '')
-      if (id && t.name) map.set(id, t.name)
-    })
-    races.forEach(r => {
-      const t = r.tournamentId as any
-      if (t?.id && t?.name) map.set(t.id, t.name)
-      else if (t?._id && t?.name) map.set(t._id, t.name)
-    })
-    return Array.from(map.entries()).map(([id, name]) => ({ id, name }))
-  }, [races, tournaments])
+  // Modal states for Registration
+  const [showRegisterModal, setShowRegisterModal] = useState(false)
+  const [registerTargetTournament, setRegisterTargetTournament] = useState<any>(null)
+
+  // Modal states for Jockey Invitation
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [inviteTargetJockey, setInviteTargetJockey] = useState<any>(null)
+  const [inviteModalHorseId, setInviteModalHorseId] = useState('')
+  const [inviteModalRaceId, setInviteModalRaceId] = useState('')
+
+  const inviteModalRaces = useMemo(() => {
+    if (!inviteModalHorseId) return [];
+    return registrations
+      .filter((r: any) => String(r.horseId) === inviteModalHorseId && r.status === 'APPROVED' && r.race)
+      .map((r: any) => ({
+        raceId: String(r.race.id || r.race._id),
+        raceName: r.race.name
+      }))
+  }, [inviteModalHorseId, registrations]);
+
+  // Set default race when horse changes
+  useEffect(() => {
+    if (inviteModalRaces.length > 0 && !inviteModalRaces.some((r: any) => r.raceId === inviteModalRaceId)) {
+      setInviteModalRaceId(inviteModalRaces[0].raceId);
+    } else if (inviteModalRaces.length === 0) {
+      setInviteModalRaceId('');
+    }
+  }, [inviteModalRaces, inviteModalRaceId]);
+
+
 
   const handleResultsSort = (columnId: string, direction: SortDirection) => {
     setResultsSortColumn(columnId)
@@ -165,10 +191,20 @@ export function HorsesPage() {
   useEffect(() => { loadData() }, [activeTab])
 
   useEffect(() => {
-    if ((activeTab === 'invitations' || activeTab === 'hire-jockey') && selectedHorseId) {
+    if (activeTab === 'invitations') {
+      if (horses.length > 0) {
+        Promise.all(
+          horses.map(h => 
+            getHorseJockeys(String(h.id || h._id)).then(invs => invs.map((inv: any) => ({ ...inv, horseId: String(h.id || h._id) })))
+          )
+        ).then(results => setInvitations(results.flat())).catch(() => setInvitations([]))
+      } else {
+        setInvitations([])
+      }
+    } else if (activeTab === 'hire-jockey' && selectedHorseId) {
       getHorseJockeys(selectedHorseId).then(setInvitations).catch(() => setInvitations([]))
     }
-  }, [selectedHorseId, activeTab])
+  }, [selectedHorseId, activeTab, horses])
 
   // When horse changes in hire-jockey tab, load the races that horse is approved for
   useEffect(() => {
@@ -264,9 +300,11 @@ export function HorsesPage() {
           const iList = await getHorseJockeys(selectedHorseId).catch(() => { partialErrors.push('Không tải được lời mời'); return [] })
           setInvitations(iList)
         }
-      } else if (activeTab === 'invitations' && selectedHorseId) {
-        const iList = await getHorseJockeys(selectedHorseId).catch(() => { partialErrors.push('Không tải được lời mời'); return [] })
-        setInvitations(iList)
+      } else if (activeTab === 'invitations') {
+        const results = await Promise.all(
+          hList.map((h: any) => getHorseJockeys(String(h.id || h._id)).then(invs => invs.map((inv: any) => ({ ...inv, horseId: String(h.id || h._id) }))))
+        ).catch(() => { partialErrors.push('Không tải được lời mời'); return [] })
+        setInvitations(results?.flat() || [])
         setRaces(rList)
       } else {
         setRaces(rList)
@@ -355,12 +393,13 @@ export function HorsesPage() {
    * FE tự động đăng ký ngựa vào tất cả các Race SCHEDULED thuộc giải đó.
    * Admin sau đó sẽ phân bổ ngựa vào các vòng đấu cụ thể.
    */
-  const handleRegisterTournament = async (tournament: Tournament) => {
-    if (!selectedHorseId) return showToast('Vui lòng chọn ngựa', 'warning')
-    const horse = horses.find((h) => String(h.id || h._id) === selectedHorseId)
+  const handleRegisterTournament = async (tournament: Tournament, targetHorseId?: string) => {
+    const finalHorseId = targetHorseId || selectedHorseId
+    if (!finalHorseId) return showToast('Vui lòng chọn ngựa', 'warning')
+    const horse = horses.find((h) => String(h.id || h._id) === finalHorseId)
     if (horse?.status !== 'APPROVED') return showToast('Chỉ ngựa đã được Admin duyệt mới có thể đăng ký giải', 'warning')
     try {
-      const result = await registerHorseForTournament(selectedHorseId, String(tournament.id))
+      const result = await registerHorseForTournament(finalHorseId, String(tournament.id))
       const totalNew = result.success.length
       const totalAlready = result.alreadyRegistered.length
       const totalFailed = result.failed.length
@@ -378,12 +417,15 @@ export function HorsesPage() {
     }
   }
 
-  const handleInviteJockey = async (jockeyId: string, jockeyName: string) => {
-    if (!selectedHorseId) return showToast('Vui lòng chọn ngựa', 'warning')
-    if (!inviteRaceId) return showToast('Vui lòng chọn cuộc đua', 'warning')
+  const handleInviteJockey = async (jockeyId: string, jockeyName: string, targetHorseId?: string, targetRaceId?: string) => {
+    const finalHorseId = targetHorseId || inviteModalHorseId || selectedHorseId
+    const finalRaceId = targetRaceId || inviteModalRaceId || inviteRaceId
 
-    const cleanHorseId = String(selectedHorseId).trim()
-    const cleanRaceId = String(inviteRaceId).trim()
+    if (!finalHorseId) return showToast('Vui lòng chọn ngựa', 'warning')
+    if (!finalRaceId) return showToast('Vui lòng chọn cuộc đua', 'warning')
+
+    const cleanHorseId = String(finalHorseId).trim()
+    const cleanRaceId = String(finalRaceId).trim()
     const cleanJockeyId = String(jockeyId).trim()
 
     const horse = horses.find((h) => String(h.id || h._id).trim() === cleanHorseId)
@@ -455,10 +497,10 @@ export function HorsesPage() {
     }
   }
 
-  const handleConfirmJockey = async (jockeyId: string, raceId: string, jockeyName: string, inviteId: string) => {
-    if (!selectedHorseId) return
+  const handleConfirmJockey = async (horseId: string, jockeyId: string, raceId: string, jockeyName: string, inviteId: string) => {
+    if (!horseId) return
     try {
-      await confirmJockey(selectedHorseId, jockeyId, raceId)
+      await confirmJockey(horseId, jockeyId, raceId)
       showToast(`Đã chốt Jockey ${jockeyName} thành công!`)
       
       // OPTIMISTIC UPDATE: Update UI instantly without waiting for backend cache
@@ -470,7 +512,7 @@ export function HorsesPage() {
       }))
       
       setRegistrations(prev => prev.map(reg => {
-        if (String(reg.horseId).trim() === String(selectedHorseId).trim() && 
+        if (String(reg.horseId).trim() === String(horseId).trim() && 
             (String(reg.race?.id || reg.race?._id || reg.raceId || '').trim() === raceId || 
              String(reg.registrationId || reg.id || reg._id).trim() === raceId)) {
           return { ...reg, jockeyId: jockeyId }
@@ -481,12 +523,21 @@ export function HorsesPage() {
       // Wait briefly to allow backend DB transactions and hooks to finish
       await new Promise(resolve => setTimeout(resolve, 500))
       await loadData()
-      const newInvites = await getHorseJockeys(selectedHorseId)
+      
+      let newInvites: any[] = []
+      if (activeTab === 'invitations') {
+        const results = await Promise.all(
+          horses.map(h => getHorseJockeys(String(h.id || h._id)).then(invs => invs.map((inv: any) => ({ ...inv, horseId: String(h.id || h._id) }))))
+        )
+        newInvites = results.flat()
+      } else {
+        newInvites = await getHorseJockeys(horseId)
+      }
       
       // Merge optimistic status into fresh data in case of backend cache delay
       setInvitations(prevOpt => {
         return newInvites.map(newInv => {
-          const oldInv = prevOpt.find(i => i.id === newInv.id)
+          const oldInv = prevOpt.find(i => i.id === newInv.id || i._id === newInv._id)
           if (oldInv && oldInv.status === 'CONFIRMED' && newInv.status !== 'CONFIRMED') {
             return { ...newInv, status: 'CONFIRMED' }
           }
@@ -551,7 +602,7 @@ export function HorsesPage() {
       return String(b.id).localeCompare(String(a.id))
     })
 
-  const selectedHorseObj = horses.find((h) => String(h.id || h._id) === selectedHorseId)
+  // registrationsByTournament was removed
 
   const getRegistrationTournamentId = (reg: { race: Race }) => {
     const tournament = reg.race?.tournamentId as any
@@ -566,58 +617,40 @@ export function HorsesPage() {
 
   // Filtered registrations for My Registrations tab
   const filteredRegistrations = registrations.filter(reg => {
-    if (regFilterHorse && String(reg.horseId).trim() !== regFilterHorse) return false
-    if (regFilterStatus) {
-      const normalizedStatus = reg.status === 'PENDING_APPROVAL' ? 'PENDING' : reg.status
-      if (reg.status !== regFilterStatus && normalizedStatus !== regFilterStatus) return false
-    }
-    if (regFilterTournament) {
-      const tId = getRegistrationTournamentId(reg)
-      if (tId !== regFilterTournament) return false
+    if (regSearch) {
+      const search = regSearch.toLowerCase();
+      const horseName = (horses.find(h => String(h.id || h._id) === String(reg.horseId))?.name || '').toLowerCase();
+      const tId = getRegistrationTournamentId(reg);
+      const tournamentName = (tournaments.find(t => String(t.id || t._id) === tId)?.name || 'Giải đấu').toLowerCase();
+      if (!horseName.includes(search) && !tournamentName.includes(search)) return false;
     }
     return true
   })
 
   // Filtered invitations for Invitations tab
   const filteredInvitations = invitations.filter(inv => {
-    if (invFilterStatus && inv.status !== invFilterStatus) return false
-    if (invFilterTournament) {
-      const tId = inv.raceId?.tournamentId?.id || inv.raceId?.tournamentId?._id || inv.race?.tournamentId?.id || inv.race?.tournamentId?._id
-      if (tId && String(tId) !== invFilterTournament) return false
+    if (inviteSearch) {
+      const search = inviteSearch.toLowerCase();
+      const jockeyName = (inv.jockeyId?.userId?.fullName || inv.jockeyId?.userId?.name || inv.jockeyId?.fullName || inv.jockeyId?.name || 'Jockey').toLowerCase();
+      const raceName = (inv.raceId?.name || inv.race?.name || 'Vòng đua').toLowerCase();
+      if (!jockeyName.includes(search) && !raceName.includes(search)) return false;
     }
     return true
   })
 
   // Giải đấu hiển thị trong tab Đăng Ký Giải
   const filteredTournaments = tournaments
-
-  // registrationsByTournament: map tournamentId -> trạng thái đăng ký của selectedHorse
-  const registrationsByTournament = useMemo(() => {
-    if (!selectedHorseId) return {}
-    const map: Record<string, { status: string; raceCount: number; approvedCount: number; pendingCount: number; rejectedCount: number; confirmedCount: number }> = {}
-    registrations
-      .filter((r) => String(r.horseId).trim() === String(selectedHorseId).trim())
-      .forEach((r) => {
-        const tId = String(r.race?.tournamentId?.id || r.race?.tournamentId?._id || r.race?.tournamentId || '')
-        if (!tId) return
-        if (!map[tId]) map[tId] = { status: 'PENDING_APPROVAL', raceCount: 0, approvedCount: 0, pendingCount: 0, rejectedCount: 0, confirmedCount: 0 }
-        map[tId].raceCount++
-        const s = String(r.status || '').toUpperCase()
-        if (s === 'APPROVED') map[tId].approvedCount++
-        else if (s === 'PENDING' || s === 'PENDING_APPROVAL') map[tId].pendingCount++
-        else if (s === 'REJECTED') map[tId].rejectedCount++
-        else if (s === 'CONFIRMED') map[tId].confirmedCount++
-      })
-    // Tính status tổng hợp
-    Object.keys(map).forEach((tId) => {
-      const m = map[tId]
-      if (m.confirmedCount > 0) m.status = 'CONFIRMED'
-      else if (m.approvedCount > 0) m.status = 'APPROVED'
-      else if (m.pendingCount > 0) m.status = 'PENDING_APPROVAL'
-      else if (m.rejectedCount === m.raceCount) m.status = 'REJECTED'
+    .filter(t => {
+      if (tournamentSearch && !t.name.toLowerCase().includes(tournamentSearch.toLowerCase())) return false;
+      return true;
     })
-    return map
-  }, [registrations, selectedHorseId])
+    .sort((a, b) => {
+      const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
+      const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
+      return dateA - dateB;
+    });
+
+  // Cleaned up unused registrationsByTournament
 
   const registeredTournamentGroups = useMemo(() => {
     type Group = {
@@ -837,245 +870,109 @@ export function HorsesPage() {
             TAB 2: Đăng Ký Giải Đấu (Tournament Registration)
         ═══════════════════════════════════════════════════════════════════ */}
         <TabsContent value="race-registration">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            
-            {/* Left Sidebar Control Panel */}
-            <div className="lg:col-span-4 space-y-5 lg:sticky lg:top-[90px]">
-              
-              {/* Horse Selector Section */}
-              <div className="hm-glass-card p-5">
-                <div className="flex items-center justify-between gap-2 mb-4">
-                  <div className="flex items-center gap-2">
-                    <Trophy className="w-4 h-4 text-violet-400" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-[color:var(--text-muted)]">Chọn Ngựa Tham Gia</span>
-                  </div>
-                  {selectedHorseObj && selectedHorseObj.status !== 'APPROVED' && (
-                    <span className="hm-badge hm-badge-rejected text-[10px]"><AlertTriangle className="w-3 h-3" /> Chưa Duyệt</span>
-                  )}
-                </div>
-
-                <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-1 hm-sidebar-horses">
-                  {horses.map((h) => {
-                    const isActive = String(h.id || h._id) === selectedHorseId
-                    const sc = statusConfig(h.status || 'PENDING')
-                    return (
-                      <div
-                        key={h.id}
-                        className={`hm-horse-vertical-item ${isActive ? 'active' : ''}`}
-                        onClick={() => setSelectedHorseId(String(h.id || h._id))}
-                      >
-                        <img src={horseAvatarUrl(h.name)} alt={h.name} className="w-11 h-11 rounded-lg object-cover shrink-0 border border-white/10" />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-extrabold text-sm text-[color:var(--text)] truncate">{h.name}</div>
-                          <div className="text-[10.5px] font-medium text-[color:var(--text-muted)] truncate mb-0.5">{h.breed || 'Không rõ giống'}</div>
-                          <div className="flex items-center gap-1.5">
-                            <span className={`hm-status-dot ${sc.dotCls}`} style={{ width: 6, height: 6 }} />
-                            <span className="text-[10px] font-bold text-[color:var(--text-muted)]">{sc.label}</span>
-                          </div>
-                        </div>
-                        {isActive && (
-                          <div className="w-5 h-5 rounded-full bg-violet-500/20 flex items-center justify-center border border-violet-500/40 shrink-0">
-                            <Check className="w-3 h-3 text-violet-400" />
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between px-1 mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-6 rounded bg-violet-500" />
+                <h3 className="text-lg font-black text-[color:var(--text)] tracking-tight">Danh Sách Giải Đấu Đang Mở</h3>
               </div>
-
-              {/* Info Panel */}
-              <div className="hm-glass-card p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <Sparkles className="w-4 h-4 text-violet-400" />
-                  <span className="text-xs font-bold uppercase tracking-widest text-[color:var(--text-muted)]">Cách Thức Đăng Ký</span>
+              <div className="flex flex-wrap justify-end items-center gap-3">
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 z-10 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                  <input
+                    placeholder="Tìm theo tên giải đấu..."
+                    className="w-full h-8 pr-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
+                    style={{ paddingLeft: '2.5rem' }}
+                    value={tournamentSearch}
+                    onChange={(e) => { setTournamentSearch(e.target.value); setTournamentPage(1); }}
+                  />
                 </div>
-                <div className="space-y-2.5 text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>
-                  <div className="flex items-start gap-2">
-                    <span className="text-violet-400 font-black shrink-0 mt-0.5">1.</span>
-                    <span>Chọn ngựa đã được Admin duyệt hồ sơ (<span className="text-emerald-400 font-bold">APPROVED</span>)</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-violet-400 font-black shrink-0 mt-0.5">2.</span>
-                    <span>Chọn giải đấu muốn tham gia và nhấn <span className="text-violet-400 font-bold">Đăng Ký Tham Gia Giải</span></span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-violet-400 font-black shrink-0 mt-0.5">3.</span>
-                    <span>Admin sẽ xét duyệt và <span className="text-amber-400 font-bold">tự động phân bổ</span> ngựa vào các vòng đấu phù hợp</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-violet-400 font-black shrink-0 mt-0.5">4.</span>
-                    <span>Theo dõi trạng thái ở tab <span className="text-sky-400 font-bold">Đã Đăng Ký</span></span>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Right Showcase: Tournaments Grid */}
-            <div className="lg:col-span-8 space-y-4">
-              <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-6 rounded bg-violet-500" />
-                  <h3 className="text-lg font-black text-[color:var(--text)] tracking-tight">Danh Sách Giải Đấu Đang Mở</h3>
-                </div>
-                <div className="text-xs font-bold text-[color:var(--text-2)] bg-[var(--surface-3)] px-3 py-1.5 rounded-xl border border-[var(--border)]">
+                <div className="text-xs font-bold text-[color:var(--text-2)] bg-[var(--surface-3)] px-3 py-1.5 rounded-xl border border-[var(--border)] shrink-0">
                   Có <span className="text-violet-400 font-extrabold">{filteredTournaments.length}</span> giải đấu
                 </div>
               </div>
-
-              {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[1, 2, 3, 4].map((i) => <div key={i} className="hm-skeleton h-56 rounded-2xl" />)}
-                </div>
-              ) : filteredTournaments.length === 0 ? (
-                <div className="hm-empty">
-                  <div className="hm-empty-icon">🏆</div>
-                  <h3 className="text-lg font-bold text-[color:var(--text)] mb-1">Không có giải đấu nào đang mở</h3>
-                  <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Hiện tại chưa có giải đấu nào đang nhận đăng ký. Vui lòng quay lại sau.</p>
-                  {error && <div className="text-red-400 text-xs mt-3 font-semibold">{error}</div>}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredTournaments.map((t, idx) => {
-                    const tId = String(t.id)
-                    const regInfo = registrationsByTournament[tId]
-                    const isRegistered = !!regInfo
-                    const regStatus = regInfo?.status || ''
-
-                    // Status badge for the tournament registration
-                    let statusBadge: React.ReactNode = null
-                    if (!isRegistered) {
-                      statusBadge = null
-                    } else if (regStatus === 'CONFIRMED') {
-                      statusBadge = <span className="hm-badge hm-badge-confirmed text-[9.5px]"><Check className="w-3 h-3 mr-0.5" /> Đã chốt</span>
-                    } else if (regStatus === 'APPROVED') {
-                      statusBadge = <span className="hm-badge hm-badge-approved text-[9.5px]"><Check className="w-3 h-3 mr-0.5" /> Đã duyệt</span>
-                    } else if (regStatus === 'PENDING_APPROVAL') {
-                      statusBadge = <span className="hm-badge hm-badge-pending text-[9.5px]"><Clock className="w-3 h-3 mr-0.5" /> Chờ duyệt</span>
-                    } else if (regStatus === 'REJECTED') {
-                      statusBadge = <span className="hm-badge hm-badge-rejected text-[9.5px]"><X className="w-3 h-3 mr-0.5" /> Bị từ chối</span>
-                    }
-
-                    return (
-                      <ScrollReveal key={tId} direction="up" distance={16} delay={idx * 0.04}>
-                        <div className="hm-race-card-modern">
-                          {/* Header */}
-                          <div className="hm-race-card-badge-container">
-                            <span className="text-[9.5px] font-extrabold uppercase tracking-widest text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-md border border-violet-500/20">
-                              🏆 Giải Đấu
-                            </span>
-                            {isRegistered && statusBadge}
-                          </div>
-
-                          {/* Title */}
-                          <h4 className="hm-race-card-title truncate" title={t.name}>
-                            {t.name}
-                          </h4>
-
-                          {/* Description */}
-                          {t.description && (
-                            <p className="text-[11px] font-medium mb-3 line-clamp-2" style={{ color: 'var(--text-muted)' }}>{t.description}</p>
-                          )}
-
-                          {/* Stats Grid */}
-                          <div className="hm-race-card-stats">
-                            <div className="hm-race-card-stat-item">
-                              <div className="hm-race-card-stat-icon-wrapper">
-                                <CalendarRange className="w-3.5 h-3.5" />
-                              </div>
-                              <div className="hm-race-card-stat-text">
-                                <span className="hm-race-card-stat-label">Bắt đầu</span>
-                                <span className="hm-race-card-stat-value">{new Date(t.startDate).toLocaleDateString('vi-VN')}</span>
-                              </div>
-                            </div>
-
-                            <div className="hm-race-card-stat-item">
-                              <div className="hm-race-card-stat-icon-wrapper" style={{ color: '#06b6d4', background: 'rgba(6,182,212,0.1)', borderColor: 'rgba(6,182,212,0.15)' }}>
-                                <MapPin className="w-3.5 h-3.5" />
-                              </div>
-                              <div className="hm-race-card-stat-text">
-                                <span className="hm-race-card-stat-label">Địa điểm</span>
-                                <span className="hm-race-card-stat-value truncate">{t.venue || t.location || 'Chưa rõ'}</span>
-                              </div>
-                            </div>
-
-                            <div className="hm-race-card-stat-item" style={{ gridColumn: 'span 2' }}>
-                              <div className="hm-race-card-stat-icon-wrapper" style={{ color: '#fb923c', background: 'rgba(251,146,60,0.1)', borderColor: 'rgba(251,146,60,0.15)' }}>
-                                <Trophy className="w-3.5 h-3.5" />
-                              </div>
-                              <div className="hm-race-card-stat-text">
-                                <span className="hm-race-card-stat-label">Tổng giải thưởng</span>
-                                <span className="hm-race-card-stat-value text-amber-400 font-extrabold">
-                                  {t.prizePool?.toLocaleString('vi-VN')} {t.currency || 'VND'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Registration progress (if registered) */}
-                          {isRegistered && regInfo && (
-                            <div className="mt-3 p-2.5 rounded-xl bg-[var(--surface-3)] border border-[var(--border)] text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>
-                              <div className="flex justify-between items-center mb-1.5">
-                                <span>Trạng thái đăng ký vòng đua</span>
-                                <span className="text-violet-400">{regInfo.raceCount} vòng</span>
-                              </div>
-                              <div className="flex gap-1.5 flex-wrap">
-                                {regInfo.pendingCount > 0 && <span className="hm-badge hm-badge-pending text-[8px] py-0.5">{regInfo.pendingCount} chờ duyệt</span>}
-                                {regInfo.approvedCount > 0 && <span className="hm-badge hm-badge-approved text-[8px] py-0.5">{regInfo.approvedCount} đã duyệt</span>}
-                                {regInfo.confirmedCount > 0 && <span className="hm-badge hm-badge-confirmed text-[8px] py-0.5">{regInfo.confirmedCount} đã chốt</span>}
-                                {regInfo.rejectedCount > 0 && <span className="hm-badge hm-badge-rejected text-[8px] py-0.5">{regInfo.rejectedCount} từ chối</span>}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Action Button */}
-                          <div className="mt-auto pt-3 border-t border-[var(--border)] flex items-center justify-end w-full">
-                            {!selectedHorseId ? (
-                              <button disabled className="hm-btn-cta w-full" style={{ opacity: 0.3, cursor: 'not-allowed', background: 'var(--text-muted)', boxShadow: 'none' }}>
-                                Chọn ngựa trước
-                              </button>
-                            ) : selectedHorseObj && selectedHorseObj.status !== 'APPROVED' ? (
-                              <span className="hm-badge hm-badge-rejected text-[11px] w-full justify-center">
-                                <AlertTriangle className="w-3.5 h-3.5 mr-1" /> Yêu cầu ngựa đã duyệt
-                              </span>
-                            ) : !isRegistered ? (
-                              <button onClick={() => handleRegisterTournament(t)} className="hm-btn-cta w-full">
-                                <Zap className="w-4 h-4 mr-1" /> Đăng Ký Tham Gia Giải
-                              </button>
-                            ) : regStatus === 'PENDING_APPROVAL' ? (
-                              <div className="flex flex-col items-center justify-center w-full gap-1">
-                                <span className="hm-badge hm-badge-pending w-full justify-center"><Clock className="w-3.5 h-3.5 mr-1" /> Đang chờ Admin phân bổ vòng đua</span>
-                              </div>
-                            ) : regStatus === 'APPROVED' ? (
-                              <div className="flex flex-col items-center justify-center w-full gap-1">
-                                <span className="hm-badge hm-badge-approved w-full justify-center"><Check className="w-3.5 h-3.5 mr-1" /> Đã được xếp vào vòng đua</span>
-                              </div>
-                            ) : regStatus === 'CONFIRMED' ? (
-                              <div className="flex flex-col items-center justify-center w-full gap-1">
-                                <span className="hm-badge hm-badge-confirmed w-full justify-center"><Check className="w-3.5 h-3.5 mr-1" /> Đã chốt tham gia giải</span>
-                              </div>
-                            ) : regStatus === 'REJECTED' ? (
-                              <div className="flex flex-col items-center justify-center w-full gap-1">
-                                <span className="hm-badge hm-badge-rejected w-full justify-center"><X className="w-3.5 h-3.5 mr-1" /> Đăng ký bị từ chối</span>
-                                <button onClick={() => handleRegisterTournament(t)} className="hm-btn-cta text-xs py-1.5 px-3 w-full justify-center">
-                                  <Zap className="w-3.5 h-3.5 mr-1" /> Đăng ký lại
-                                </button>
-                              </div>
-                            ) : (
-                              <button onClick={() => handleRegisterTournament(t)} className="hm-btn-cta w-full">
-                                <Zap className="w-4 h-4 mr-1" /> Đăng Ký Tham Gia Giải
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </ScrollReveal>
-                    )
-                  })}
-                </div>
-              )}
             </div>
 
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[1, 2, 3, 4].map((i) => <div key={i} className="hm-skeleton h-20 rounded-xl" />)}
+              </div>
+            ) : filteredTournaments.length === 0 ? (
+              <div className="hm-empty">
+                <div className="hm-empty-icon">🏆</div>
+                <h3 className="text-lg font-bold text-[color:var(--text)] mb-1">Không có giải đấu nào đang mở</h3>
+                <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Hiện tại chưa có giải đấu nào đang nhận đăng ký. Vui lòng quay lại sau.</p>
+                {error && <div className="text-red-400 text-xs mt-3 font-semibold">{error}</div>}
+              </div>
+            ) : (
+              <div className="hm-glass-card overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-[color:var(--text-muted)]">
+                    <thead className="text-[10px] uppercase tracking-widest bg-[var(--surface-2)] text-[color:var(--text)] border-b border-[var(--border)]">
+                      <tr>
+                        <th className="px-5 py-4 font-black">Giải Đấu</th>
+                        <th className="px-5 py-4 font-black">Lịch Trình</th>
+                        <th className="px-5 py-4 font-black text-right">Tổng Giải Thưởng</th>
+                        <th className="px-5 py-4 font-black text-center w-[180px]">Đăng Ký</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {filteredTournaments.slice((tournamentPage - 1) * TOURNAMENT_PAGE_SIZE, tournamentPage * TOURNAMENT_PAGE_SIZE).map((t) => {
+                        const tId = String(t.id)
+                        return (
+                          <tr key={tId} className="hover:bg-[var(--surface-2)] transition-colors group">
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
+                                  <Trophy className="w-5 h-5 text-violet-400" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="font-extrabold text-[color:var(--text)] text-sm truncate">{t.name}</div>
+                                  <div className="text-[11px] font-medium mt-0.5 truncate max-w-[200px]" style={{ color: 'var(--text-muted)' }}>
+                                    {t.description || 'Chưa có mô tả'}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex flex-col gap-1 text-xs">
+                                <span className="flex items-center gap-1.5 font-bold text-[color:var(--text)]">
+                                  <CalendarRange className="w-3.5 h-3.5 text-emerald-400" /> {new Date(t.startDate).toLocaleDateString('vi-VN')}
+                                </span>
+                                <span className="flex items-center gap-1.5 font-medium truncate max-w-[150px]">
+                                  <MapPin className="w-3 h-3 text-sky-400" /> {t.venue || t.location || 'Chưa rõ địa điểm'}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 text-right">
+                              <div className="font-extrabold text-amber-400">
+                                {t.prizePool?.toLocaleString('vi-VN')} {t.currency || 'VND'}
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <button 
+                                onClick={() => {
+                                  setRegisterTargetTournament(t)
+                                  setShowRegisterModal(true)
+                                }} 
+                                className="hm-btn-cta w-full text-xs py-2 shadow-none"
+                              >
+                                <Zap className="w-3.5 h-3.5 mr-1" /> Đăng Ký
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            {filteredTournaments.length > TOURNAMENT_PAGE_SIZE && (
+              <div className="mt-6 flex justify-center">
+                <Pagination total={filteredTournaments.length} page={tournamentPage} pageSize={TOURNAMENT_PAGE_SIZE} onChange={setTournamentPage} />
+              </div>
+            )}
           </div>
         </TabsContent>
 
@@ -1083,210 +980,111 @@ export function HorsesPage() {
             TAB 3: Đã Đăng Ký (My Registrations)
         ═══════════════════════════════════════════════════════════════════ */}
         <TabsContent value="my-registrations">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            
-            {/* Left Sidebar Control Panel */}
-            <div className="lg:col-span-4 space-y-5 lg:sticky lg:top-[90px]">
-              
-              {/* Horse Selector Section */}
-              <div className="hm-glass-card p-5">
-                <div className="flex items-center justify-between gap-2 mb-4">
-                  <div className="flex items-center gap-2">
-                    <Trophy className="w-4 h-4 text-violet-400" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-[color:var(--text-muted)]">Lọc Theo Ngựa</span>
-                  </div>
+          <div className="space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between px-1 gap-4 mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-6 rounded bg-violet-500" />
+                <h3 className="text-lg font-black text-[color:var(--text)] tracking-tight">Lịch Sử Đăng Ký Của Bạn</h3>
+              </div>
+              <div className="flex flex-wrap justify-end items-center gap-3">
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 z-10 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                  <input
+                    placeholder="Tìm theo ngựa hoặc giải đấu..."
+                    className="w-full h-8 pr-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
+                    style={{ paddingLeft: '2.5rem' }}
+                    value={regSearch}
+                    onChange={(e) => { setRegSearch(e.target.value); setRegistrationPage(1); }}
+                  />
                 </div>
-
-                <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 hm-sidebar-horses">
-                  {/* Option for All Horses */}
-                  <div
-                    className={`hm-horse-vertical-item ${regFilterHorse === '' ? 'active' : ''}`}
-                    onClick={() => setRegFilterHorse('')}
-                  >
-                    <div className="w-11 h-11 rounded-lg bg-violet-500/10 flex items-center justify-center border border-violet-500/20 shrink-0">
-                      <Activity className="w-5 h-5 text-violet-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-extrabold text-sm text-[color:var(--text)] truncate">Tất cả ngựa</div>
-                      <div className="text-[10.5px] font-bold text-[color:var(--text-muted)]">Hiển thị mọi hồ sơ</div>
-                    </div>
-                    {regFilterHorse === '' && (
-                      <div className="w-5 h-5 rounded-full bg-violet-500/20 flex items-center justify-center border border-violet-500/40 shrink-0">
-                        <Check className="w-3 h-3 text-violet-400" />
-                      </div>
-                    )}
-                  </div>
-
-                  {horses.map((h) => {
-                    const isActive = String(h.id || h._id) === regFilterHorse
-                    return (
-                      <div
-                        key={h.id}
-                        className={`hm-horse-vertical-item ${isActive ? 'active' : ''}`}
-                        onClick={() => setRegFilterHorse(String(h.id || h._id))}
-                      >
-                        <img src={horseAvatarUrl(h.name)} alt={h.name} className="w-11 h-11 rounded-lg object-cover shrink-0 border border-white/10" />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-extrabold text-sm text-[color:var(--text)] truncate">{h.name}</div>
-                          <div className="text-[10.5px] font-medium text-[color:var(--text-muted)] truncate mb-0.5">{h.breed || 'Không rõ giống'}</div>
-                        </div>
-                        {isActive && (
-                          <div className="w-5 h-5 rounded-full bg-violet-500/20 flex items-center justify-center border border-violet-500/40 shrink-0">
-                            <Check className="w-3 h-3 text-violet-400" />
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
+                <div className="text-xs font-bold text-[color:var(--text-2)] bg-[var(--surface-3)] px-3 py-1.5 rounded-xl border border-[var(--border)] shrink-0">
+                  Có <span className="text-violet-400 font-extrabold">{registeredTournamentGroups.length}</span> đăng ký
                 </div>
               </div>
-
-              {/* Filters Panel */}
-              <div className="hm-glass-card p-5 space-y-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Award className="w-4 h-4 text-violet-400" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-[color:var(--text-muted)]">Giải Đấu</span>
-                  </div>
-                  <select 
-                    className="hm-sidebar-select" 
-                    value={regFilterTournament} 
-                    onChange={(e) => setRegFilterTournament(e.target.value)}
-                  >
-                    <option value="">🏆 Tất cả giải đấu</option>
-                    {derivedTournaments.map((t) => (
-                      <option key={t.id} value={t.id}>🏁 {t.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Clock className="w-4 h-4 text-violet-400" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-[color:var(--text-muted)]">Trạng Thái</span>
-                  </div>
-                  <select 
-                    className="hm-sidebar-select" 
-                    value={regFilterStatus} 
-                    onChange={(e) => setRegFilterStatus(e.target.value)}
-                  >
-                    <option value="">⏳ Tất cả trạng thái</option>
-                    <option value="PENDING">Chờ duyệt</option>
-                    <option value="APPROVED">Đã duyệt</option>
-                    <option value="CONFIRMED">Đã chốt</option>
-                    <option value="REJECTED">Bị từ chối</option>
-                  </select>
-                </div>
-              </div>
-
             </div>
 
-            {/* Right Panel: Content Grid */}
-            <div className="lg:col-span-8 space-y-4">
-              <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-6 rounded bg-violet-500" />
-                  <h3 className="text-lg font-black text-[color:var(--text)] tracking-tight">Lịch Sử Đăng Ký Của Bạn</h3>
-                </div>
-                <div className="text-xs font-bold text-[color:var(--text-2)] bg-[var(--surface-3)] px-3 py-1.5 rounded-xl border border-[var(--border)]">
-                  Có <span className="text-violet-400 font-extrabold">{registeredTournamentGroups.length}</span> giải đăng ký
-                </div>
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[1, 2, 3, 4].map((i) => <div key={i} className="hm-skeleton h-20 rounded-xl" />)}
               </div>
-
-              {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[1, 2, 3, 4].map((i) => <div key={i} className="hm-skeleton h-36 rounded-2xl" />)}
-                </div>
-              ) : registeredTournamentGroups.length === 0 ? (
-                <div className="hm-empty">
-                  <div className="hm-empty-icon">📋</div>
-                  <h3 className="text-lg font-bold text-[color:var(--text)] mb-1">Chưa có đăng ký nào</h3>
-                  <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Đăng ký ngựa vào giải đấu ở tab "Đăng Ký Giải" để xem tại đây.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {registeredTournamentGroups.map((group, idx) => {
-                    const sc = statusConfig(group.status === 'PENDING_APPROVAL' ? 'PENDING' : group.status)
-                    const confirmableReg = group.registrations.find((reg) => reg.status === 'APPROVED' && !reg.confirmedByOwner)
-                    const assignedRegs = group.registrations.filter((reg) => reg.status === 'APPROVED' || reg.status === 'CONFIRMED')
-                    const pendingRegs = group.registrations.filter((reg) => reg.status === 'PENDING' || reg.status === 'PENDING_APPROVAL')
-                    const rejectedRegs = group.registrations.filter((reg) => reg.status === 'REJECTED')
-
-                    return (
-                      <ScrollReveal key={group.key} direction="up" distance={16} delay={idx * 0.04}>
-                        <div className="hm-glass-card hm-glass-card-hover p-5 h-full flex flex-col justify-between">
-                          <div>
-                            <div className="flex items-start gap-4 mb-3">
-                              <img src={horseAvatarUrl(group.horseName)} alt={group.horseName} className="w-11 h-11 rounded-lg object-cover shrink-0 border border-white/10" />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-start gap-2 mb-1">
-                                  <h4 className="font-extrabold text-[color:var(--text)] text-sm truncate m-0">{group.horseName}</h4>
-                                  <span className={`hm-badge ${sc.badgeCls} text-[9px] shrink-0`}>
-                                    <span className={`hm-status-dot ${sc.dotCls}`} style={{ width: 6, height: 6 }} /> {sc.label}
-                                  </span>
+            ) : registeredTournamentGroups.length === 0 ? (
+              <div className="hm-empty">
+                <div className="hm-empty-icon">📋</div>
+                <h3 className="text-lg font-bold text-[color:var(--text)] mb-1">Chưa có đăng ký nào</h3>
+                <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Đăng ký ngựa vào giải đấu ở tab "Đăng Ký Giải" để xem tại đây.</p>
+              </div>
+            ) : (
+              <div className="hm-glass-card overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-[color:var(--text-muted)]">
+                    <thead className="text-[10px] uppercase tracking-widest bg-[var(--surface-2)] text-[color:var(--text)] border-b border-[var(--border)]">
+                      <tr>
+                        <th className="px-5 py-4 font-black">Ngựa</th>
+                        <th className="px-5 py-4 font-black">Giải Đấu</th>
+                        <th className="px-5 py-4 font-black text-center">Tiến Độ Vòng Đua</th>
+                        <th className="px-5 py-4 font-black text-center">Trạng Thái</th>
+                        <th className="px-5 py-4 font-black text-center w-[160px]">Thao Tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {registeredTournamentGroups.slice((registrationPage - 1) * REGISTRATION_PAGE_SIZE, registrationPage * REGISTRATION_PAGE_SIZE).map((group) => {
+                        const sc = statusConfig(group.status === 'PENDING_APPROVAL' ? 'PENDING' : group.status)
+                        const confirmableReg = group.registrations.find((reg) => reg.status === 'APPROVED' && !reg.confirmedByOwner)
+                        const assignedRegs = group.registrations.filter((reg) => reg.status === 'APPROVED' || reg.status === 'CONFIRMED')
+                        const pendingRegs = group.registrations.filter((reg) => reg.status === 'PENDING' || reg.status === 'PENDING_APPROVAL')
+                        
+                        return (
+                          <tr key={group.key} className="hover:bg-[var(--surface-2)] transition-colors group">
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                <img src={horseAvatarUrl(group.horseName)} alt={group.horseName} className="w-10 h-10 rounded-lg object-cover border border-white/10" />
+                                <div className="font-extrabold text-[color:var(--text)] text-sm">{group.horseName}</div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-1.5 font-bold text-violet-400">
+                                🏆 {group.tournamentName}
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex justify-center gap-2">
+                                <div className="p-1.5 rounded bg-[var(--surface-3)] border border-[var(--border)] text-center w-16">
+                                  <div className="text-[10px] font-bold text-[color:var(--text-2)]">{assignedRegs.length}</div>
+                                  <div className="text-[8px] font-extrabold uppercase text-[color:var(--text-muted)]">Đã xếp</div>
                                 </div>
-                                <div className="flex items-center gap-1 text-[11px] font-bold text-violet-400 truncate">
-                                  🏆 {group.tournamentName}
+                                <div className="p-1.5 rounded bg-[var(--surface-3)] border border-[var(--border)] text-center w-16">
+                                  <div className="text-[10px] font-bold text-[color:var(--text-2)]">{pendingRegs.length}</div>
+                                  <div className="text-[8px] font-extrabold uppercase text-[color:var(--text-muted)]">Chờ</div>
                                 </div>
                               </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-[var(--border)]">
-                              <div className="p-2 rounded-lg bg-[var(--surface-3)] border border-[var(--border)]">
-                                <span className="block text-[8px] font-extrabold uppercase text-[color:var(--text-muted)] tracking-wider">Đã xếp vòng</span>
-                                <span className="text-[10px] font-bold text-[color:var(--text-2)] truncate block">{assignedRegs.length} vòng đua</span>
-                              </div>
-                              <div className="p-2 rounded-lg bg-[var(--surface-3)] border border-[var(--border)]">
-                                <span className="block text-[8px] font-extrabold uppercase text-[color:var(--text-muted)] tracking-wider">Chờ phân bổ</span>
-                                <span className="text-[10px] font-bold text-[color:var(--text-2)] block">{pendingRegs.length} vòng đua</span>
-                              </div>
-                            </div>
-
-                            <div className="mt-3 space-y-1.5">
-                              {assignedRegs.map((reg) => (
-                                <div key={reg.registrationId || reg.race.id} className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                                  Được xếp vào: {reg.race.name} ({new Date(reg.race.scheduledAt).toLocaleDateString('vi-VN')})
-                                </div>
-                              ))}
-                              {pendingRegs.length > 0 && (
-                                <div className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
-                                  Đang chờ Admin tự phân bổ vòng đua
-                                </div>
-                              )}
-                              {rejectedRegs.length > 0 && assignedRegs.length === 0 && (
-                                <div className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
-                                  Đăng ký giải bị từ chối hoặc chưa được xếp vòng phù hợp
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Status detail + actions */}
-                          <div className="mt-4 pt-3 border-t border-[var(--border)]">
-                            <div className="text-[10px] font-bold text-[color:var(--text-muted)] flex items-center justify-between">
-                              <span>Trạng thái:</span>
-                              <span className="text-[color:var(--text-2)]">
-                                {group.status === 'PENDING_APPROVAL' && 'Đang chờ Admin phân bổ'}
-                                {group.status === 'APPROVED' && (confirmableReg ? 'Cần xác nhận tham gia vòng đã xếp' : 'Đã được xếp vòng đua')}
-                                {group.status === 'CONFIRMED' && 'Đã chốt danh sách'}
-                                {group.status === 'REJECTED' && 'Đăng ký bị từ chối'}
+                            </td>
+                            <td className="px-5 py-4 text-center">
+                              <span className={`hm-badge ${sc.badgeCls} text-[10px]`}>
+                                <span className={`hm-status-dot ${sc.dotCls}`} style={{ width: 6, height: 6 }} /> {sc.label}
                               </span>
-                            </div>
-
-                            {confirmableReg && (
-                              <button onClick={() => handleConfirmRace(confirmableReg.horseId, confirmableReg.race.id)} className="hm-btn-cta mt-3 w-full text-xs py-2 hm-attention-pulse">
-                                <Check className="w-3.5 h-3.5 mr-1" /> Xác Nhận Tham Gia
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </ScrollReveal>
-                    )
-                  })}
+                            </td>
+                            <td className="px-5 py-4">
+                              {confirmableReg ? (
+                                <button onClick={() => handleConfirmRace(confirmableReg.horseId, confirmableReg.race.id)} className="hm-btn-cta w-full text-[10px] py-2 px-1 shadow-none hm-attention-pulse">
+                                  <Check className="w-3.5 h-3.5 mr-1" /> Xác Nhận Tham Gia
+                                </button>
+                              ) : (
+                                <span className="text-[10px] font-medium text-[color:var(--text-muted)] block text-center w-full">Không có hành động</span>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              )}
-            </div>
-
+              </div>
+            )}
+            {registeredTournamentGroups.length > REGISTRATION_PAGE_SIZE && (
+              <div className="mt-6 flex justify-center">
+                <Pagination total={registeredTournamentGroups.length} page={registrationPage} pageSize={REGISTRATION_PAGE_SIZE} onChange={setRegistrationPage} />
+              </div>
+            )}
           </div>
         </TabsContent>
 
@@ -1294,493 +1092,336 @@ export function HorsesPage() {
             TAB 4: Tuyển Jockey (Hire Jockey)
         ═══════════════════════════════════════════════════════════════════ */}
         <TabsContent value="hire-jockey">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            
-            {/* Left Sidebar Control Panel */}
-            <div className="lg:col-span-4 space-y-5 lg:sticky lg:top-[90px]">
-              
-              {/* Horse Selector Section */}
-              <div className="hm-glass-card p-5">
-                <div className="flex items-center justify-between gap-2 mb-4">
-                  <div className="flex items-center gap-2">
-                    <Trophy className="w-4 h-4 text-violet-400" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-[color:var(--text-muted)]">Chọn Ngựa Tuyển Jockey</span>
-                  </div>
+          <div className="space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between px-1 gap-4 mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-6 rounded bg-violet-500" />
+                <h3 className="text-lg font-black text-[color:var(--text)] tracking-tight">Tìm Kiếm Jockey Chuyên Nghiệp</h3>
+              </div>
+              <div className="flex flex-wrap justify-end items-center gap-3">
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 z-10 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                  <input
+                    placeholder="Tìm theo tên kỵ sĩ..."
+                    className="w-full h-8 pr-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
+                    style={{ paddingLeft: '2.5rem' }}
+                    value={jockeySearch}
+                    onChange={(e) => { setJockeySearch(e.target.value); setJockeyPage(1); }}
+                  />
                 </div>
-
-                <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 hm-sidebar-horses">
-                  {horses.map((h) => {
-                    const isActive = String(h.id || h._id) === selectedHorseId
-                    const sc = statusConfig(h.status || 'PENDING')
-                    return (
-                      <div
-                        key={h.id}
-                        className={`hm-horse-vertical-item ${isActive ? 'active' : ''}`}
-                        onClick={() => setSelectedHorseId(String(h.id || h._id))}
-                      >
-                        <img src={horseAvatarUrl(h.name)} alt={h.name} className="w-11 h-11 rounded-lg object-cover shrink-0 border border-white/10" />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-extrabold text-sm text-[color:var(--text)] truncate">{h.name}</div>
-                          <div className="text-[10.5px] font-medium text-[color:var(--text-muted)] truncate mb-0.5">{h.breed || 'Không rõ giống'}</div>
-                          <div className="flex items-center gap-1.5">
-                            <span className={`hm-status-dot ${sc.dotCls}`} style={{ width: 6, height: 6 }} />
-                            <span className="text-[10px] font-bold text-[color:var(--text-muted)]">{sc.label}</span>
-                          </div>
-                        </div>
-                        {isActive && (
-                          <div className="w-5 h-5 rounded-full bg-violet-500/20 flex items-center justify-center border border-violet-500/40 shrink-0">
-                            <Check className="w-3 h-3 text-violet-400" />
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
+                <div className="text-xs font-bold text-[color:var(--text-2)] bg-[var(--surface-3)] px-3 py-1.5 rounded-xl border border-[var(--border)] shrink-0">
+                  Có <span className="text-violet-400 font-extrabold">{filteredJockeys.length}</span> kỵ sĩ
                 </div>
               </div>
-
-              {/* Controls Panel */}
-              <div className="hm-glass-card p-5 space-y-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Activity className="w-4 h-4 text-violet-400" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-[color:var(--text-muted)]">Cuộc Đua Đã Đăng Ký</span>
-                  </div>
-                  {loading ? (
-                    <div className="flex items-center text-xs font-semibold h-10 px-3 rounded-xl bg-slate-900/60 border border-white/10 text-white/40">Đang tải...</div>
-                  ) : !selectedHorseId ? (
-                    <div className="flex items-center text-xs font-semibold h-10 px-3 rounded-xl bg-slate-900/60 border border-white/10 text-white/40">Chọn ngựa trước</div>
-                  ) : horseRegisteredRaces.length === 0 ? (
-                    <div className="flex items-center text-xs font-bold h-auto px-3 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500">
-                      <AlertTriangle className="w-3.5 h-3.5 mr-1.5 shrink-0" /> Ngựa chưa có cuộc đua được duyệt
-                    </div>
-                  ) : (
-                    <select 
-                      className="hm-sidebar-select"
-                      value={inviteRaceId} 
-                      onChange={(e) => setInviteRaceId(e.target.value)}
-                    >
-                      <option value="">— Chọn cuộc đua —</option>
-                      {horseRegisteredRaces.map((r) => (
-                        <option key={r.raceId} value={r.raceId}>
-                          🏁 {r.raceName}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Search className="w-4 h-4 text-violet-400" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-[color:var(--text-muted)]">Tìm Jockey</span>
-                  </div>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                    <input
-                      placeholder="Tìm theo tên kỵ sĩ..."
-                      className="w-full h-10 pl-9 pr-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-slate-900/60 text-sm font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
-                      value={jockeySearch}
-                      onChange={(e) => { setJockeySearch(e.target.value); setJockeyPage(1); }}
-                    />
-                  </div>
-                </div>
-              </div>
-
             </div>
 
-            {/* Right Panel: Showcase Grid */}
-            <div className="lg:col-span-8 space-y-4">
-              <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-6 rounded bg-violet-500" />
-                  <h3 className="text-lg font-black text-[color:var(--text)] tracking-tight">Tìm Kiếm Jockey Chuyên Nghiệp</h3>
-                </div>
-                <div className="text-xs font-bold text-[color:var(--text-2)] bg-[var(--surface-3)] px-3 py-1.5 rounded-xl border border-[var(--border)]">
-                  Có <span className="text-violet-400 font-extrabold">{filteredJockeys.length}</span> kỵ sĩ trống lịch
-                </div>
+            {loading ? (
+              <div className="grid grid-cols-1 gap-4">
+                {[1, 2, 3, 4].map((i) => <div key={i} className="hm-skeleton h-20 rounded-xl" />)}
               </div>
+            ) : filteredJockeys.length === 0 ? (
+              <div className="hm-empty">
+                <div className="hm-empty-icon">🏇</div>
+                <h3 className="text-lg font-bold text-[color:var(--text)] mb-1">Không tìm thấy Jockey</h3>
+                <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Thử nhập tên tìm kiếm khác.</p>
+              </div>
+            ) : (
+              <div className="hm-glass-card overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-[color:var(--text-muted)]">
+                    <thead className="text-[10px] uppercase tracking-widest bg-[var(--surface-2)] text-[color:var(--text)] border-b border-[var(--border)]">
+                      <tr>
+                        <th className="px-5 py-4 font-black">Kỵ Sĩ</th>
+                        <th className="px-5 py-4 font-black text-center">Kinh Nghiệm</th>
+                        <th className="px-5 py-4 font-black text-center">Tỉ Lệ Thắng</th>
+                        <th className="px-5 py-4 font-black text-center">Trạng Thái</th>
+                        <th className="px-5 py-4 font-black text-center w-[160px]">Thao Tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {filteredJockeys.slice((jockeyPage - 1) * JOCKEY_PAGE_SIZE, jockeyPage * JOCKEY_PAGE_SIZE).map((j) => {
+                        const name = j.userId?.fullName || j.userId?.name || 'Jockey'
+                        const winRate = j.winRate ?? 0
+                        const isAvailable = j.status === 'AVAILABLE'
 
-              {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {[1, 2, 3, 4, 5, 6].map((i) => <div key={i} className="hm-skeleton h-56 rounded-2xl" />)}
-                </div>
-              ) : filteredJockeys.length === 0 ? (
-                <div className="hm-empty">
-                  <div className="hm-empty-icon">🏇</div>
-                  <h3 className="text-lg font-bold text-[color:var(--text)] mb-1">Không tìm thấy Jockey</h3>
-                  <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Thử nhập tên tìm kiếm khác hoặc đổi lịch cuộc đua.</p>
-                </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {filteredJockeys.slice((jockeyPage - 1) * JOCKEY_PAGE_SIZE, jockeyPage * JOCKEY_PAGE_SIZE).map((j, idx) => {
-                      const name = j.userId?.fullName || j.userId?.name || 'Jockey'
-                      const winRate = j.winRate ?? 0
-                      const isAvailable = j.status === 'AVAILABLE'
-
-                      const existingInvite = invitations.find((inv) => {
-                        const jockeyMatch = String(inv.jockeyId) === String(j.id) || String(inv.jockeyId) === String(j.userId?._id || j.userId?.id || j.userId);
-                        const raceMatch = String(inv.raceId) === String(inviteRaceId);
-                        return jockeyMatch && raceMatch;
-                      });
-
-                      let inviteState: 'none' | 'pending' | 'accepted' | 'rejected' | 'confirmed' | 'sent' = 'none'
-                      if (existingInvite) {
-                        if (existingInvite.status === 'PENDING') inviteState = 'pending'
-                        else if (existingInvite.status === 'ACCEPTED') inviteState = 'accepted'
-                        else if (existingInvite.status === 'REJECTED') inviteState = 'rejected'
-                        else if (existingInvite.status === 'CONFIRMED') inviteState = 'confirmed'
-                        else inviteState = 'sent'
-                      }
-
-                      return (
-                        <ScrollReveal key={j.id} direction="up" distance={16} delay={idx * 0.03}>
-                          <div className="hm-glass-card hm-glass-card-hover p-5 h-full flex flex-col justify-between items-center text-center">
-                            <div className="w-full flex flex-col items-center">
-                              {/* Avatar */}
-                              <div className={`hm-jockey-avatar ${isAvailable ? 'available' : 'unavailable'} mb-3`}>
-                                {name.slice(0, 2).toUpperCase()}
-                                <span className={`hm-status-dot ${isAvailable ? 'approved' : ''}`} style={{ position: 'absolute', bottom: 2, right: 2, width: 10, height: 10, border: '2px solid rgba(15,23,42,0.9)' }} />
+                        return (
+                          <tr key={j.id} className="hover:bg-[var(--surface-2)] transition-colors group">
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className={`hm-jockey-avatar ${isAvailable ? 'available' : 'unavailable'} !w-10 !h-10 !text-sm`}>
+                                  {name.slice(0, 2).toUpperCase()}
+                                  <span className={`hm-status-dot ${isAvailable ? 'approved' : ''}`} style={{ position: 'absolute', bottom: 0, right: 0, width: 8, height: 8, border: '1.5px solid rgba(15,23,42,0.9)' }} />
+                                </div>
+                                <div className="font-extrabold text-[color:var(--text)] text-sm">{name}</div>
                               </div>
-
-                              {/* Name + Status */}
-                              <div className="w-full min-w-0 mb-3">
-                                <h4 className="font-extrabold text-[color:var(--text)] text-sm truncate m-0 mb-0.5">{name}</h4>
-                                <span className={`hm-badge ${isAvailable ? 'hm-badge-approved' : 'hm-badge-muted'} text-[9px] py-0.5 px-2`}>
-                                  {isAvailable ? 'Sẵn sàng' : 'Bận'}
-                                </span>
+                            </td>
+                            <td className="px-5 py-4 text-center">
+                              <div className="inline-flex items-center gap-1.5 text-xs font-bold bg-[var(--surface-3)] px-2.5 py-1 rounded-md border border-[var(--border)]">
+                                <Star className="w-3.5 h-3.5 text-violet-400" />
+                                {j.experience} năm
                               </div>
-
-                              {/* Experience */}
-                              <div className="flex items-center justify-center gap-1.5 text-[11px] font-bold w-full mb-4" style={{ color: 'var(--text-muted)' }}>
-                                <Star className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-                                {j.experience} năm kinh nghiệm
-                              </div>
-
-                              {/* Win Rate */}
-                              <div className="w-full mb-3 pt-3 border-t border-[var(--border)]">
-                                <div className="flex justify-between text-[10px] font-bold mb-1">
-                                  <span style={{ color: 'var(--text-muted)' }}>Tỉ lệ thắng</span>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="w-full max-w-[120px] mx-auto">
+                                <div className="flex justify-between text-[10px] font-bold mb-1.5">
+                                  <span>{j.wins ?? 0}/{j.races ?? 0} trận</span>
                                   <span style={{ color: '#fbbf24' }}>{winRate}%</span>
                                 </div>
-                                <div className="hm-winrate-bar">
+                                <div className="hm-winrate-bar !h-1.5">
                                   <div className="hm-winrate-fill" style={{ width: `${winRate}%` }} />
                                 </div>
-                                <div className="text-[9px] font-bold mt-1.5 flex justify-between" style={{ color: 'var(--text-muted)' }}>
-                                  <span>{j.wins ?? 0}/{j.races ?? 0} thắng</span>
-                                  <span>Win Rate</span>
-                                </div>
                               </div>
-                            </div>
-
-                            {/* Invite Button / State Badge */}
-                            <div className="w-full mt-2 pt-3 border-t border-[var(--border)]">
-                              {inviteState === 'none' ? (
-                                <button
-                                  className="hm-btn-cta w-full text-xs py-2"
-                                  onClick={() => handleInviteJockey(j.id, name)}
-                                  disabled={!isAvailable}
-                                  style={!isAvailable ? { opacity: 0.3, cursor: 'not-allowed', background: 'var(--text-muted)', boxShadow: 'none' } : {}}
-                                >
-                                  <Send className="w-3.5 h-3.5 mr-1" /> Gửi Lời Mời
-                                </button>
-                              ) : inviteState === 'pending' ? (
-                                <span className="hm-badge hm-badge-pending w-full justify-center py-2 text-[10px]"><Clock className="w-3.5 h-3.5 mr-1" /> Chờ phản hồi</span>
-                              ) : inviteState === 'accepted' ? (
-                                <span className="hm-badge hm-badge-info w-full justify-center py-2 text-[10px]"><Check className="w-3.5 h-3.5 mr-1" /> Đã chấp nhận</span>
-                              ) : inviteState === 'rejected' ? (
-                                <span className="hm-badge hm-badge-rejected w-full justify-center py-2 text-[10px]"><X className="w-3.5 h-3.5 mr-1" /> Bị từ chối</span>
-                              ) : inviteState === 'confirmed' ? (
-                                <span className="hm-badge hm-badge-confirmed w-full justify-center py-2 text-[10px]"><UserCheck className="w-3.5 h-3.5 mr-1" /> Đã chốt</span>
-                              ) : (
-                                <span className="hm-badge hm-badge-muted w-full justify-center py-2 text-[10px]">Đã gửi lời mời</span>
-                              )}
-                            </div>
-                          </div>
-                        </ScrollReveal>
-                      )
-                    })}
-                  </div>
-                  {filteredJockeys.length > JOCKEY_PAGE_SIZE && (
-                    <div className="mt-8 flex justify-center">
-                      <Pagination total={filteredJockeys.length} page={jockeyPage} pageSize={JOCKEY_PAGE_SIZE} onChange={setJockeyPage} />
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
+                            </td>
+                            <td className="px-5 py-4 text-center">
+                              <span className={`hm-badge ${isAvailable ? 'hm-badge-approved' : 'hm-badge-muted'} text-[10px] py-1 px-2.5`}>
+                                {isAvailable ? 'Sẵn sàng' : 'Bận'}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4">
+                              <button
+                                className="hm-btn-cta w-full text-[10px] py-2 px-1 shadow-none"
+                                onClick={() => {
+                                  setInviteTargetJockey({ id: j.id, name })
+                                  setShowInviteModal(true)
+                                }}
+                                disabled={!isAvailable}
+                                style={!isAvailable ? { opacity: 0.3, cursor: 'not-allowed', background: 'var(--text-muted)', boxShadow: 'none' } : {}}
+                              >
+                                <Send className="w-3.5 h-3.5 mr-1" /> Mời Kỵ Sĩ
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            {filteredJockeys.length > JOCKEY_PAGE_SIZE && (
+              <div className="mt-6 flex justify-center">
+                <Pagination total={filteredJockeys.length} page={jockeyPage} pageSize={JOCKEY_PAGE_SIZE} onChange={setJockeyPage} />
+              </div>
+            )}
           </div>
         </TabsContent>
 
         {/* ═══════════════════════════════════════════════════════════════════
             TAB 5: Lời Mời Jockey (Jockey Invites)
         ═══════════════════════════════════════════════════════════════════ */}
+        {/* ═══════════════════════════════════════════════════════════════════
+            TAB 5: Lời Mời Jockey (Jockey Invites)
+        ═══════════════════════════════════════════════════════════════════ */}
         <TabsContent value="invitations">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            
-            {/* Left Sidebar Control Panel */}
-            <div className="lg:col-span-4 space-y-5 lg:sticky lg:top-[90px]">
-              
-              {/* Horse Selector Section */}
-              <div className="hm-glass-card p-5">
-                <div className="flex items-center justify-between gap-2 mb-4">
-                  <div className="flex items-center gap-2">
-                    <Trophy className="w-4 h-4 text-violet-400" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-[color:var(--text-muted)]">Chọn Ngựa Xem Lời Mời</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 hm-sidebar-horses">
-                  {horses.map((h) => {
-                    const isActive = String(h.id || h._id) === selectedHorseId
-                    const sc = statusConfig(h.status || 'PENDING')
-                    return (
-                      <div
-                        key={h.id}
-                        className={`hm-horse-vertical-item ${isActive ? 'active' : ''}`}
-                        onClick={() => setSelectedHorseId(String(h.id || h._id))}
-                      >
-                        <img src={horseAvatarUrl(h.name)} alt={h.name} className="w-11 h-11 rounded-lg object-cover shrink-0 border border-white/10" />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-extrabold text-sm text-[color:var(--text)] truncate">{h.name}</div>
-                          <div className="text-[10.5px] font-medium text-[color:var(--text-muted)] truncate mb-0.5">{h.breed || 'Không rõ giống'}</div>
-                          <div className="flex items-center gap-1.5">
-                            <span className={`hm-status-dot ${sc.dotCls}`} style={{ width: 6, height: 6 }} />
-                            <span className="text-[10px] font-bold text-[color:var(--text-muted)]">{sc.label}</span>
-                          </div>
-                        </div>
-                        {isActive && (
-                          <div className="w-5 h-5 rounded-full bg-violet-500/20 flex items-center justify-center border border-violet-500/40 shrink-0">
-                            <Check className="w-3 h-3 text-violet-400" />
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
+          <div className="space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between px-1 gap-4 mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-6 rounded bg-violet-500" />
+                <h3 className="text-lg font-black text-[color:var(--text)] tracking-tight">Trạng Thái Lời Mời Kỵ Sĩ</h3>
               </div>
-
-              {/* Controls Panel */}
-              <div className="hm-glass-card p-5 space-y-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Award className="w-4 h-4 text-violet-400" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-[color:var(--text-muted)]">Giải Đấu</span>
-                  </div>
-                  <select 
-                    className="hm-sidebar-select" 
-                    value={invFilterTournament} 
-                    onChange={(e) => setInvFilterTournament(e.target.value)}
-                  >
-                    <option value="">🏆 Tất cả giải đấu</option>
-                    {derivedTournaments.map((t) => (
-                      <option key={t.id} value={t.id}>🏁 {t.name}</option>
-                    ))}
-                  </select>
+              <div className="flex flex-wrap justify-end items-center gap-3">
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 z-10 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                  <input
+                    placeholder="Tìm theo kỵ sĩ hoặc giải đấu..."
+                    className="w-full h-8 pr-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
+                    style={{ paddingLeft: '2.5rem' }}
+                    value={inviteSearch}
+                    onChange={(e) => { setInviteSearch(e.target.value); setInvitationPage(1); }}
+                  />
                 </div>
-
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Clock className="w-4 h-4 text-violet-400" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-[color:var(--text-muted)]">Trạng Thái</span>
-                  </div>
-                  <select 
-                    className="hm-sidebar-select" 
-                    value={invFilterStatus} 
-                    onChange={(e) => setInvFilterStatus(e.target.value)}
-                  >
-                    <option value="">⏳ Tất cả trạng thái</option>
-                    <option value="PENDING">Chờ phản hồi</option>
-                    <option value="ACCEPTED">Đã chấp nhận</option>
-                    <option value="REJECTED">Từ chối</option>
-                    <option value="CONFIRMED">Đã chốt</option>
-                  </select>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Right Panel: Showcase Grid */}
-            <div className="lg:col-span-8 space-y-4">
-              <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-6 rounded bg-violet-500" />
-                  <h3 className="text-lg font-black text-[color:var(--text)] tracking-tight">Danh Sách Lời Mời Jockey</h3>
-                </div>
-                <div className="text-xs font-bold text-[color:var(--text-2)] bg-[var(--surface-3)] px-3 py-1.5 rounded-xl border border-[var(--border)]">
+                <div className="text-xs font-bold text-[color:var(--text-2)] bg-[var(--surface-3)] px-3 py-1.5 rounded-xl border border-[var(--border)] shrink-0">
                   Có <span className="text-violet-400 font-extrabold">{filteredInvitations.length}</span> lời mời
                 </div>
               </div>
-
-              {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {[1, 2, 3].map((i) => <div key={i} className="hm-skeleton h-56 rounded-2xl" />)}
-                </div>
-              ) : filteredInvitations.length === 0 ? (
-                <div className="hm-empty">
-                  <div className="hm-empty-icon">📭</div>
-                  <h3 className="text-lg font-bold text-[color:var(--text)] mb-1">Chưa có lời mời nào</h3>
-                  <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Chọn ngựa đã đăng ký giải để gửi lời mời ở tab "Tuyển Jockey".</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {filteredInvitations.map((inv, idx) => {
-                    // Calculate actualJockeyId
-                    let actualJockeyId = '';
-                    if (typeof inv.jockeyId === 'string') {
-                      actualJockeyId = inv.jockeyId.trim();
-                    } else if (typeof inv.jockeyId?._id) {
-                      actualJockeyId = String(inv.jockeyId._id).trim();
-                    } else if (typeof inv.jockeyId?.id) {
-                      actualJockeyId = String(inv.jockeyId.id).trim();
-                    } else if (typeof inv.jockey === 'string') {
-                      actualJockeyId = inv.jockey.trim();
-                    } else if (typeof inv.jockey?._id) {
-                      actualJockeyId = String(inv.jockey._id).trim();
-                    } else if (typeof inv.jockey?.id) {
-                      actualJockeyId = String(inv.jockey.id).trim();
-                    }
-                    const matchedJockey = jockeys.find(j => String(j.id || j._id).trim() === actualJockeyId);
-                    const jockeyName = matchedJockey?.userId?.fullName || matchedJockey?.userId?.name || inv.jockeyId?.fullName || inv.jockeyId?.name || inv.jockey?.fullName || inv.jockey?.name || 'Jockey';
-                    const winRate = matchedJockey?.winRate ?? inv.jockeyId?.winRate ?? 0;
-
-                    const statusMap: Record<string, { badgeCls: string; label: string; icon: any }> = {
-                      PENDING:   { badgeCls: 'hm-badge-pending', label: 'Chờ phản hồi', icon: <Clock className="w-3.5 h-3.5" /> },
-                      ACCEPTED:  { badgeCls: 'hm-badge-info', label: 'Đã chấp nhận', icon: <Check className="w-3.5 h-3.5" /> },
-                      REJECTED:  { badgeCls: 'hm-badge-rejected', label: 'Từ chối', icon: <X className="w-3.5 h-3.5" /> },
-                      CONFIRMED: { badgeCls: 'hm-badge-confirmed', label: 'Chốt thành công', icon: <UserCheck className="w-3.5 h-3.5" /> },
-                      OTHER_CONFIRMED: { badgeCls: 'hm-badge-muted', label: 'Đã chốt Jockey khác', icon: <X className="w-3.5 h-3.5" /> },
-                    }
-                    
-                    let inviteRaceId = '';
-                    if (inv.raceId) inviteRaceId = String(inv.raceId?._id || inv.raceId?.id || inv.raceId || '').trim();
-                    else if (inv.race) inviteRaceId = String(inv.race?._id || inv.race?.id || inv.race || '').trim();
-                    
-                    if (inviteRaceId) {
-                      const regFallback = registrations.find((r: any) => String(r.registrationId || r.id || r._id) === inviteRaceId);
-                      if (regFallback && regFallback.race) {
-                        inviteRaceId = String(regFallback.race.id || regFallback.race._id).trim();
-                      }
-                    } else if (inv.registrationId) {
-                      const matchedReg = registrations.find((r: any) => String(r.registrationId || r.id || r._id) === String(inv.registrationId));
-                      if (matchedReg?.race) inviteRaceId = String(matchedReg.race.id || matchedReg.race._id).trim();
-                    }
-
-                    const matchedRace = races.find(r => String(r.id || r._id).trim() === inviteRaceId)
-                    
-                    let displayRaceName = matchedRace?.name || inv.raceId?.name || inv.race?.name;
-                    if (!displayRaceName) {
-                      const horseRegistrations = registrations.filter(r => String(r.horseId) === String(selectedHorseId));
-                      displayRaceName = horseRegistrations.length > 0 ? horseRegistrations.map(r => r.race?.name).join(', ') : '—';
-                      if (!inviteRaceId && horseRegistrations.length > 0) {
-                        inviteRaceId = String(horseRegistrations[0].race?.id || horseRegistrations[0].race?._id || '').trim();
-                      }
-                    }
-                    
-                    const matchedReg = registrations.find(
-                      (reg: any) =>
-                        String(reg.horseId).trim() === String(selectedHorseId).trim() &&
-                        String(reg.race?.id || reg.race?._id || reg.raceId || '').trim() === inviteRaceId
-                    ) as any
-                    
-                    const rawJockeyId = matchedReg ? (matchedReg.jockeyId || '') : '';
-                    const regJockeyId = typeof rawJockeyId === 'object' ? String(rawJockeyId?._id || rawJockeyId?.id || '').trim() : String(rawJockeyId).trim();
-                    
-                    const currentJockeyUserId = matchedJockey ? String(matchedJockey.userId?._id || matchedJockey.userId?.id || matchedJockey.userId || '').trim() : ''
-                    const jockeyIdentifiers = new Set<string>();
-                    if (actualJockeyId) jockeyIdentifiers.add(actualJockeyId);
-                    if (currentJockeyUserId) jockeyIdentifiers.add(currentJockeyUserId);
-                    if (matchedJockey?.id) jockeyIdentifiers.add(String(matchedJockey.id).trim());
-                    if (matchedJockey?._id) jockeyIdentifiers.add(String(matchedJockey._id).trim());
-
-                    const isThisJockeyConfirmed = (regJockeyId && jockeyIdentifiers.has(regJockeyId)) || inv.status === 'CONFIRMED'
-                    
-                    const hasConfirmedInvite = invitations.some(i => {
-                      let iRaceId = '';
-                      if (i.raceId) iRaceId = String(i.raceId?._id || i.raceId?.id || i.raceId || '').trim();
-                      else if (i.race) iRaceId = String(i.race?._id || i.race?.id || i.race || '').trim();
-                      else if (i.registrationId) {
-                        const mReg = registrations.find((r: any) => String(r.registrationId || r.id || r._id) === String(i.registrationId));
-                        if (mReg?.race) iRaceId = String(mReg.race.id || mReg.race._id).trim();
-                      }
-                      
-                      if (!iRaceId) {
-                        const horseRegistrations = registrations.filter(r => String(r.horseId) === String(selectedHorseId));
-                        if (horseRegistrations.length > 0) {
-                          iRaceId = String(horseRegistrations[0].race?.id || horseRegistrations[0].race?._id || '').trim();
-                        }
-                      }
-                      
-                      return iRaceId === inviteRaceId && i.status === 'CONFIRMED';
-                    });
-
-                    const isRaceAlreadyConfirmed = !!regJockeyId || hasConfirmedInvite
-
-                    let displayStatus = inv.status || 'PENDING'
-                    if (isThisJockeyConfirmed) {
-                      displayStatus = 'CONFIRMED'
-                    } else if (isRaceAlreadyConfirmed && displayStatus !== 'REJECTED') {
-                      displayStatus = 'OTHER_CONFIRMED'
-                    }
-                    
-                    const sc = statusMap[displayStatus] ?? { badgeCls: 'hm-badge-muted', label: displayStatus, icon: null }
-
-                    return (
-                      <ScrollReveal key={inv._id || inv.id} direction="up" distance={16} delay={idx * 0.03}>
-                        <div className="hm-glass-card hm-glass-card-hover p-5 h-full flex flex-col justify-between items-center text-center">
-                          <div className="w-full flex flex-col items-center">
-                            {/* Avatar */}
-                            <div className="hm-jockey-avatar available mb-3">
-                              {jockeyName.slice(0, 2).toUpperCase()}
-                            </div>
-
-                            {/* Name + Title */}
-                            <div className="w-full min-w-0 mb-3">
-                              <h4 className="font-extrabold text-[color:var(--text)] text-sm truncate m-0 mb-0.5">{jockeyName}</h4>
-                              <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-violet-400 mt-1 truncate" title={displayRaceName}>
-                                🏁 {displayRaceName}
-                              </div>
-                            </div>
-
-                            {/* Win Rate */}
-                            <div className="w-full mb-3 pt-3 border-t border-[var(--border)]">
-                              <div className="flex justify-between text-[10px] font-bold mb-1">
-                                <span style={{ color: 'var(--text-muted)' }}>Tỉ lệ thắng</span>
-                                <span style={{ color: '#fbbf24' }}>{winRate}%</span>
-                              </div>
-                              <div className="hm-winrate-bar">
-                                <div className="hm-winrate-fill" style={{ width: `${winRate}%` }} />
-                              </div>
-                              <div className="text-[9px] font-bold mt-1.5 flex justify-between" style={{ color: 'var(--text-muted)' }}>
-                                <span>{matchedJockey?.experience ? `${matchedJockey.experience} năm KN` : 'Chưa rõ KN'}</span>
-                                <span>{matchedJockey?.wins ?? 0}/{matchedJockey?.races ?? 0} thắng</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Status + Action */}
-                          <div className="w-full mt-2 pt-3 border-t border-[var(--border)] flex flex-col gap-2">
-                            <span className={`hm-badge ${sc.badgeCls} w-full justify-center py-2 text-[10px]`}>{sc.icon} <span className="ml-1">{sc.label}</span></span>
-                            {displayStatus === 'ACCEPTED' && (
-                              <button
-                                disabled={isRaceAlreadyConfirmed}
-                                className={`hm-btn-cta w-full text-xs py-2 ${isRaceAlreadyConfirmed ? '' : 'hm-attention-pulse'}`}
-                                style={isRaceAlreadyConfirmed ? { opacity: 0.4, cursor: 'not-allowed', background: 'var(--text-muted)', boxShadow: 'none' } : {}}
-                                onClick={() => handleConfirmJockey(inv.jockeyId?._id || inv.jockeyId, inviteRaceId, jockeyName, String(inv.id || inv._id))}
-                              >
-                                {isRaceAlreadyConfirmed ? 'Đã chốt người khác' : <><UserCheck className="w-3.5 h-3.5 mr-1" /> Chốt Jockey</>}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </ScrollReveal>
-                    )
-                  })}
-                </div>
-              )}
             </div>
 
+            {loading ? (
+              <div className="grid grid-cols-1 gap-4">
+                {[1, 2, 3].map((i) => <div key={i} className="hm-skeleton h-20 rounded-xl" />)}
+              </div>
+            ) : filteredInvitations.length === 0 ? (
+              <div className="hm-empty">
+                <div className="hm-empty-icon">📭</div>
+                <h3 className="text-lg font-bold text-[color:var(--text)] mb-1">Chưa có lời mời nào</h3>
+                <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Chọn ngựa đã đăng ký giải để gửi lời mời ở tab "Tuyển Jockey".</p>
+              </div>
+            ) : (
+              <div className="hm-glass-card overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm text-[color:var(--text-muted)]">
+                    <thead className="text-[10px] uppercase tracking-widest bg-[var(--surface-2)] text-[color:var(--text)] border-b border-[var(--border)]">
+                      <tr>
+                        <th className="px-5 py-4 font-black">Kỵ Sĩ</th>
+                        <th className="px-5 py-4 font-black">Giải / Vòng Đua</th>
+                        <th className="px-5 py-4 font-black text-center">Tỉ Lệ Thắng</th>
+                        <th className="px-5 py-4 font-black text-center">Trạng Thái</th>
+                        <th className="px-5 py-4 font-black text-center w-[160px]">Thao Tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {filteredInvitations.slice((invitationPage - 1) * INVITATION_PAGE_SIZE, invitationPage * INVITATION_PAGE_SIZE).map((inv) => {
+                        // Calculate actualJockeyId
+                        let actualJockeyId = '';
+                        if (typeof inv.jockeyId === 'string') {
+                          actualJockeyId = inv.jockeyId.trim();
+                        } else if (typeof inv.jockeyId?._id) {
+                          actualJockeyId = String(inv.jockeyId._id).trim();
+                        } else if (typeof inv.jockeyId?.id) {
+                          actualJockeyId = String(inv.jockeyId.id).trim();
+                        } else if (typeof inv.jockey === 'string') {
+                          actualJockeyId = inv.jockey.trim();
+                        } else if (typeof inv.jockey?._id) {
+                          actualJockeyId = String(inv.jockey._id).trim();
+                        } else if (typeof inv.jockey?.id) {
+                          actualJockeyId = String(inv.jockey.id).trim();
+                        }
+                        const matchedJockey = jockeys.find(j => String(j.id || j._id).trim() === actualJockeyId);
+                        const jockeyName = matchedJockey?.userId?.fullName || matchedJockey?.userId?.name || inv.jockeyId?.fullName || inv.jockeyId?.name || inv.jockey?.fullName || inv.jockey?.name || 'Jockey';
+                        const winRate = matchedJockey?.winRate ?? inv.jockeyId?.winRate ?? 0;
+
+                        const statusMap: Record<string, { badgeCls: string; label: string; icon: any }> = {
+                          PENDING:   { badgeCls: 'hm-badge-pending', label: 'Chờ phản hồi', icon: <Clock className="w-3.5 h-3.5" /> },
+                          ACCEPTED:  { badgeCls: 'hm-badge-info', label: 'Đã chấp nhận', icon: <Check className="w-3.5 h-3.5" /> },
+                          REJECTED:  { badgeCls: 'hm-badge-rejected', label: 'Từ chối', icon: <X className="w-3.5 h-3.5" /> },
+                          CONFIRMED: { badgeCls: 'hm-badge-confirmed', label: 'Chốt thành công', icon: <UserCheck className="w-3.5 h-3.5" /> },
+                          OTHER_CONFIRMED: { badgeCls: 'hm-badge-muted', label: 'Đã chốt Jockey khác', icon: <X className="w-3.5 h-3.5" /> },
+                        }
+                        
+                        let inviteRaceId = '';
+                        if (inv.raceId) inviteRaceId = String(inv.raceId?._id || inv.raceId?.id || inv.raceId || '').trim();
+                        else if (inv.race) inviteRaceId = String(inv.race?._id || inv.race?.id || inv.race || '').trim();
+                        
+                        if (inviteRaceId) {
+                          const regFallback = registrations.find((r: any) => String(r.registrationId || r.id || r._id) === inviteRaceId);
+                          if (regFallback && regFallback.race) {
+                            inviteRaceId = String(regFallback.race.id || regFallback.race._id).trim();
+                          }
+                        } else if (inv.registrationId) {
+                          const matchedReg = registrations.find((r: any) => String(r.registrationId || r.id || r._id) === String(inv.registrationId));
+                          if (matchedReg?.race) inviteRaceId = String(matchedReg.race.id || matchedReg.race._id).trim();
+                        }
+
+                        const matchedRace = races.find(r => String(r.id || r._id).trim() === inviteRaceId)
+                        
+                        let displayRaceName = matchedRace?.name || inv.raceId?.name || inv.race?.name;
+                        if (!displayRaceName) {
+                          const horseRegistrations = registrations.filter(r => String(r.horseId) === String(selectedHorseId));
+                          displayRaceName = horseRegistrations.length > 0 ? horseRegistrations.map(r => r.race?.name).join(', ') : '—';
+                          if (!inviteRaceId && horseRegistrations.length > 0) {
+                            inviteRaceId = String(horseRegistrations[0].race?.id || horseRegistrations[0].race?._id || '').trim();
+                          }
+                        }
+                        
+                        const matchedReg = registrations.find(
+                          (reg: any) =>
+                            String(reg.horseId).trim() === String(inv.horseId).trim() &&
+                            String(reg.race?.id || reg.race?._id || reg.raceId || '').trim() === inviteRaceId
+                        ) as any
+                        
+                        const rawJockeyId = matchedReg ? (matchedReg.jockeyId || '') : '';
+                        const regJockeyId = typeof rawJockeyId === 'object' ? String(rawJockeyId?._id || rawJockeyId?.id || '').trim() : String(rawJockeyId).trim();
+                        
+                        const currentJockeyUserId = matchedJockey ? String(matchedJockey.userId?._id || matchedJockey.userId?.id || matchedJockey.userId || '').trim() : ''
+                        const jockeyIdentifiers = new Set<string>();
+                        if (actualJockeyId) jockeyIdentifiers.add(actualJockeyId);
+                        if (currentJockeyUserId) jockeyIdentifiers.add(currentJockeyUserId);
+                        if (matchedJockey?.id) jockeyIdentifiers.add(String(matchedJockey.id).trim());
+                        if (matchedJockey?._id) jockeyIdentifiers.add(String(matchedJockey._id).trim());
+
+                        const isThisJockeyConfirmed = (regJockeyId && jockeyIdentifiers.has(regJockeyId)) || inv.status === 'CONFIRMED'
+                        
+                        const hasConfirmedInvite = invitations.some(i => {
+                          let iRaceId = '';
+                          if (i.raceId) iRaceId = String(i.raceId?._id || i.raceId?.id || i.raceId || '').trim();
+                          else if (i.race) iRaceId = String(i.race?._id || i.race?.id || i.race || '').trim();
+                          else if (i.registrationId) {
+                            const mReg = registrations.find((r: any) => String(r.registrationId || r.id || r._id) === String(i.registrationId));
+                            if (mReg?.race) iRaceId = String(mReg.race.id || mReg.race._id).trim();
+                          }
+                          
+                          if (!iRaceId) {
+                            const horseRegistrations = registrations.filter(r => String(r.horseId) === String(selectedHorseId));
+                            if (horseRegistrations.length > 0) {
+                              iRaceId = String(horseRegistrations[0].race?.id || horseRegistrations[0].race?._id || '').trim();
+                            }
+                          }
+                          
+                          return iRaceId === inviteRaceId && i.status === 'CONFIRMED';
+                        });
+
+                        const isRaceAlreadyConfirmed = !!regJockeyId || hasConfirmedInvite
+
+                        let displayStatus = inv.status || 'PENDING'
+                        if (isThisJockeyConfirmed) {
+                          displayStatus = 'CONFIRMED'
+                        } else if (isRaceAlreadyConfirmed && displayStatus !== 'REJECTED') {
+                          displayStatus = 'OTHER_CONFIRMED'
+                        }
+                        
+                        const sc = statusMap[displayStatus] ?? { badgeCls: 'hm-badge-muted', label: displayStatus, icon: null }
+
+                        return (
+                          <tr key={inv._id || inv.id} className="hover:bg-[var(--surface-2)] transition-colors group">
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="hm-jockey-avatar available !w-10 !h-10 !text-sm">
+                                  {jockeyName.slice(0, 2).toUpperCase()}
+                                </div>
+                                <div className="font-extrabold text-[color:var(--text)] text-sm">{jockeyName}</div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-1.5 font-bold text-violet-400">
+                                🏁 {displayRaceName}
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 text-center">
+                              <div className="w-full max-w-[120px] mx-auto">
+                                <div className="flex justify-between text-[10px] font-bold mb-1.5">
+                                  <span>{matchedJockey?.wins ?? 0}/{matchedJockey?.races ?? 0} thắng</span>
+                                  <span style={{ color: '#fbbf24' }}>{winRate}%</span>
+                                </div>
+                                <div className="hm-winrate-bar !h-1.5">
+                                  <div className="hm-winrate-fill" style={{ width: `${winRate}%` }} />
+                                </div>
+                                <div className="text-[9px] font-bold mt-1.5 flex justify-center" style={{ color: 'var(--text-muted)' }}>
+                                  {matchedJockey?.experience ? `${matchedJockey.experience} năm KN` : 'Chưa rõ KN'}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 text-center">
+                              <span className={`hm-badge ${sc.badgeCls} text-[10px] py-1 px-2.5 inline-flex items-center`}>
+                                {sc.icon} <span className="ml-1">{sc.label}</span>
+                              </span>
+                            </td>
+                            <td className="px-5 py-4">
+                              {displayStatus === 'ACCEPTED' ? (
+                                <button
+                                  disabled={isRaceAlreadyConfirmed}
+                                  className={`hm-btn-cta w-full text-[10px] py-2 px-1 shadow-none ${isRaceAlreadyConfirmed ? '' : 'hm-attention-pulse'}`}
+                                  style={isRaceAlreadyConfirmed ? { opacity: 0.4, cursor: 'not-allowed', background: 'var(--text-muted)', boxShadow: 'none' } : {}}
+                                  onClick={() => handleConfirmJockey(inv.horseId, inv.jockeyId?._id || inv.jockeyId, inviteRaceId, jockeyName, String(inv.id || inv._id))}
+                                >
+                                  {isRaceAlreadyConfirmed ? 'Đã chốt người khác' : <><UserCheck className="w-3.5 h-3.5 mr-1" /> Chốt Jockey</>}
+                                </button>
+                              ) : (
+                                <span className="text-[10px] font-medium text-[color:var(--text-muted)] block text-center w-full">Không có hành động</span>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            {filteredInvitations.length > INVITATION_PAGE_SIZE && (
+              <div className="mt-6 flex justify-center">
+                <Pagination total={filteredInvitations.length} page={invitationPage} pageSize={INVITATION_PAGE_SIZE} onChange={setInvitationPage} />
+              </div>
+            )}
           </div>
         </TabsContent>
       </Tabs>
@@ -1975,6 +1616,160 @@ export function HorsesPage() {
           </div>
         </div>
       )}
+    {/* ═══════════════════════════════════════════════════════════════════════
+        Modal: Register Tournament
+    ═══════════════════════════════════════════════════════════════════════ */}
+    {showRegisterModal && registerTargetTournament && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)' }} onClick={() => setShowRegisterModal(false)}>
+        <div className="hm-glass-card w-full max-w-md" style={{ animation: 'hm-scale-in 0.25s ease-out' }} onClick={(e) => e.stopPropagation()}>
+          <div className="p-5 flex justify-between items-center border-b border-[var(--border)]">
+            <h2 className="text-lg font-black text-[color:var(--text)] flex items-center gap-2 m-0">
+              <Zap className="w-5 h-5 text-violet-400" /> Đăng Ký Tham Gia
+            </h2>
+            <button className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--text-muted)' }} onClick={() => setShowRegisterModal(false)}>
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="p-5">
+            <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
+              Giải đấu: <strong className="text-[color:var(--text)]">{registerTargetTournament.name}</strong>
+            </p>
+            <label className="text-xs font-bold uppercase mb-2 tracking-wider block" style={{ color: 'var(--text-muted)' }}>
+              Chọn ngựa thi đấu (chỉ ngựa đã được duyệt)
+            </label>
+            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 hm-sidebar-horses">
+              {horses.filter(h => h.status === 'APPROVED').length === 0 ? (
+                <div className="text-sm font-semibold p-4 text-center rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                  Bạn chưa có ngựa nào được duyệt để thi đấu.
+                </div>
+              ) : (
+                horses.filter(h => h.status === 'APPROVED').map((h) => {
+                  const isActive = String(h.id || h._id) === selectedHorseId
+                  const tId = String(registerTargetTournament.id)
+                  // Check if already registered
+                  const alreadyRegistered = registrations.some(r => String(r.horseId) === String(h.id || h._id) && String(r.race.tournamentId) === tId)
+                  
+                  return (
+                    <div
+                      key={h.id}
+                      className={`hm-horse-vertical-item ${isActive ? 'active' : ''} ${alreadyRegistered ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      onClick={() => { if (!alreadyRegistered) setSelectedHorseId(String(h.id || h._id)) }}
+                    >
+                      <img src={horseAvatarUrl(h.name)} alt={h.name} className="w-9 h-9 rounded-lg object-cover shrink-0 border border-white/10" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-extrabold text-sm text-[color:var(--text)] truncate">{h.name}</div>
+                        {alreadyRegistered && <div className="text-[10px] text-amber-400 font-bold">Đã gửi đăng ký giải này</div>}
+                      </div>
+                      {isActive && !alreadyRegistered && (
+                        <div className="w-5 h-5 rounded-full bg-violet-500/20 flex items-center justify-center border border-violet-500/40 shrink-0">
+                          <Check className="w-3 h-3 text-violet-400" />
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </div>
+          <div className="p-4 flex justify-end gap-3 border-t border-[var(--border)]">
+            <button type="button" onClick={() => setShowRegisterModal(false)} className="px-4 py-2 rounded-xl text-sm font-bold transition-all text-[var(--text-2)] hover:bg-[var(--surface-2)] bg-transparent">Hủy</button>
+            <button 
+              type="button" 
+              className="hm-btn-cta violet"
+              disabled={!selectedHorseId || registrations.some(r => String(r.horseId) === selectedHorseId && String(r.race.tournamentId) === String(registerTargetTournament.id))}
+              style={(!selectedHorseId || registrations.some(r => String(r.horseId) === selectedHorseId && String(r.race.tournamentId) === String(registerTargetTournament.id))) ? { opacity: 0.5, cursor: 'not-allowed', boxShadow: 'none' } : {}}
+              onClick={() => {
+                handleRegisterTournament(registerTargetTournament)
+                setShowRegisterModal(false)
+              }}
+            >
+              <Zap className="w-4 h-4 mr-1.5" /> Xác Nhận Đăng Ký
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ═══════════════════════════════════════════════════════════════════════
+        Modal: Invite Jockey
+    ═══════════════════════════════════════════════════════════════════════ */}
+    {showInviteModal && inviteTargetJockey && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)' }} onClick={() => setShowInviteModal(false)}>
+        <div className="hm-glass-card w-full max-w-md" style={{ animation: 'hm-scale-in 0.25s ease-out' }} onClick={(e) => e.stopPropagation()}>
+          <div className="p-5 flex justify-between items-center border-b border-[var(--border)]">
+            <h2 className="text-lg font-black text-[color:var(--text)] flex items-center gap-2 m-0">
+              <Send className="w-5 h-5 text-violet-400" /> Gửi Lời Mời Kỵ Sĩ
+            </h2>
+            <button className="p-1.5 rounded-lg transition-colors" style={{ color: 'var(--text-muted)' }} onClick={() => setShowInviteModal(false)}>
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="p-5 space-y-4">
+            <div>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                Kỵ sĩ: <strong className="text-[color:var(--text)]">{inviteTargetJockey.userId?.fullName || inviteTargetJockey.userId?.name || 'Jockey'}</strong>
+              </p>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold uppercase mb-2 tracking-wider block" style={{ color: 'var(--text-muted)' }}>
+                1. Chọn ngựa (đã duyệt giải)
+              </label>
+              <select 
+                className="w-full h-11 px-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-slate-900/60 text-sm font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
+                value={inviteModalHorseId}
+                onChange={(e) => setInviteModalHorseId(e.target.value)}
+              >
+                <option value="">— Chọn ngựa —</option>
+                {horses.filter(h => h.status === 'APPROVED').map(h => (
+                  <option key={h.id} value={String(h.id || h._id)}>{h.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {inviteModalHorseId && (
+              <div style={{ animation: 'hm-fade-in 0.3s ease-out' }}>
+                <label className="text-xs font-bold uppercase mb-2 tracking-wider block" style={{ color: 'var(--text-muted)' }}>
+                  2. Chọn vòng đua
+                </label>
+                {inviteModalRaces.length === 0 ? (
+                  <div className="text-xs font-semibold p-3 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                    Ngựa này chưa được xếp vào vòng đua nào. Vui lòng chọn ngựa khác.
+                  </div>
+                ) : (
+                  <select 
+                    className="w-full h-11 px-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-slate-900/60 text-sm font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
+                    value={inviteModalRaceId}
+                    onChange={(e) => setInviteModalRaceId(e.target.value)}
+                  >
+                    <option value="">— Chọn cuộc đua —</option>
+                    {inviteModalRaces.map((r: any) => (
+                      <option key={r.raceId} value={r.raceId}>🏁 {r.raceName}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="p-4 flex justify-end gap-3 border-t border-[var(--border)]">
+            <button type="button" onClick={() => setShowInviteModal(false)} className="px-4 py-2 rounded-xl text-sm font-bold transition-all text-[var(--text-2)] hover:bg-[var(--surface-2)] bg-transparent">Hủy</button>
+            <button 
+              type="button" 
+              className="hm-btn-cta violet"
+              disabled={!inviteModalHorseId || !inviteModalRaceId}
+              style={(!inviteModalHorseId || !inviteModalRaceId) ? { opacity: 0.5, cursor: 'not-allowed', boxShadow: 'none' } : {}}
+              onClick={() => {
+                handleInviteJockey(inviteTargetJockey.id, inviteTargetJockey.userId?.fullName || inviteTargetJockey.userId?.name || 'Jockey')
+                setShowInviteModal(false)
+              }}
+            >
+              <Send className="w-4 h-4 mr-1.5" /> Gửi Lời Mời
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     </div>
   )
 }
