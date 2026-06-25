@@ -187,6 +187,10 @@ export function RefereeRaceDetailPage() {
         try {
           const updatedRace = await getPublicRace(raceId)
           setRace(updatedRace)
+          // Ensure we keep the rankings we just submitted
+          setRankings(rankings)
+          // Update the current results table too
+          setResults(rankings as any)
         } catch (err) {
           console.error('Failed to refresh race data:', err)
         }
