@@ -2,7 +2,7 @@ import { http } from './http'
 import type { Invite, Prediction, Race, Role, Session, Tournament, Horse, User, RaceRegistration, Jockey, LeaderboardEntry, RaceHorseRegistration, Violation, NotificationItem, RaceReport } from '../types'
 
 // Khai báo Base URL cho Backend Node.js thực tế
-const BE_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://managerhourse-be.onrender.com'
+const BE_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
 
 // ============================================================================
 // 1. CHỨC NĂNG AUTHENTICATION & PROFILE
@@ -160,6 +160,12 @@ export async function getRaceStreamUrl(id: string): Promise<string | null> {
   }
 }
 
+export async function getHorsesByRace(raceId: string): Promise<any[]> {
+  const rId = String(raceId || '').trim()
+  const res = await http.get(`${BE_BASE_URL}/races/${rId}/horses`)
+  return res.data.horses || []
+}
+
 export async function getHorses(): Promise<Horse[]> {
   const res = await http.get(`${BE_BASE_URL}/horses/me`)
   const data = res.data.horses || res.data.data || (Array.isArray(res.data) ? res.data : [])
@@ -222,9 +228,10 @@ export async function registerHorseForTournament(horseId: string, tournamentId: 
   const racesRes = await http.get(`${BE_BASE_URL}/races?tournamentId=${tId}&limit=1000`)
   const rawRaces = racesRes.data.races || racesRes.data.data || (Array.isArray(racesRes.data) ? racesRes.data : [])
   const scheduledRaces = rawRaces.filter((r: any) => r.status === 'SCHEDULED')
+  const targetRaces = scheduledRaces.filter((r: any) => r.name?.toLowerCase().includes('vòng bảng'))
 
-  if (scheduledRaces.length === 0) {
-    throw new Error('Giải đấu này hiện chưa có vòng đua nào được lên lịch.')
+  if (targetRaces.length === 0) {
+    throw new Error('Giải đấu này hiện chưa có Vòng bảng để đăng ký.')
   }
 
   const success: { raceId: string; raceName: string }[] = []
@@ -232,7 +239,7 @@ export async function registerHorseForTournament(horseId: string, tournamentId: 
   const failed: { raceId: string; raceName: string; error: string }[] = []
 
   await Promise.all(
-    scheduledRaces.map(async (race: any) => {
+    targetRaces.map(async (race: any) => {
       const rId = String(race._id || race.id || '').trim()
       const raceName = race.name || 'Vòng đua'
       try {
@@ -595,12 +602,12 @@ export async function deleteTournament(id: string): Promise<any> {
 }
 
 export async function closeTournamentRegistration(id: string): Promise<any> {
-  const res = await http.patch(`${BE_BASE_URL}/admin/tournaments/${id}/close-registration`)
+  const res = await http.patch(`${BE_BASE_URL}/admin/tournaments/${id}/close-registration`, { trigger: 'manual' })
   return res.data
 }
 
-export async function generateTournamentBracket(id: string): Promise<any> {
-  const res = await http.post(`${BE_BASE_URL}/admin/tournaments/${id}/generate-bracket`)
+export async function generateTournamentBracket(id: string, pairingMethod: string = 'RANDOM', matchIntervalMinutes: number = 30): Promise<any> {
+  const res = await http.post(`${BE_BASE_URL}/admin/tournaments/${id}/generate-bracket`, { pairingMethod, matchIntervalMinutes })
   return res.data
 }
 
@@ -632,6 +639,13 @@ export async function updateRace(id: string, data: Partial<Race>): Promise<any> 
 
 export async function assignReferee(raceId: string, refereeId: string): Promise<any> {
   const res = await http.post(`${BE_BASE_URL}/admin/races/${raceId}/assign-referee`, { refereeId })
+  return res.data
+}
+
+export async function splitRaceIntoHeats(raceId: string, maxHorsesPerHeat?: number): Promise<any> {
+  const payload: any = {}
+  if (maxHorsesPerHeat) payload.maxHorsesPerHeat = maxHorsesPerHeat
+  const res = await http.post(`${BE_BASE_URL}/admin/races/${raceId}/split-heats`, payload)
   return res.data
 }
 

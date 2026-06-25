@@ -38,6 +38,7 @@ export type Tournament = {
   registeredCount?: number
   currentRound?: number
   totalRounds?: number
+  bracket?: any
 }
 
 export type Race = {

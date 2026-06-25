@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import type { Tournament, Race, LeaderboardEntry } from '../types'
 import { getPublicTournament, getPublicRaces, getTournamentLeaderboard, getTournamentBracket } from '@/api'
+import { TournamentBracketView } from '../components/TournamentBracketView'
 import { AnimatedTable } from '../components/ui/animated-table'
 import { Badge } from '@/components/ui/badge'
 import { getStatusClassName, getStatusLabel } from '@/lib/status'
@@ -268,7 +269,7 @@ export function TournamentDetailPage() {
 
           {/* Tab Content */}
           {activeTab === 'bracket' && (
-            <TournamentBracketView bracket={bracket} />
+            <TournamentBracketView bracket={bracket} races={races} />
           )}
           {activeTab === 'races' && (
             <AnimatedTable
@@ -304,50 +305,3 @@ export function TournamentDetailPage() {
   )
 }
 
-function TournamentBracketView({ bracket }: { bracket: any }) {
-  if (!bracket || !bracket.rounds || bracket.rounds.length === 0) {
-    return (
-      <div className="spectator-empty">
-        <div className="spectator-empty-icon">🌳</div>
-        <div className="text-base font-bold text-[var(--text)]">Sơ đồ chưa được tạo</div>
-        <p className="text-sm text-[var(--muted)] font-medium mt-1">Sơ đồ thi đấu sẽ được hiển thị sau khi đóng đăng ký hoặc phân chia bảng.</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="overflow-x-auto pb-8">
-      <div className="flex gap-12 min-w-max p-4 justify-center">
-        {bracket.rounds.map((round: any, rIdx: number) => (
-          <div key={rIdx} className="flex flex-col justify-around gap-6">
-            <div className="text-center font-bold text-[var(--text)] mb-2 uppercase tracking-widest text-xs opacity-70">
-              Vòng {rIdx + 1}
-            </div>
-            {round.matches.map((match: any, mIdx: number) => {
-              const h1Winner = match.winnerId && match.winnerId === match.horse1Id
-              const h2Winner = match.winnerId && match.winnerId === match.horse2Id
-              return (
-                <div key={mIdx} className="bg-[var(--surface-2)] border border-[var(--border)] rounded-xl p-3 w-56 shadow-md flex flex-col gap-2 relative transition-all hover:border-[var(--primary)]/50">
-                  <div className={`flex justify-between items-center text-sm px-2 py-1 rounded-md ${h1Winner ? 'bg-emerald-500/10 font-bold text-emerald-500' : 'text-[var(--text)]'}`}>
-                    <span className="truncate">{match.horse1Name || '---'}</span>
-                    {h1Winner && <span className="text-xs">🏆</span>}
-                  </div>
-                  <div className="h-[1px] w-full bg-[var(--border)]"></div>
-                  <div className={`flex justify-between items-center text-sm px-2 py-1 rounded-md ${h2Winner ? 'bg-emerald-500/10 font-bold text-emerald-500' : 'text-[var(--text)]'}`}>
-                    <span className="truncate">{match.horse2Name || '---'}</span>
-                    {h2Winner && <span className="text-xs">🏆</span>}
-                  </div>
-                  {match.raceId && (
-                    <Link to={`/races/${typeof match.raceId === 'object' ? match.raceId._id || match.raceId.id : match.raceId}`} className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-[var(--surface-strong)] border border-[var(--border)] text-[var(--muted)] text-[10px] px-3 py-1 rounded-full hover:bg-[var(--primary)] hover:text-white hover:border-[var(--primary)] transition-colors font-semibold uppercase tracking-wider whitespace-nowrap z-10 shadow-sm">
-                      Chi tiết Race
-                    </Link>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}

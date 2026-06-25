@@ -149,19 +149,53 @@ export function HorsesPage() {
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteTargetJockey, setInviteTargetJockey] = useState<any>(null)
   const [inviteModalHorseId, setInviteModalHorseId] = useState('')
+  const [inviteModalTournamentId, setInviteModalTournamentId] = useState('')
   const [inviteModalRaceId, setInviteModalRaceId] = useState('')
 
-  const inviteModalRaces = useMemo(() => {
+  const inviteModalTournaments = useMemo(() => {
     if (!inviteModalHorseId) return [];
+    const approvedRaces = registrations
+      .filter((r: any) => String(r.horseId) === inviteModalHorseId && ['APPROVED', 'CONFIRMED'].includes(r.status) && r.race)
+      .map((r: any) => r.race);
+    
+    const uniqueTournaments = new Map();
+    approvedRaces.forEach((race: any) => {
+       const tId = typeof race.tournamentId === 'object' ? String(race.tournamentId._id || race.tournamentId.id) : String(race.tournamentId);
+       if (!uniqueTournaments.has(tId)) {
+          const tNameObj = tournaments.find(t => String(t.id || t._id) === tId);
+          uniqueTournaments.set(tId, {
+            id: tId,
+            name: tNameObj?.name || 'Giải đấu ' + tId
+          });
+       }
+    });
+    return Array.from(uniqueTournaments.values());
+  }, [inviteModalHorseId, registrations, tournaments]);
+
+  const inviteModalRaces = useMemo(() => {
+    if (!inviteModalHorseId || !inviteModalTournamentId) return [];
     return registrations
-      .filter((r: any) => String(r.horseId) === inviteModalHorseId && r.status === 'APPROVED' && r.race)
+      .filter((r: any) => {
+        if (String(r.horseId) !== inviteModalHorseId || !['APPROVED', 'CONFIRMED'].includes(r.status) || !r.race) return false;
+        const tId = typeof r.race.tournamentId === 'object' ? String(r.race.tournamentId._id || r.race.tournamentId.id) : String(r.race.tournamentId);
+        return tId === inviteModalTournamentId;
+      })
       .map((r: any) => ({
         raceId: String(r.race.id || r.race._id),
         raceName: r.race.name
-      }))
-  }, [inviteModalHorseId, registrations]);
+      }));
+  }, [inviteModalHorseId, inviteModalTournamentId, registrations]);
 
-  // Set default race when horse changes
+  // Set default tournament when horse changes
+  useEffect(() => {
+    if (inviteModalTournaments.length > 0 && !inviteModalTournaments.some((t: any) => t.id === inviteModalTournamentId)) {
+      setInviteModalTournamentId(inviteModalTournaments[0].id);
+    } else if (inviteModalTournaments.length === 0) {
+      setInviteModalTournamentId('');
+    }
+  }, [inviteModalTournaments, inviteModalTournamentId]);
+
+  // Set default race when tournament changes
   useEffect(() => {
     if (inviteModalRaces.length > 0 && !inviteModalRaces.some((r: any) => r.raceId === inviteModalRaceId)) {
       setInviteModalRaceId(inviteModalRaces[0].raceId);
@@ -1707,7 +1741,7 @@ export function HorsesPage() {
           <div className="p-5 space-y-4">
             <div>
               <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                Kỵ sĩ: <strong className="text-[color:var(--text)]">{inviteTargetJockey.userId?.fullName || inviteTargetJockey.userId?.name || 'Jockey'}</strong>
+                Kỵ sĩ: <strong className="text-[color:var(--text)]">{inviteTargetJockey.name || 'Jockey'}</strong>
               </p>
             </div>
 
@@ -1728,25 +1762,51 @@ export function HorsesPage() {
             </div>
 
             {inviteModalHorseId && (
-              <div style={{ animation: 'hm-fade-in 0.3s ease-out' }}>
-                <label className="text-xs font-bold uppercase mb-2 tracking-wider block" style={{ color: 'var(--text-muted)' }}>
-                  2. Chọn vòng đua
-                </label>
-                {inviteModalRaces.length === 0 ? (
-                  <div className="text-xs font-semibold p-3 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                    Ngựa này chưa được xếp vào vòng đua nào. Vui lòng chọn ngựa khác.
+              <div style={{ animation: 'hm-fade-in 0.3s ease-out' }} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold uppercase mb-2 tracking-wider block" style={{ color: 'var(--text-muted)' }}>
+                    2. Chọn giải đấu
+                  </label>
+                  {inviteModalTournaments.length === 0 ? (
+                    <div className="text-xs font-semibold p-3 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                      Ngựa này chưa đăng ký giải đấu nào hoặc chưa được xếp lịch.
+                    </div>
+                  ) : (
+                    <select 
+                      className="w-full h-11 px-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-slate-900/60 text-sm font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
+                      value={inviteModalTournamentId}
+                      onChange={(e) => setInviteModalTournamentId(e.target.value)}
+                    >
+                      <option value="">— Chọn giải đấu —</option>
+                      {inviteModalTournaments.map((t: any) => (
+                        <option key={t.id} value={t.id}>🏆 {t.name}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                {inviteModalTournamentId && (
+                  <div style={{ animation: 'hm-fade-in 0.3s ease-out' }}>
+                    <label className="text-xs font-bold uppercase mb-2 tracking-wider block" style={{ color: 'var(--text-muted)' }}>
+                      3. Chọn vòng đua
+                    </label>
+                    {inviteModalRaces.length === 0 ? (
+                      <div className="text-xs font-semibold p-3 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                        Ngựa này chưa được xếp vào vòng đua nào trong giải.
+                      </div>
+                    ) : (
+                      <select 
+                        className="w-full h-11 px-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-slate-900/60 text-sm font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
+                        value={inviteModalRaceId}
+                        onChange={(e) => setInviteModalRaceId(e.target.value)}
+                      >
+                        <option value="">— Chọn cuộc đua —</option>
+                        {inviteModalRaces.map((r: any) => (
+                          <option key={r.raceId} value={r.raceId}>🏁 {r.raceName}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
-                ) : (
-                  <select 
-                    className="w-full h-11 px-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-slate-900/60 text-sm font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
-                    value={inviteModalRaceId}
-                    onChange={(e) => setInviteModalRaceId(e.target.value)}
-                  >
-                    <option value="">— Chọn cuộc đua —</option>
-                    {inviteModalRaces.map((r: any) => (
-                      <option key={r.raceId} value={r.raceId}>🏁 {r.raceName}</option>
-                    ))}
-                  </select>
                 )}
               </div>
             )}
@@ -1759,7 +1819,7 @@ export function HorsesPage() {
               disabled={!inviteModalHorseId || !inviteModalRaceId}
               style={(!inviteModalHorseId || !inviteModalRaceId) ? { opacity: 0.5, cursor: 'not-allowed', boxShadow: 'none' } : {}}
               onClick={() => {
-                handleInviteJockey(inviteTargetJockey.id, inviteTargetJockey.userId?.fullName || inviteTargetJockey.userId?.name || 'Jockey')
+                handleInviteJockey(inviteTargetJockey.id, inviteTargetJockey.name || 'Jockey')
                 setShowInviteModal(false)
               }}
             >

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useSession } from '../auth/SessionContext'
 import type { Race, RaceResult } from '../types'
-import { getPublicRace, getRaceHorses, getRaceResults, checkPredictionOpen, placePrediction } from '@/api'
+import { getPublicRace, getRaceHorses, getRaceResults, checkPredictionOpen, placePrediction, splitRaceIntoHeats } from '@/api'
 import { AnimatedTable, type ColumnDef } from '../components/ui/animated-table'
 
 function statusBadge(s?: string) {
@@ -64,6 +64,7 @@ export function RaceDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { session, balance, refreshBalance, updateBalance } = useSession()
   const isSpectator = session?.user.role === 'SPECTATOR'
+  const isAdmin = session?.user.role === 'ADMIN'
 
   const [race, setRace] = useState<Race | null>(null)
   const [horses, setHorses] = useState<any[]>([])
@@ -127,6 +128,28 @@ export function RaceDetailPage() {
     }, 15000)
     return () => clearInterval(timer)
   }, [race, id])
+
+  async function handleSplitHeats() {
+    const input = window.prompt('Nhập số lượng ngựa tối đa cho mỗi bảng đấu (để trống nếu muốn dùng mặc định của vòng đua này):', '')
+    if (input === null) return // cancelled
+    const maxHorses = input ? parseInt(input, 10) : undefined
+    
+    if (maxHorses && isNaN(maxHorses)) {
+      alert('Số lượng ngựa không hợp lệ!')
+      return
+    }
+
+    if (!window.confirm('Hành động này sẽ TÁCH vòng đua hiện tại thành nhiều bảng (Race) mới để chia đều ngựa, và xóa bỏ vòng gốc này. Bạn có chắc chắn?')) return
+    
+    try {
+      await splitRaceIntoHeats(id!, maxHorses)
+      alert('✅ Đã phân bổ và chia bảng thành công!')
+      // Redirect back to scheduling page since this race is deleted
+      window.location.href = '/app/admin/scheduling/tournaments'
+    } catch (e: any) {
+      alert(e?.response?.data?.message || 'Không thể chia bảng')
+    }
+  }
 
   async function handlePrediction() {
     if (!id || !selectedHorse || !betAmount) return
@@ -288,6 +311,11 @@ export function RaceDetailPage() {
           </div>
           <div className="flex items-center gap-8">
             {statusBadge(race.status)}
+            {isAdmin && race.status !== 'COMPLETED' && race.status !== 'CANCELLED' && (
+              <button className="btn" style={{ background: '#3b82f6', color: '#fff', border: 'none', fontWeight: 600 }} onClick={handleSplitHeats}>
+                ✨ Phân bổ / Chia bảng (Heats)
+              </button>
+            )}
             {isSpectator && predOpen && (
               <button className="btn btnPrimary" onClick={() => openPredictionModal()}>
                 🎯 Dự đoán kết quả

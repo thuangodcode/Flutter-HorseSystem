@@ -103,7 +103,9 @@ function getRoleNav(role: string): NavItem[] {
   }
   if (role === 'ADMIN') {
     return [
-      ...common,
+      { to: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { to: '/app/livestream', label: 'Livestream', icon: Tv2 },
+      { to: '/app/profile', label: 'Hồ sơ', icon: UserIcon },
       { to: '/app/admin/users', label: 'Tài khoản', icon: Users },
       {
         to: '/app/admin/scheduling',

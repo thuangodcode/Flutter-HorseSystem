@@ -16,9 +16,11 @@ import {
   ExternalLink,
   User as UserIcon,
   Calendar,
-  TrendingUp
+  TrendingUp,
+  X
 } from 'lucide-react'
 import type { Tournament, Race, User, RaceRegistration, Horse, Jockey, Prediction } from '../../types'
+import { TournamentBracketView } from '../../components/TournamentBracketView'
 import {
   getTournaments,
   createTournament,
@@ -99,6 +101,10 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
   const [referees, setReferees] = useState<User[]>([])
   const [predictions, setPredictions] = useState<Prediction[]>([])
   
+  // View Bracket Modal state
+  const [viewBracketTournament, setViewBracketTournament] = useState<Tournament | null>(null)
+  const [viewBracketRaces, setViewBracketRaces] = useState<Race[]>([])
+  
   // Filters for Predictions Tab
   const [filterPredStatus, setFilterPredStatus] = useState<string>('ALL')
   const [filterPredRace, setFilterPredRace] = useState<string>('ALL')
@@ -113,7 +119,14 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
   const [filterRegSearch, setFilterRegSearch] = useState<string>('')
   const [filterRegStatus, setFilterRegStatus] = useState<string>('ALL')
   const [filterRegTourn, setFilterRegTourn] = useState<string>('ALL')
+  const [filterRegRace, setFilterRegRace] = useState<string>('ALL')
   
+  // Draft auto-assign states
+  const [draftApprovals, setDraftApprovals] = useState<Record<string, { raceId: string, raceName: string }>>({})
+  const [draftRejections, setDraftRejections] = useState<Record<string, string>>({})
+  const [showConfirmDraftModal, setShowConfirmDraftModal] = useState(false)
+  const [confirmDraftLoading, setConfirmDraftLoading] = useState(false)
+
   // Registrations Table State
   const [regSortColumn, setRegSortColumn] = useState<string | undefined>()
   const [regSortDirection, setRegSortDirection] = useState<SortDirection>(null)
@@ -477,6 +490,36 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
       }
     }
 
+    if (tournForm.registrationOpenDate && tournForm.registrationCloseDate) {
+      const rStart = new Date(tournForm.registrationOpenDate).getTime()
+      const rEnd = new Date(tournForm.registrationCloseDate).getTime()
+      if (rEnd <= rStart) {
+        showToast('Thời gian đóng đăng ký phải sau thời gian mở đăng ký!', 'error')
+        return
+      }
+      if (tournForm.startDate && new Date(tournForm.startDate).getTime() < rEnd) {
+        showToast('Ngày bắt đầu giải đấu phải diễn ra sau khi đã đóng đăng ký!', 'error')
+        return
+      }
+    }
+
+    if (tournForm.minHorses < 4) {
+      showToast('Giải đấu cần tối thiểu 4 ngựa để có thể tổ chức thi đấu hợp lệ!', 'error')
+      return
+    }
+    if (tournForm.maxHorses > 64) {
+      showToast('Số lượng ngựa tối đa của một giải đấu không được vượt quá 64!', 'error')
+      return
+    }
+    if (tournForm.minHorses > tournForm.maxHorses) {
+      showToast('Số ngựa tối thiểu không được lớn hơn số ngựa tối đa!', 'error')
+      return
+    }
+    if (tournForm.prizePool < 0) {
+      showToast('Quỹ thưởng không hợp lệ!', 'error')
+      return
+    }
+
     try {
       if (selectedTourn) {
         await updateTournament(selectedTourn.id, tournForm as any)
@@ -535,8 +578,20 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
   }
 
   const handleCloseRegistration = async (id: string) => {
-    if (!window.confirm('Bạn có chắc muốn đóng cổng đăng ký cho giải đấu này?')) return
     try {
+      // Mới lấy danh sách tất cả registrations để đếm số CHỜ DUYỆT thuộc giải này
+      const regs = await getRaceRegistrations('PENDING')
+      const pendingCount = regs.filter((r: any) => 
+        (r.race?.tournamentId === id || r.race?.tournamentId?._id === id || r.race?.tournamentId?.id === id || r.race?.tournamentId === id)
+      ).length;
+
+      let msg = 'Bạn có chắc muốn đóng cổng đăng ký cho giải đấu này?';
+      if (pendingCount > 0) {
+        msg = `CẢNH BÁO: Giải đấu này đang có ${pendingCount} đăng ký CHỜ DUYỆT. Nếu đóng cổng, các đăng ký này sẽ bị TỪ CHỐI TỰ ĐỘNG (auto-reject). Bạn có chắc chắn muốn đóng đăng ký không?`;
+      }
+
+      if (!window.confirm(msg)) return
+
       await closeTournamentRegistration(id)
       setLastModifiedTournId(id)
       showToast('Đã đóng cổng đăng ký thành công')
@@ -549,7 +604,8 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
   const handleGenerateBracket = async (id: string) => {
     if (!window.confirm('Bạn có chắc muốn chia bảng tự động cho giải đấu này?')) return
     try {
-      await generateTournamentBracket(id)
+      const tourn = tournaments.find(t => t.id === id || (t as any)._id === id)
+      await generateTournamentBracket(id, tourn?.pairingMethod || 'RANDOM')
       setLastModifiedTournId(id)
       showToast('Đã chia bảng thành công')
       loadTabData(id, undefined, undefined, undefined)
@@ -593,6 +649,28 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
 
   const handleSaveRace = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (raceForm.maxHorses < 2) {
+      showToast('Một cuộc đua cần tối thiểu 2 ngựa tranh tài!', 'error')
+      return
+    }
+    if (raceForm.maxHorses > 20) {
+      showToast('Để đảm bảo an toàn trên đường đua, số lượng ngựa tối đa không được vượt quá 20!', 'error')
+      return
+    }
+    if (raceForm.distance < 100) {
+      showToast('Cự ly đua quá ngắn, tối thiểu phải là 100m!', 'error')
+      return
+    }
+    if (raceForm.distance > 5000) {
+      showToast('Cự ly đua quá dài, tối đa là 5000m!', 'error')
+      return
+    }
+    if (raceForm.prizeFirst < 0 || raceForm.prizeSecond < 0 || raceForm.prizeThird < 0) {
+      showToast('Giải thưởng không được là số âm!', 'error')
+      return
+    }
+
     try {
       if (selectedRace) {
         await updateRace(selectedRace.id, raceForm)
@@ -643,6 +721,24 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
 
   const handleSaveSched = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (schedForm.maxParticipants < 2) {
+      showToast('Cuộc đua cần tối thiểu 2 ngựa tranh tài!', 'error')
+      return
+    }
+    if (schedForm.maxParticipants > 20) {
+      showToast('Để đảm bảo an toàn, số lượng ngựa tối đa không được vượt quá 20!', 'error')
+      return
+    }
+    if (schedForm.distance < 100 || schedForm.distance > 5000) {
+      showToast('Cự ly đua phải từ 100m đến 5000m!', 'error')
+      return
+    }
+    if (schedForm.prizePool < 0) {
+      showToast('Quỹ thưởng không được là số âm!', 'error')
+      return
+    }
+
     try {
       await createSchedule(schedForm)
       const rId = schedForm.raceId
@@ -658,11 +754,6 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
   // ---------------------------------------------------------
   // REGISTRATION ACTIONS
   // ---------------------------------------------------------
-  const getRegId = (reg: RaceRegistration) => String(reg.id || reg._id || '')
-
-  const getRegHorseId = (reg: RaceRegistration) => String(
-    typeof reg.horseId === 'object' ? reg.horseId?._id || reg.horseId?.id || '' : reg.horseId || ''
-  )
 
   const getRegRaceId = (reg: RaceRegistration) => String(
     typeof reg.raceId === 'object' ? reg.raceId?._id || reg.raceId?.id || '' : reg.raceId || ''
@@ -680,13 +771,8 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
     return String(tournament?._id || tournament?.id || tournament || '')
   }
 
-  const getTournamentNameById = (tournamentId: string) => {
-    return tournaments.find((t) => String(t.id || t._id) === String(tournamentId))?.name || 'giải đấu'
-  }
 
-  const isPendingRegistration = (reg: RaceRegistration) => {
-    return reg.status === 'PENDING_APPROVAL' || (reg.status as string) === 'PENDING'
-  }
+
 
   const handleApproveReg = async (regId: string) => {
     try {
@@ -712,117 +798,101 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
     }
   }
 
-  const handleAutoAssignTournamentRegistrations = async () => {
-    const pendingRegs = registrations.filter((reg) => {
-      if (!isPendingRegistration(reg)) return false
-      if (filterRegTourn === 'ALL') return true
-      return getTournamentIdForRegistration(reg) === filterRegTourn
-    })
-
-    if (pendingRegs.length === 0) {
-      showToast('Không có đăng ký giải nào đang chờ phân bổ', 'info')
+  const handleAutoAssignTournamentRegistrations = () => {
+    if (filterRegTourn === 'ALL') {
+      showToast('Vui lòng chọn một giải đấu cụ thể ở bộ lọc trước khi Tự phân bổ!', 'warning')
       return
     }
 
-    const scopeName = filterRegTourn === 'ALL' ? 'tất cả giải đấu' : getTournamentNameById(filterRegTourn)
-    if (!window.confirm(`Tự phân bổ ${pendingRegs.length} lượt đăng ký đang chờ trong ${scopeName}?`)) return
+    const tourn = tournaments.find(t => t.id === filterRegTourn || (t as any)._id === filterRegTourn)
+    if (!tourn) {
+      showToast('Không tìm thấy thông tin giải đấu', 'error')
+      return
+    }
 
-    const raceLoad = new Map<string, number>()
-    registrations.forEach((reg) => {
-      if (reg.status !== 'APPROVED' && reg.status !== 'CONFIRMED') return
-      const raceId = getRegRaceId(reg)
-      if (!raceId) return
-      raceLoad.set(raceId, (raceLoad.get(raceId) || 0) + 1)
+    if (tourn.status === 'DRAFT' || tourn.status === 'PUBLISHED') {
+      showToast('Không thể phân bổ! Vui lòng đóng cổng đăng ký của giải đấu này trước.', 'warning')
+      return
+    }
+
+    if (['BRACKET_GENERATED', 'ONGOING', 'COMPLETED'].includes(tourn.status)) {
+      showToast('Giải đấu này đã được chia bảng hoặc đang diễn ra, không thể phân bổ lại!', 'error')
+      return
+    }
+
+    const eligibleRegs = registrations.filter((reg) => {
+      const tournId = getTournamentIdForRegistration(reg)
+      return tournId === filterRegTourn && (reg.status === 'APPROVED' || reg.status === 'CONFIRMED')
     })
 
-    const byTournament = new Map<string, RaceRegistration[]>()
-    pendingRegs.forEach((reg) => {
-      const tournamentId = getTournamentIdForRegistration(reg)
-      if (!tournamentId) return
-      if (!byTournament.has(tournamentId)) byTournament.set(tournamentId, [])
-      byTournament.get(tournamentId)!.push(reg)
+    if (eligibleRegs.length === 0) {
+      showToast('Không có ngựa nào đã được XÁC NHẬN/DUYỆT trong giải đấu này để chia bảng', 'info')
+      return
+    }
+
+    // Determine heats
+    const maxHorses = tourn.maxHorses || 8
+    let numHeats = Math.ceil(eligibleRegs.length / maxHorses)
+
+    // Theo logic giải đấu, nếu số lượng ngựa đủ để chia ít nhất 2 bảng (vd: 8 ngựa) thì nên chia 2 thay vì dồn vào 1 bảng duy nhất (Final luôn)
+    if (numHeats === 1 && eligibleRegs.length >= 4) {
+      numHeats = 2
+    }
+    
+    // Randomize horses
+    const shuffled = [...eligibleRegs].sort(() => Math.random() - 0.5)
+
+    const newDraftApprovals: Record<string, { raceId: string, raceName: string }> = {}
+
+    // Distribute evenly
+    const heats = Array.from({ length: numHeats }, (_, i) => ({
+      name: `Bảng ${String.fromCharCode(65 + i)}`,
+      horses: [] as RaceRegistration[]
+    }))
+
+    shuffled.forEach((reg, idx) => {
+      const heatIdx = idx % numHeats
+      heats[heatIdx].horses.push(reg)
     })
 
-    let approvedCount = 0
-    let rejectedCount = 0
-    let skippedCount = 0
-    let lastChangedRegId: string | undefined
+    heats.forEach(heat => {
+      heat.horses.forEach(reg => {
+        newDraftApprovals[reg.id] = { raceId: `draft-${heat.name}`, raceName: heat.name }
+      })
+    })
 
-    setLoading(true)
+    setDraftApprovals(newDraftApprovals)
+    setDraftRejections({})
+    showToast(`Đã chia ${eligibleRegs.length} ngựa vào ${numHeats} bảng dự kiến. Bấm Xác nhận để chốt!`, 'info')
+  }
+
+  const confirmDraftAssignments = async () => {
+    if (Object.keys(draftApprovals).length === 0) return
+    setConfirmDraftLoading(true)
     try {
-      for (const [, tournamentRegs] of byTournament) {
-        const byHorse = new Map<string, RaceRegistration[]>()
-        tournamentRegs.forEach((reg) => {
-          const horseId = getRegHorseId(reg)
-          if (!horseId) return
-          if (!byHorse.has(horseId)) byHorse.set(horseId, [])
-          byHorse.get(horseId)!.push(reg)
-        })
-
-        for (const [, horseRegs] of byHorse) {
-          const candidates = horseRegs
-            .map((reg) => ({ reg, race: getRaceForRegistration(reg) }))
-            .filter(({ race }) => race && !['COMPLETED', 'CANCELLED'].includes(String(race.status || '').toUpperCase()))
-            .sort((a, b) => {
-              const aRaceId = String(a.race?.id || a.race?._id || '')
-              const bRaceId = String(b.race?.id || b.race?._id || '')
-              const byLoad = (raceLoad.get(aRaceId) || 0) - (raceLoad.get(bRaceId) || 0)
-              if (byLoad !== 0) return byLoad
-              const aTime = a.race?.scheduledAt ? new Date(a.race.scheduledAt).getTime() : Number.MAX_SAFE_INTEGER
-              const bTime = b.race?.scheduledAt ? new Date(b.race.scheduledAt).getTime() : Number.MAX_SAFE_INTEGER
-              return aTime - bTime
-            })
-
-          const chosen = candidates.find(({ race }) => {
-            const raceId = String(race?.id || race?._id || '')
-            const maxHorses = Number(race?.maxHorses || 0)
-            return raceId && (!maxHorses || (raceLoad.get(raceId) || 0) < maxHorses)
-          })
-
-          if (!chosen) {
-            for (const reg of horseRegs) {
-              const regId = getRegId(reg)
-              if (!regId) {
-                skippedCount += 1
-                continue
-              }
-              await rejectRaceRegistration(regId, 'Không còn vòng đua phù hợp trong giải đấu')
-              lastChangedRegId = regId
-              rejectedCount += 1
-            }
-            continue
-          }
-
-          const chosenRegId = getRegId(chosen.reg)
-          const chosenRaceId = String(chosen.race?.id || chosen.race?._id || '')
-          const chosenRaceName = chosen.race?.name || chosen.reg.raceName || 'vòng đua phù hợp'
-
-          if (chosenRegId && chosenRaceId) {
-            await approveRaceRegistration(chosenRegId)
-            raceLoad.set(chosenRaceId, (raceLoad.get(chosenRaceId) || 0) + 1)
-            lastChangedRegId = chosenRegId
-            approvedCount += 1
-          } else {
-            skippedCount += 1
-          }
-
-          for (const reg of horseRegs) {
-            const regId = getRegId(reg)
-            if (!regId || regId === chosenRegId) continue
-            await rejectRaceRegistration(regId, `Đã được tự động phân bổ sang ${chosenRaceName}`)
-            lastChangedRegId = regId
-            rejectedCount += 1
-          }
-        }
+      // Group back into heats structure to send to BE
+      const heatsMap = new Map<string, string[]>() // raceName -> array of regIds
+      for (const [regId, data] of Object.entries(draftApprovals)) {
+        if (!heatsMap.has(data.raceName)) heatsMap.set(data.raceName, [])
+        heatsMap.get(data.raceName)!.push(regId)
+      }
+      
+      const payload = {
+        heats: Array.from(heatsMap.entries()).map(([name, regIds]) => ({ name, regIds }))
       }
 
-      const skippedText = skippedCount > 0 ? ` Bỏ qua ${skippedCount} đăng ký thiếu dữ liệu.` : ''
-      showToast(`Đã tự phân bổ: ${approvedCount} đăng ký được xếp vòng, ${rejectedCount} đăng ký trùng được loại.${skippedText}`, 'success')
-      await loadTabData(undefined, undefined, lastChangedRegId, undefined)
+      await http.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/admin/tournaments/${filterRegTourn}/generate-heats`, payload)
+      
+      showToast(`Đã chốt chia bảng thành công và xếp cổng!`, 'success')
+      setDraftApprovals({})
+      setDraftRejections({})
+      setShowConfirmDraftModal(false)
+      loadTabData(filterRegTourn, undefined, undefined, undefined)
       loadDashboardStats()
     } catch (err: any) {
-      showToast(err.response?.data?.message || 'Không thể tự phân bổ đăng ký giải', 'error')
-      setLoading(false)
+      showToast(err.response?.data?.message || 'Lỗi khi lưu bảng đấu', 'error')
+    } finally {
+      setConfirmDraftLoading(false)
     }
   }
 
@@ -883,7 +953,7 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
     setResultNotes('')
     try {
       // Get horses registered for this race
-      const res = await http.get(`${import.meta.env.VITE_API_BASE_URL || 'https://managerhourse-be.onrender.com'}/races/${race.id}/horses`)
+      const res = await http.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/races/${race.id}/horses`)
       const horsesList = res.data.horses || []
       setRaceHorses(horsesList)
 
@@ -1040,6 +1110,12 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
       if (resolvedTournId !== filterRegTourn) return false
     }
 
+    if (filterRegRace !== 'ALL') {
+      const draftApp = draftApprovals[reg.id || (reg as any)._id]
+      const raceName = draftApp ? draftApp.raceName : (reg.raceName || (typeof reg.raceId === 'object' ? reg.raceId?.name : ''))
+      if (raceName !== filterRegRace) return false
+    }
+
     if (filterRegSearch.trim() !== '') {
       const query = filterRegSearch.toLowerCase()
       const horseName = (reg.horseName || (typeof reg.horseId === 'object' ? reg.horseId?.name : '') || '').toLowerCase()
@@ -1052,12 +1128,6 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
     }
     return true
   })
-
-  const pendingAutoAssignCount = registrations.filter((reg) => {
-    if (!isPendingRegistration(reg)) return false
-    if (filterRegTourn === 'ALL') return true
-    return getTournamentIdForRegistration(reg) === filterRegTourn
-  }).length
 
   const { toasts, show: showToast } = useToast()
 
@@ -1381,7 +1451,10 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                         <RaceList
                           races={tournRaces}
                           onEditRace={(race) => openRaceModal(race)}
-                          onSchedule={openSchedModal}
+                          onViewRace={() => {
+                            setViewBracketTournament(t)
+                            setViewBracketRaces(tournRaces)
+                          }}
                           onOpenResultModal={openResultModal}
                           onRefresh={(rId) => {
                             if (rId) setLastModifiedRaceId(rId)
@@ -1437,7 +1510,12 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
               <label className="text-xs font-bold mb-1.5 block">Lọc theo giải đấu</label>
               <select
                 value={filterRegTourn}
-                onChange={(e) => setFilterRegTourn(e.target.value)}
+                onChange={(e) => { 
+                  setFilterRegTourn(e.target.value); 
+                  setFilterRegRace('ALL'); 
+                  setDraftApprovals({});
+                  setDraftRejections({});
+                }}
                 className="h-10 rounded-lg"
               >
                 <option value="ALL">Tất cả giải đấu</option>
@@ -1446,20 +1524,88 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                 ))}
               </select>
             </div>
-            <div className="form-group min-w-[180px]" style={{ margin: 0 }}>
+            {filterRegTourn !== 'ALL' && (
+              <div className="form-group min-w-[150px]" style={{ margin: 0 }}>
+                <label className="text-xs font-bold mb-1.5 block">Lọc bảng đấu</label>
+                <select
+                  value={filterRegRace}
+                  onChange={(e) => setFilterRegRace(e.target.value)}
+                  className="h-10 rounded-lg"
+                >
+                  <option value="ALL">Tất cả bảng đấu</option>
+                  {Array.from(new Set(
+                    registrations
+                      .filter(r => getTournamentIdForRegistration(r) === filterRegTourn)
+                      .map(r => {
+                        const draftApp = draftApprovals[r.id || (r as any)._id]
+                        return draftApp ? draftApp.raceName : (r.raceName || (typeof r.raceId === 'object' ? r.raceId?.name : ''))
+                      })
+                      .filter(Boolean)
+                  )).map((raceName) => (
+                    <option key={raceName} value={raceName}>{raceName}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="form-group flex-1 min-w-[300px]" style={{ margin: 0 }}>
               <label className="text-xs font-bold mb-1.5 block">Phân bổ vòng đấu</label>
-              <button
-                type="button"
-                className="btn btnPrimary h-10 w-full"
-                disabled={pendingAutoAssignCount === 0 || loading}
-                onClick={handleAutoAssignTournamentRegistrations}
-                style={{
-                  opacity: pendingAutoAssignCount === 0 || loading ? 0.55 : 1,
-                  cursor: pendingAutoAssignCount === 0 || loading ? 'not-allowed' : 'pointer',
-                }}
-              >
-                Tự phân bổ ({pendingAutoAssignCount})
-              </button>
+              <div className="flex gap-2">
+                {filterRegTourn !== 'ALL' && (
+                  <button
+                    type="button"
+                    className="btn h-10 flex-1 relative overflow-hidden group"
+                    style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: '#fff', border: 'none', fontWeight: 700 }}
+                    onClick={() => {
+                      const t = tournaments.find(x => x.id === filterRegTourn || (x as any)._id === filterRegTourn)
+                      if (t) {
+                        setViewBracketTournament(t)
+                        const tournRaces = races.filter((r) => {
+                          const rTId = typeof r.tournamentId === 'object' ? r.tournamentId._id || r.tournamentId.id : r.tournamentId
+                          return rTId === t.id || rTId === (t as any)._id
+                        })
+                        setViewBracketRaces(tournRaces)
+                      }
+                    }}
+                  >
+                    <span className="flex justify-center items-center gap-2 relative z-10">
+                      <Trophy className="w-4 h-4" /> Xem Sơ Đồ Bảng Đấu
+                    </span>
+                    <div className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out"></div>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btnPrimary h-10 flex-1 relative overflow-hidden group"
+                  disabled={filterRegTourn === 'ALL' || registrations.filter(r => (r.status === 'APPROVED' || r.status === 'CONFIRMED') && getTournamentIdForRegistration(r) === filterRegTourn).length === 0 || loading}
+                  title={filterRegTourn === 'ALL' ? 'Vui lòng chọn một giải đấu cụ thể để phân bổ' : ''}
+                  onClick={handleAutoAssignTournamentRegistrations}
+                  style={{
+                    opacity: filterRegTourn === 'ALL' || registrations.filter(r => (r.status === 'APPROVED' || r.status === 'CONFIRMED') && getTournamentIdForRegistration(r) === filterRegTourn).length === 0 || loading ? 0.55 : 1,
+                    cursor: filterRegTourn === 'ALL' || registrations.filter(r => (r.status === 'APPROVED' || r.status === 'CONFIRMED') && getTournamentIdForRegistration(r) === filterRegTourn).length === 0 || loading ? 'not-allowed' : 'pointer',
+                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                    border: 'none',
+                    fontWeight: 700,
+                  }}
+                >
+                  <span className="flex justify-center items-center gap-2 relative z-10">
+                    <Sparkles className="w-4 h-4" /> Tự phân bổ ngẫu nhiên
+                  </span>
+                  <div className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out"></div>
+                </button>
+                {(Object.keys(draftApprovals).length > 0 || Object.keys(draftRejections).length > 0) && (
+                  <button
+                    type="button"
+                    className="btn h-10 animate-pulse-custom relative overflow-hidden group flex-1"
+                    style={{ background: '#3b82f6', color: '#fff', border: 'none', fontWeight: 'bold' }}
+                    onClick={() => setShowConfirmDraftModal(true)}
+                  >
+                    <span className="flex justify-center items-center gap-2 relative z-10">
+                      <ClipboardList className="w-4 h-4" /> Xác nhận bảng đấu
+                    </span>
+                    <div className="absolute inset-0 bg-white/20 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1531,12 +1677,16 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                     filterable: true,
                     filterType: 'text',
                     cell: (row) => {
-                      const raceName = row.raceName || (typeof row.raceId === 'object' ? row.raceId?.name : '')
+                      const draftApp = draftApprovals[row.id]
+                      const raceName = draftApp ? draftApp.raceName : (row.raceName || (typeof row.raceId === 'object' ? row.raceId?.name : ''))
                       const raceScheduledAt = typeof row.raceId === 'object' ? row.raceId?.scheduledAt : undefined
                       return (
                         <div>
-                          <div style={{ fontWeight: 600 }}>{raceName || 'Cuộc đua chưa rõ'}</div>
-                          {raceScheduledAt && (
+                          <div style={{ fontWeight: 600 }}>
+                            {raceName || 'Cuộc đua chưa rõ'}
+                            {draftApp && <span style={{ marginLeft: 4, color: '#3b82f6', fontSize: 11 }}>(Dự kiến)</span>}
+                          </div>
+                          {raceScheduledAt && !draftApp && (
                             <div className="muted" style={{ fontSize: '12px' }}>Ngày đua: {new Date(raceScheduledAt).toLocaleDateString('vi-VN')}</div>
                           )}
                         </div>
@@ -1590,16 +1740,35 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                       { label: 'Đã xác nhận', value: 'CONFIRMED' },
                       { label: 'Đã từ chối', value: 'REJECTED' },
                     ],
-                    cell: (row) => (
-                      <div>
-                        <span className={`badge badge-status-${row.status === 'APPROVED' ? 'approved' : row.status === 'CONFIRMED' ? 'confirmed' : row.status === 'REJECTED' ? 'rejected' : 'pending'}`}>
-                          {row.status === 'APPROVED' ? 'Đã duyệt' : row.status === 'CONFIRMED' ? 'Đã xác nhận' : row.status === 'REJECTED' ? 'Đã từ chối' : row.status === 'PENDING_APPROVAL' ? 'Chờ duyệt' : row.status}
-                        </span>
-                        {row.status === 'REJECTED' && (row as any).rejectionReason && (
-                          <div className="text-xs" style={{ marginTop: 4, color: '#ef4444' }}>Lý do: {(row as any).rejectionReason}</div>
-                        )}
-                      </div>
-                    )
+                    cell: (row) => {
+                      const draftApp = draftApprovals[row.id]
+                      const draftRej = draftRejections[row.id]
+                      if (draftApp) {
+                        return (
+                          <div>
+                            <span className="badge badge-status-approved" style={{ background: '#dbeafe', color: '#1d4ed8' }}>Dự kiến: Đã duyệt</span>
+                          </div>
+                        )
+                      }
+                      if (draftRej) {
+                        return (
+                          <div>
+                            <span className="badge badge-status-rejected" style={{ background: '#fee2e2', color: '#b91c1c' }}>Dự kiến: Đã từ chối</span>
+                            <div className="text-xs" style={{ marginTop: 4, color: '#ef4444' }}>Lý do: {draftRej}</div>
+                          </div>
+                        )
+                      }
+                      return (
+                        <div>
+                          <span className={`badge badge-status-${row.status === 'APPROVED' ? 'approved' : row.status === 'CONFIRMED' ? 'confirmed' : row.status === 'REJECTED' ? 'rejected' : 'pending'}`}>
+                            {row.status === 'APPROVED' ? 'Đã duyệt' : row.status === 'CONFIRMED' ? 'Đã xác nhận' : row.status === 'REJECTED' ? 'Đã từ chối' : row.status === 'PENDING_APPROVAL' ? 'Chờ duyệt' : row.status}
+                          </span>
+                          {row.status === 'REJECTED' && (row as any).rejectionReason && (
+                            <div className="text-xs" style={{ marginTop: 4, color: '#ef4444' }}>Lý do: {(row as any).rejectionReason}</div>
+                          )}
+                        </div>
+                      )
+                    }
                   },
                   {
                     id: 'createdAt',
@@ -2363,6 +2532,57 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
           MODALS
           --------------------------------------------------------- */}
 
+      {/* Confirm Draft Modal */}
+      {showConfirmDraftModal && (
+        <div className="modal-overlay" onClick={() => setShowConfirmDraftModal(false)} style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <div className="modal overflow-hidden p-0 animate-scale-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px', background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '20px' }}>
+            <div className="modal-header border-b border-white/[0.05] p-6 relative bg-gradient-to-r from-blue-500/10 to-transparent">
+              <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 mb-4 ring-4 ring-blue-500/10">
+                <ClipboardList className="w-6 h-6" />
+              </div>
+              <h2 className="text-xl font-black text-[var(--text)] m-0 tracking-tight">Xác nhận phân bổ bảng đấu</h2>
+              <button className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/[0.1] text-slate-400 hover:text-white transition-colors" onClick={() => setShowConfirmDraftModal(false)}>✕</button>
+            </div>
+            
+            <div className="p-6">
+              <p className="text-slate-300 text-base mb-6">Bạn có chắc chắn muốn chốt kết quả phân bổ này?</p>
+              
+              <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-5 mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-slate-400 font-medium">Tổng số ngựa phân bổ</span>
+                  <span className="text-2xl font-black text-blue-400">{Object.keys(draftApprovals).length}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-slate-300 mt-3">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  Ngựa sẽ được chia thành các bảng (Heats) mới với cổng chạy ngẫu nhiên.
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-200/80 text-sm">
+                <AlertTriangle className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" />
+                <p className="m-0 leading-relaxed">
+                  <strong className="text-amber-500 block mb-1">Lưu ý quan trọng:</strong>
+                  Hành động này sẽ thay thế hoàn toàn các vòng đấu cũ (nếu có) bằng các Bảng đấu (A, B, C...) mới trong hệ thống.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 p-6 pt-0 mt-2">
+              <button className="flex-1 h-11 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 font-bold transition-colors" onClick={() => setShowConfirmDraftModal(false)} disabled={confirmDraftLoading}>
+                Hủy
+              </button>
+              <button className="flex-1 h-11 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold transition-all shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:shadow-[0_0_25px_rgba(59,130,246,0.5)] flex items-center justify-center gap-2" onClick={confirmDraftAssignments} disabled={confirmDraftLoading}>
+                {confirmDraftLoading ? (
+                  <><span className="spinner w-4 h-4 border-2"></span> Đang xử lý...</>
+                ) : (
+                  <>Xác nhận phân bổ</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 1. Tournament Modal */}
       {showTournModal && (
         <div className="modal-overlay">
@@ -2477,8 +2697,14 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
             <form onSubmit={handleSaveRace}>
               <div className="modal-body">
                 <div className="form-group">
-                  <label>Tên cuộc đua (Ví dụ: Vòng 1 — Nội dung 1200m)</label>
-                  <input type="text" required value={raceForm.name} onChange={(e) => setRaceForm({ ...raceForm, name: e.target.value })} />
+                  <label>Tên cuộc đua / Vòng đấu</label>
+                  <select required value={raceForm.name} onChange={(e) => setRaceForm({ ...raceForm, name: e.target.value })}>
+                    <option value="">-- Chọn vòng đấu --</option>
+                    <option value="Vòng bảng">Vòng bảng</option>
+                    <option value="Vòng tứ kết">Vòng tứ kết</option>
+                    <option value="Vòng bán kết">Vòng bán kết</option>
+                    <option value="Vòng chung kết">Vòng chung kết</option>
+                  </select>
                 </div>
                 <div className="grid-2">
                   <div className="form-group">
@@ -2801,6 +3027,32 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
           </div>
         </div>
       )}
+      {/* VIEW BRACKET MODAL */}
+      {viewBracketTournament && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setViewBracketTournament(null)} />
+          <div 
+            className="relative bg-[var(--surface)] w-[95vw] max-w-6xl max-h-[90vh] rounded-2xl border border-[var(--border)] shadow-2xl flex flex-col overflow-hidden animate-fade-in-up"
+          >
+            <div className="flex items-center justify-between p-6 border-b border-[var(--border)] bg-[var(--surface-strong)]">
+              <h2 className="text-2xl font-black text-amber-500 drop-shadow-sm flex items-center gap-3">
+                <Trophy className="w-6 h-6 text-amber-500" />
+                Sơ Đồ Giải Đấu - {viewBracketTournament.name}
+              </h2>
+              <button 
+                className="text-zinc-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 p-2 rounded-xl cursor-pointer"
+                onClick={() => setViewBracketTournament(null)}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 bg-[#0f0f13]">
+              <TournamentBracketView bracket={viewBracketTournament.bracket} races={viewBracketRaces} />
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </>
   )
@@ -2812,14 +3064,14 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
 function RaceList({
   races,
   onEditRace,
-  onSchedule,
+  onViewRace,
   onOpenResultModal,
   onRefresh,
   lastModifiedRaceId,
 }: {
   races: Race[]
   onEditRace: (race: Race) => void
-  onSchedule: (race: Race) => void
+  onViewRace: (race: Race) => void
   onOpenResultModal: (race: Race) => void
   onRefresh: (highlightRaceId?: string) => void
   lastModifiedRaceId?: string | null
@@ -2877,123 +3129,139 @@ function RaceList({
     return dateA - dateB
   })
 
-  return (
-    <div className="admin-table-wrapper" style={{ margin: 0 }}>
-      <table className="admin-table" style={{ fontSize: '13px' }}>
-        <thead>
-          <tr>
-            <th>Tên cuộc đua</th>
-            <th>Cự ly</th>
-            <th>Thời gian</th>
-            <th>Số ngựa tối đa</th>
-            <th>Giải thưởng (1st / 2nd / 3rd)</th>
-            <th>Trạng thái</th>
-            <th style={{ textAlign: 'right' }}>Thao tác</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sortedRaces.map((r) => (
-            <tr key={r.id}>
-              <td style={{ fontWeight: 600 }}>{r.name}</td>
-              <td>{r.distance}m</td>
-              <td>{new Date(r.scheduledAt).toLocaleString('vi-VN')}</td>
-              <td>{r.maxHorses} chú ngựa</td>
-              <td>
-                🥇 {r.prizeFirst?.toLocaleString('vi-VN')} | 🥈 {r.prizeSecond?.toLocaleString('vi-VN')} | 🥉 {r.prizeThird?.toLocaleString('vi-VN')}
-              </td>
-              <td>
-                <select
-                  value={r.status || 'SCHEDULED'}
-                  onChange={(e) => handleQuickStatusChange(r.id, e.target.value)}
-                  style={{
-                    width: 'auto',
-                    padding: '2px 24px 2px 6px',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    borderRadius: '999px',
-                    border: '1px solid',
-                    cursor: 'pointer',
-                    background:
-                      r.status === 'ONGOING' ? 'rgba(16,185,129,0.12)' :
-                      r.status === 'COMPLETED' ? 'rgba(16,185,129,0.08)' :
-                      r.status === 'RESULT_CONFIRMED' ? 'rgba(59,130,246,0.10)' :
-                      r.status === 'PENDING' ? 'rgba(100,116,139,0.1)' :
-                      r.status === 'CANCELLED' ? 'rgba(239,68,68,0.10)' : 'rgba(59,130,246,0.10)',
-                    borderColor:
-                      r.status === 'ONGOING' ? '#10b981' :
-                      r.status === 'COMPLETED' ? '#059669' :
-                      r.status === 'RESULT_CONFIRMED' ? '#3b82f6' :
-                      r.status === 'PENDING' ? '#64748b' :
-                      r.status === 'CANCELLED' ? '#ef4444' : '#3b82f6',
-                    color:
-                      r.status === 'ONGOING' ? '#059669' :
-                      r.status === 'COMPLETED' ? '#047857' :
-                      r.status === 'RESULT_CONFIRMED' ? '#2563eb' :
-                      r.status === 'PENDING' ? '#475569' :
-                      r.status === 'CANCELLED' ? '#dc2626' : '#2563eb',
-                  }}
-                >
-                  <option value="PENDING">Chưa có lịch</option>
-                  <option value="SCHEDULED">Đã lên lịch</option>
-                  <option value="ONGOING">Đang diễn ra</option>
-                  <option value="RESULT_CONFIRMED">Xác nhận kết quả</option>
-                  <option value="COMPLETED">Hoàn thành</option>
-                  <option value="CANCELLED">Đã hủy</option>
-                </select>
-              </td>
-              <td style={{ textAlign: 'right' }}>
-                <div style={{ display: 'inline-flex', gap: 4 }}>
-                  <button className="btn" style={{ fontSize: '11px', padding: '4px 8px' }} onClick={() => onEditRace(r)}>
-                    Sửa
-                  </button>
-                  {r.status === 'SCHEDULED' && (
-                    <button className="btn btnPrimary" style={{ fontSize: '11px', padding: '4px 8px' }} onClick={() => onSchedule(r)}>
-                      Lập lịch
-                    </button>
-                  )}
-                  {r.status === 'RESULT_CONFIRMED' && (
-                    <button className="btn btnPrimary" style={{ fontSize: '11px', padding: '4px 8px' }} onClick={() => onOpenResultModal(r)}>
-                      Công bố kết quả
-                    </button>
-                  )}
-                  {['ONGOING', 'SCHEDULED'].includes(r.status || '') && (
-                    <>
-                      {!r.isLive ? (
-                        <button
-                          className="btn"
-                          style={{ fontSize: '11px', padding: '4px 8px', background: '#10b981', color: '#fff', border: 'none' }}
-                          onClick={() => handleStartStream(r.id)}
-                          disabled={startingStreamId === r.id}
-                        >
-                          {startingStreamId === r.id ? 'Đang bật...' : 'Bật Stream'}
-                        </button>
-                      ) : (
-                        <>
-                          <button
-                            className="btn"
-                            style={{ fontSize: '11px', padding: '4px 8px', background: '#ef4444', color: '#fff', border: 'none' }}
-                            onClick={() => handleStopStream(r.id)}
-                            disabled={stoppingStreamId === r.id}
-                          >
-                            {stoppingStreamId === r.id ? 'Đang tắt...' : 'Tắt Stream'}
-                          </button>
-                          <button
-                            className="btn"
-                            style={{ fontSize: '11px', padding: '4px 8px' }}
-                            onClick={() => alert(`Stream Key hiện tại: ${r.streamKey}\n\nRTMP URL: rtmp://global-live.mux.com:5222/app`)}
-                          >
-                            Xem Key
-                          </button>
-                        </>
-                      )}
-                    </>
-                  )}
-                </div>
-              </td>
+  const groupRaces = sortedRaces.filter(r => r.name.toLowerCase().includes('bảng') || r.name.toLowerCase().includes('group'))
+  const knockoutRaces = sortedRaces.filter(r => !r.name.toLowerCase().includes('bảng') && !r.name.toLowerCase().includes('group'))
+
+  const renderTable = (list: Race[], title: string, color: string) => {
+    if (list.length === 0) return null;
+    return (
+      <div style={{ marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+          <div style={{ height: '1px', flex: 1, background: `linear-gradient(to right, transparent, ${color})`, opacity: 0.3 }} />
+          <h5 style={{ margin: 0, fontSize: '13px', fontWeight: 800, color, textTransform: 'uppercase', letterSpacing: '1.5px' }}>{title}</h5>
+          <div style={{ height: '1px', flex: 1, background: `linear-gradient(to left, transparent, ${color})`, opacity: 0.3 }} />
+        </div>
+        <table className="admin-table" style={{ fontSize: '13px' }}>
+          <thead>
+            <tr>
+              <th>Tên cuộc đua</th>
+              <th>Cự ly</th>
+              <th>Thời gian</th>
+              <th>Số ngựa tối đa</th>
+              <th>Giải thưởng (1st / 2nd / 3rd)</th>
+              <th>Trạng thái</th>
+              <th style={{ textAlign: 'right' }}>Thao tác</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {list.map((r) => (
+              <tr key={r.id}>
+                <td style={{ fontWeight: 600 }}>{r.name}</td>
+                <td>{r.distance}m</td>
+                <td>{new Date(r.scheduledAt).toLocaleString('vi-VN')}</td>
+                <td>{r.maxHorses} chú ngựa</td>
+                <td>
+                  🥇 {r.prizeFirst?.toLocaleString('vi-VN')} | 🥈 {r.prizeSecond?.toLocaleString('vi-VN')} | 🥉 {r.prizeThird?.toLocaleString('vi-VN')}
+                </td>
+                <td>
+                  <select
+                    value={r.status || 'SCHEDULED'}
+                    onChange={(e) => handleQuickStatusChange(r.id, e.target.value)}
+                    style={{
+                      width: 'auto',
+                      padding: '2px 24px 2px 6px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      borderRadius: '999px',
+                      border: '1px solid',
+                      cursor: 'pointer',
+                      background:
+                        r.status === 'ONGOING' ? 'rgba(16,185,129,0.12)' :
+                        r.status === 'COMPLETED' ? 'rgba(16,185,129,0.08)' :
+                        r.status === 'RESULT_CONFIRMED' ? 'rgba(59,130,246,0.10)' :
+                        r.status === 'PENDING' ? 'rgba(100,116,139,0.1)' :
+                        r.status === 'CANCELLED' ? 'rgba(239,68,68,0.10)' : 'rgba(59,130,246,0.10)',
+                      borderColor:
+                        r.status === 'ONGOING' ? '#10b981' :
+                        r.status === 'COMPLETED' ? '#059669' :
+                        r.status === 'RESULT_CONFIRMED' ? '#3b82f6' :
+                        r.status === 'PENDING' ? '#64748b' :
+                        r.status === 'CANCELLED' ? '#ef4444' : '#3b82f6',
+                      color:
+                        r.status === 'ONGOING' ? '#059669' :
+                        r.status === 'COMPLETED' ? '#047857' :
+                        r.status === 'RESULT_CONFIRMED' ? '#2563eb' :
+                        r.status === 'PENDING' ? '#475569' :
+                        r.status === 'CANCELLED' ? '#dc2626' : '#2563eb',
+                    }}
+                  >
+                    <option value="PENDING">Chưa có lịch</option>
+                    <option value="SCHEDULED">Đã lên lịch</option>
+                    <option value="ONGOING">Đang diễn ra</option>
+                    <option value="RESULT_CONFIRMED">Xác nhận kết quả</option>
+                    <option value="COMPLETED">Hoàn thành</option>
+                    <option value="CANCELLED">Đã hủy</option>
+                  </select>
+                </td>
+                <td style={{ textAlign: 'right' }}>
+                  <div style={{ display: 'inline-flex', gap: 4 }}>
+                    <button className="btn" style={{ fontSize: '11px', padding: '4px 8px' }} onClick={() => onEditRace(r)}>
+                      Sửa
+                    </button>
+                    <button className="btn btnPrimary" style={{ fontSize: '11px', padding: '4px 8px' }} onClick={() => onViewRace(r)}>
+                      Xem bảng đấu
+                    </button>
+                    {r.status === 'RESULT_CONFIRMED' && (
+                      <button className="btn btnPrimary" style={{ fontSize: '11px', padding: '4px 8px' }} onClick={() => onOpenResultModal(r)}>
+                        Công bố kết quả
+                      </button>
+                    )}
+                    {['ONGOING', 'SCHEDULED'].includes(r.status || '') && (
+                      <>
+                        {!r.isLive ? (
+                          <button
+                            className="btn"
+                            style={{ fontSize: '11px', padding: '4px 8px', background: '#10b981', color: '#fff', border: 'none' }}
+                            onClick={() => handleStartStream(r.id)}
+                            disabled={startingStreamId === r.id}
+                          >
+                            {startingStreamId === r.id ? 'Đang bật...' : 'Bật Stream'}
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              className="btn"
+                              style={{ fontSize: '11px', padding: '4px 8px', background: '#ef4444', color: '#fff', border: 'none' }}
+                              onClick={() => handleStopStream(r.id)}
+                              disabled={stoppingStreamId === r.id}
+                            >
+                              {stoppingStreamId === r.id ? 'Đang tắt...' : 'Tắt Stream'}
+                            </button>
+                            <button
+                              className="btn"
+                              style={{ fontSize: '11px', padding: '4px 8px' }}
+                              onClick={() => alert(`Stream Key hiện tại: ${r.streamKey}\n\nRTMP URL: rtmp://global-live.mux.com:5222/app`)}
+                            >
+                              Xem Key
+                            </button>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  return (
+    <div className="admin-table-wrapper" style={{ margin: 0, padding: 0, background: 'transparent', border: 'none' }}>
+      {renderTable(groupRaces, 'Vòng Bảng', '#f59e0b')}
+      {renderTable(knockoutRaces, 'Vòng Loại Trực Tiếp', '#3b82f6')}
     </div>
   )
 }
