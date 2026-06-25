@@ -111,6 +111,14 @@ export async function getRace(id: string): Promise<any> {
   const raceId = String(id || '').trim()
   const res = await http.get(`${BE_BASE_URL}/races/${raceId}`)
   const r = res.data.race || res.data
+
+  // Extract result from nested object if BE added it
+  const backendResult = r.result || r.results || r.rankings;
+  let extractedRankings = backendResult;
+  if (backendResult && typeof backendResult === 'object' && !Array.isArray(backendResult)) {
+    extractedRankings = backendResult.rankings || backendResult.results || backendResult.data || backendResult;
+  }
+
   return {
     id: String(r._id || r.id || '').trim(),
     _id: String(r._id || r.id || '').trim(),
@@ -124,8 +132,8 @@ export async function getRace(id: string): Promise<any> {
     prizeThird: r.prizeThird,
     status: r.status,
     refereeId: r.refereeId,
-    results: r.results,
-    rankings: r.rankings,
+    results: extractedRankings,
+    rankings: extractedRankings,
     confirmedAt: r.confirmedAt,
   }
 }
