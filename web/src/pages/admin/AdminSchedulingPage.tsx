@@ -815,7 +815,7 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
       return
     }
 
-    if (['BRACKET_GENERATED', 'ONGOING', 'COMPLETED'].includes(tourn.status)) {
+    if (tourn.status && ['BRACKET_GENERATED', 'ONGOING', 'COMPLETED'].includes(tourn.status)) {
       showToast('Giải đấu này đã được chia bảng hoặc đang diễn ra, không thể phân bổ lại!', 'error')
       return
     }
