@@ -586,6 +586,31 @@ export async function deleteTournament(id: string): Promise<any> {
   return res.data
 }
 
+export async function closeTournamentRegistration(id: string): Promise<any> {
+  const res = await http.patch(`${BE_BASE_URL}/admin/tournaments/${id}/close-registration`)
+  return res.data
+}
+
+export async function generateTournamentBracket(id: string): Promise<any> {
+  const res = await http.post(`${BE_BASE_URL}/admin/tournaments/${id}/generate-bracket`)
+  return res.data
+}
+
+export async function updateTournamentSeeds(id: string, seeds: any): Promise<any> {
+  const res = await http.patch(`${BE_BASE_URL}/admin/tournaments/${id}/seeds`, { seeds })
+  return res.data
+}
+
+export async function withdrawHorseFromTournament(id: string, horseId: string): Promise<any> {
+  const res = await http.post(`${BE_BASE_URL}/admin/tournaments/${id}/withdraw/${horseId}`)
+  return res.data
+}
+
+export async function getTournamentAuditLog(id: string): Promise<any> {
+  const res = await http.get(`${BE_BASE_URL}/admin/tournaments/${id}/audit-log`)
+  return res.data
+}
+
 // --- QUẢN LÝ CUỘC ĐUA (RACE) & LỊCH TRÌNH ---
 export async function createRace(data: Omit<Race, 'id'>): Promise<any> {
   const res = await http.post(`${BE_BASE_URL}/admin/races`, data)
@@ -772,6 +797,11 @@ export async function getPublicTournament(id: string): Promise<Tournament> {
 
 export async function getPublicTournaments(): Promise<Tournament[]> {
   return getTournaments()
+}
+
+export async function getTournamentBracket(id: string): Promise<any> {
+  const res = await http.get(`${BE_BASE_URL}/tournaments/${id}/bracket`)
+  return res.data
 }
 
 export async function getTournamentLeaderboard(id: string): Promise<LeaderboardEntry[]> {

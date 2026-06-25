@@ -43,6 +43,8 @@ import {
   settlePredictions,
   startRaceStream,
   stopRaceStream,
+  closeTournamentRegistration,
+  generateTournamentBracket,
 } from '@/api'
 import { http } from '../../api/http'
 import { AnimatedTable, type SortDirection } from '@/components/ui/animated-table'
@@ -213,7 +215,13 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
     startDate: '',
     endDate: '',
     prizePool: 0,
-    maxHorses: 10,
+    maxHorses: 8,
+    minHorses: 4,
+    registrationOpenDate: '',
+    registrationCloseDate: '',
+    eliminationType: 'SINGLE_ELIMINATION',
+    pairingMethod: 'RANDOM',
+    hasThirdPlaceMatch: false,
     status: 'DRAFT',
   })
 
@@ -427,7 +435,13 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
         startDate: t.startDate ? new Date(t.startDate).toISOString().split('T')[0] : '',
         endDate: t.endDate ? new Date(t.endDate).toISOString().split('T')[0] : '',
         prizePool: t.prizePool || 0,
-        maxHorses: t.maxHorses || 10,
+        maxHorses: t.maxHorses || 8,
+        minHorses: t.minHorses || 4,
+        registrationOpenDate: t.registrationOpenDate ? new Date(t.registrationOpenDate).toISOString().slice(0, 16) : '',
+        registrationCloseDate: t.registrationCloseDate ? new Date(t.registrationCloseDate).toISOString().slice(0, 16) : '',
+        eliminationType: t.eliminationType || 'SINGLE_ELIMINATION',
+        pairingMethod: t.pairingMethod || 'RANDOM',
+        hasThirdPlaceMatch: t.hasThirdPlaceMatch || false,
         status: t.status || 'DRAFT',
       })
     } else {
@@ -438,7 +452,13 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
         startDate: '',
         endDate: '',
         prizePool: 0,
-        maxHorses: 10,
+        maxHorses: 8,
+        minHorses: 4,
+        registrationOpenDate: '',
+        registrationCloseDate: '',
+        eliminationType: 'SINGLE_ELIMINATION',
+        pairingMethod: 'RANDOM',
+        hasThirdPlaceMatch: false,
         status: 'DRAFT',
       })
     }
@@ -500,6 +520,8 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
       const statusLabel: Record<string, string> = {
         DRAFT: 'Bản nháp',
         PUBLISHED: 'Đã công bố',
+        REGISTRATION_CLOSED: 'Đã đóng đăng ký',
+        BRACKET_GENERATED: 'Đã chia bảng',
         ONGOING: 'Đang diễn ra',
         COMPLETED: 'Đã kết thúc',
         CANCELLED: 'Đã hủy',
@@ -509,6 +531,30 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
       loadTabData(id, undefined, undefined, undefined)
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Không thể đổi trạng thái', 'error')
+    }
+  }
+
+  const handleCloseRegistration = async (id: string) => {
+    if (!window.confirm('Bạn có chắc muốn đóng cổng đăng ký cho giải đấu này?')) return
+    try {
+      await closeTournamentRegistration(id)
+      setLastModifiedTournId(id)
+      showToast('Đã đóng cổng đăng ký thành công')
+      loadTabData(id, undefined, undefined, undefined)
+    } catch (err: any) {
+      showToast(err.response?.data?.message || 'Không thể đóng cổng đăng ký', 'error')
+    }
+  }
+
+  const handleGenerateBracket = async (id: string) => {
+    if (!window.confirm('Bạn có chắc muốn chia bảng tự động cho giải đấu này?')) return
+    try {
+      await generateTournamentBracket(id)
+      setLastModifiedTournId(id)
+      showToast('Đã chia bảng thành công')
+      loadTabData(id, undefined, undefined, undefined)
+    } catch (err: any) {
+      showToast(err.response?.data?.message || 'Không thể chia bảng', 'error')
     }
   }
 
@@ -1192,6 +1238,8 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                 <option value="ALL">Tất cả trạng thái</option>
                 <option value="DRAFT">Bản nháp (Draft)</option>
                 <option value="PUBLISHED">Đã công bố (Published)</option>
+                <option value="REGISTRATION_CLOSED">Đã đóng đăng ký (Closed)</option>
+                <option value="BRACKET_GENERATED">Đã chia bảng (Bracketed)</option>
                 <option value="ONGOING">Đang diễn ra (Ongoing)</option>
                 <option value="COMPLETED">Hoàn thành (Completed)</option>
                 <option value="CANCELLED">Đã hủy (Cancelled)</option>
@@ -1253,6 +1301,8 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                           >
                             {t.status === 'DRAFT' ? 'Bản nháp' :
                              t.status === 'PUBLISHED' ? 'Đã công bố' :
+                             t.status === 'REGISTRATION_CLOSED' ? 'Đã đóng đăng ký' :
+                             t.status === 'BRACKET_GENERATED' ? 'Đã chia bảng' :
                              t.status === 'ONGOING' ? 'Đang diễn ra' :
                              t.status === 'COMPLETED' ? 'Hoàn thành' : 'Đã hủy'}
                           </span>
@@ -1269,6 +1319,12 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                         style={{ display: 'flex', gap: 8, alignItems: 'center' }} 
                         onClick={(e) => e.stopPropagation()}
                       >
+                        {t.status === 'PUBLISHED' && (
+                           <button className="btn btn-sm" style={{ padding: '6px 12px', fontSize: '12px', background: '#f59e0b', color: '#fff', border: 'none' }} onClick={() => handleCloseRegistration(t.id)}>Đóng Đăng Ký</button>
+                        )}
+                        {t.status === 'REGISTRATION_CLOSED' && (
+                           <button className="btn btn-sm" style={{ padding: '6px 12px', fontSize: '12px', background: '#3b82f6', color: '#fff', border: 'none' }} onClick={() => handleGenerateBracket(t.id)}>Chia Bảng</button>
+                        )}
                         <button className="btn btn-sm" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => openRaceModal(null, t.id)}>+ Cuộc đua</button>
                         <button className="btn btn-sm" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => openTournModal(t)}>Sửa</button>
                         <button className="btn btn-sm" style={{ color: '#ef4444', padding: '6px 12px', fontSize: '12px' }} onClick={() => handleDeleteTourn(t.id, t.name)}>Xóa</button>
@@ -1312,6 +1368,8 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                           >
                             <option value="DRAFT">Bản nháp</option>
                             <option value="PUBLISHED">Đã công bố</option>
+                            <option value="REGISTRATION_CLOSED">Đã đóng đăng ký</option>
+                            <option value="BRACKET_GENERATED">Đã chia bảng</option>
                             <option value="ONGOING">Đang diễn ra</option>
                             <option value="COMPLETED">Hoàn thành</option>
                             <option value="CANCELLED">Đã hủy</option>
@@ -2347,14 +2405,49 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
                   </div>
                   <div className="form-group">
                     <label>Số ngựa tối đa</label>
-                    <input type="number" required value={tournForm.maxHorses} onChange={(e) => setTournForm({ ...tournForm, maxHorses: parseInt(e.target.value) })} />
+                    <select value={tournForm.maxHorses} onChange={(e) => setTournForm({ ...tournForm, maxHorses: parseInt(e.target.value) })}>
+                      <option value="4">4 ngựa</option>
+                      <option value="8">8 ngựa</option>
+                      <option value="16">16 ngựa</option>
+                      <option value="32">32 ngựa</option>
+                      <option value="64">64 ngựa</option>
+                    </select>
                   </div>
+                </div>
+                <div className="grid-2">
+                  <div className="form-group">
+                    <label>Số ngựa tối thiểu</label>
+                    <input type="number" required value={tournForm.minHorses} onChange={(e) => setTournForm({ ...tournForm, minHorses: parseInt(e.target.value) })} min="4" />
+                  </div>
+                  <div className="form-group">
+                    <label>Phương thức ghép cặp</label>
+                    <select value={tournForm.pairingMethod} onChange={(e) => setTournForm({ ...tournForm, pairingMethod: e.target.value })}>
+                      <option value="RANDOM">Ngẫu nhiên (Random)</option>
+                      <option value="SEEDED">Xếp hạt giống (Seeded)</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid-2">
+                  <div className="form-group">
+                    <label>Ngày mở đăng ký</label>
+                    <input type="datetime-local" required value={tournForm.registrationOpenDate} onChange={(e) => setTournForm({ ...tournForm, registrationOpenDate: e.target.value })} />
+                  </div>
+                  <div className="form-group">
+                    <label>Ngày đóng đăng ký</label>
+                    <input type="datetime-local" required value={tournForm.registrationCloseDate} onChange={(e) => setTournForm({ ...tournForm, registrationCloseDate: e.target.value })} />
+                  </div>
+                </div>
+                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input type="checkbox" id="hasThirdPlace" checked={tournForm.hasThirdPlaceMatch} onChange={(e) => setTournForm({ ...tournForm, hasThirdPlaceMatch: e.target.checked })} />
+                  <label htmlFor="hasThirdPlace" style={{ marginBottom: 0 }}>Tổ chức trận tranh hạng ba</label>
                 </div>
                 <div className="form-group">
                   <label>Trạng thái giải đấu</label>
                   <select value={tournForm.status} onChange={(e) => setTournForm({ ...tournForm, status: e.target.value })}>
                     <option value="DRAFT">Bản nháp (DRAFT)</option>
                     <option value="PUBLISHED">Đã công bố (PUBLISHED)</option>
+                    <option value="REGISTRATION_CLOSED">Đã đóng đăng ký (REGISTRATION_CLOSED)</option>
+                    <option value="BRACKET_GENERATED">Đã chia bảng (BRACKET_GENERATED)</option>
                     <option value="ONGOING">Đang diễn ra (ONGOING)</option>
                     <option value="COMPLETED">Đã kết thúc (COMPLETED)</option>
                     <option value="CANCELLED">Đã hủy (CANCELLED)</option>

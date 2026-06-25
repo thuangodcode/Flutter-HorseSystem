@@ -28,7 +28,16 @@ export type Tournament = {
   prizePool?: number
   currency?: string
   maxHorses?: number
-  status?: 'DRAFT' | 'PUBLISHED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED'
+  status?: 'DRAFT' | 'PUBLISHED' | 'REGISTRATION_CLOSED' | 'BRACKET_GENERATED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED'
+  minHorses?: number
+  registrationOpenDate?: string
+  registrationCloseDate?: string
+  eliminationType?: 'SINGLE_ELIMINATION'
+  pairingMethod?: 'RANDOM' | 'SEEDED'
+  hasThirdPlaceMatch?: boolean
+  registeredCount?: number
+  currentRound?: number
+  totalRounds?: number
 }
 
 export type Race = {
