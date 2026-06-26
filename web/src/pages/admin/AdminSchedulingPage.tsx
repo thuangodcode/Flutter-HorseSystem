@@ -528,8 +528,7 @@ export function AdminSchedulingPage({ tab }: { tab?: Tab }) {
         loadTabData(selectedTourn.id, undefined, undefined, undefined)
       } else {
         const res = await createTournament(tournForm as any)
-        console.log('Create tournament response:', res)
-        const newId = res?.id || res?._id || res?.data?.id || res?.data?._id || res?.tournament?._id || res?.tournament?.id || (typeof res === 'string' ? res : null)
+        const newId = res?.tournamentId || res?.id || res?._id || res?.data?.id || res?.data?._id || res?.tournament?._id || res?.tournament?.id || (typeof res === 'string' ? res : null)
         if (newId) {
           if (tournForm.status && tournForm.status !== 'DRAFT') {
             await updateTournament(newId, { status: tournForm.status as any })
