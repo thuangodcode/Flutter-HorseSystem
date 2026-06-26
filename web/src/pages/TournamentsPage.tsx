@@ -80,7 +80,7 @@ export function TournamentsPage() {
 
       if (timeFilter === 'all' && endDate < now) return false
 
-      if (timeFilter === 'upcoming') return ['DRAFT', 'PUBLISHED'].includes(tournament.status || '') || startDate > now
+      if (timeFilter === 'upcoming') return ['DRAFT', 'PUBLISHED', 'REGISTRATION_CLOSED', 'BRACKET_GENERATED'].includes(tournament.status || '') || startDate > now
       if (timeFilter === 'ongoing') return ['ONGOING', 'ACTIVE'].includes(tournament.status || '') || (startDate <= now && endDate >= now)
       if (timeFilter === 'completed') return ['COMPLETED', 'CANCELLED', 'RESULT_CONFIRMED'].includes(tournament.status || '') || endDate < now
       return true
@@ -111,7 +111,7 @@ export function TournamentsPage() {
 
   const upcomingCount = items.filter((t) => {
     const startDate = new Date(t.startDate).getTime()
-    return ['DRAFT', 'PUBLISHED'].includes(t.status || '') || startDate > now
+    return ['DRAFT', 'PUBLISHED', 'REGISTRATION_CLOSED', 'BRACKET_GENERATED'].includes(t.status || '') || startDate > now
   }).length
 
   const allCount = items.filter((t) => {

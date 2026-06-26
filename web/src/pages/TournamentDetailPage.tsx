@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import type { Tournament, Race, LeaderboardEntry } from '../types'
-import { getPublicTournament, getPublicRaces, getTournamentLeaderboard } from '@/api'
+import { getPublicTournament, getPublicRaces, getTournamentLeaderboard, getTournamentBracket } from '@/api'
+import { TournamentBracketView } from '../components/TournamentBracketView'
 import { AnimatedTable } from '../components/ui/animated-table'
 import { Badge } from '@/components/ui/badge'
 import { getStatusClassName, getStatusLabel } from '@/lib/status'
@@ -48,7 +49,8 @@ export function TournamentDetailPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'races' | 'leaderboard'>('races')
+  const [bracket, setBracket] = useState<any>(null)
+  const [activeTab, setActiveTab] = useState<'races' | 'leaderboard' | 'bracket'>('bracket')
 
   useEffect(() => {
     if (!id) return
@@ -57,8 +59,9 @@ export function TournamentDetailPage() {
       getPublicTournament(id).catch(() => null),
       getPublicRaces({ tournamentId: id }).catch(() => [] as any),
       getTournamentLeaderboard(id).catch(() => [] as any),
+      getTournamentBracket(id).catch(() => null),
     ])
-      .then(([t, r, lb]) => {
+      .then(([t, r, lb, br]) => {
         if (!t) {
           setError('Không tìm thấy giải đấu')
         } else {
@@ -68,6 +71,7 @@ export function TournamentDetailPage() {
         setRaces(raceList)
         const lbList = Array.isArray(lb) ? lb : (lb?.data || lb?.leaderboard || [])
         setLeaderboard(lbList)
+        setBracket(br?.bracket || br?.data || br || null)
       })
       .finally(() => setLoading(false))
   }, [id])
@@ -241,6 +245,13 @@ export function TournamentDetailPage() {
           {/* Tab Buttons */}
           <div className="spectator-tabs mb-6">
             <button
+              className={`spectator-tab ${activeTab === 'bracket' ? 'spectator-tab-active' : ''}`}
+              onClick={() => setActiveTab('bracket')}
+            >
+              <Trophy className="w-4 h-4" />
+              Sơ Đồ Thi Đấu
+            </button>
+            <button
               className={`spectator-tab ${activeTab === 'races' ? 'spectator-tab-active' : ''}`}
               onClick={() => setActiveTab('races')}
             >
@@ -257,6 +268,9 @@ export function TournamentDetailPage() {
           </div>
 
           {/* Tab Content */}
+          {activeTab === 'bracket' && (
+            <TournamentBracketView bracket={bracket} races={races} />
+          )}
           {activeTab === 'races' && (
             <AnimatedTable
               data={racesWithId}
@@ -290,3 +304,4 @@ export function TournamentDetailPage() {
     </div>
   )
 }
+

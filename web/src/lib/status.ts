@@ -1,7 +1,9 @@
 export const TOURNAMENT_STATUS_OPTIONS = [
   { value: 'all', label: 'Tất cả trạng thái' },
   { value: 'DRAFT', label: 'Bản nháp' },
-  { value: 'PUBLISHED', label: 'Đã công bố' },
+  { value: 'PUBLISHED', label: 'Đang mở đăng ký' },
+  { value: 'REGISTRATION_CLOSED', label: 'Đã đóng đăng ký' },
+  { value: 'BRACKET_GENERATED', label: 'Đã chia bảng' },
   { value: 'ONGOING', label: 'Đang diễn ra' },
   { value: 'COMPLETED', label: 'Đã kết thúc' },
   { value: 'CANCELLED', label: 'Đã hủy' }
@@ -33,7 +35,9 @@ export function getStatusLabel(status: string | undefined, type: 'tournament' | 
   if (type === 'tournament') {
     switch (s) {
       case 'DRAFT': return 'Bản nháp'
-      case 'PUBLISHED': return 'Đã công bố'
+      case 'PUBLISHED': return 'Đang mở đăng ký'
+      case 'REGISTRATION_CLOSED': return 'Đã đóng đăng ký'
+      case 'BRACKET_GENERATED': return 'Đã chia bảng'
       case 'ONGOING':
       case 'ACTIVE': return 'Đang diễn ra'
       case 'COMPLETED': return 'Đã kết thúc'
@@ -103,6 +107,8 @@ export function getStatusClassName(status: string | undefined, _type: string): s
     case 'SCHEDULED':
       return 'badge-pending'
     case 'PUBLISHED':
+    case 'REGISTRATION_CLOSED':
+    case 'BRACKET_GENERATED':
     case 'APPROVED':
     case 'ACCEPTED':
     case 'CONFIRMED':
