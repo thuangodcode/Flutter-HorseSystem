@@ -201,7 +201,7 @@ export function HorsesPage() {
     addToast({ message, type })
   }
 
-  useEffect(() => { loadData() }, [activeTab])
+  useEffect(() => { loadData() }, [])
 
   useEffect(() => {
     if (activeTab === 'invitations') {
@@ -929,7 +929,7 @@ export function HorsesPage() {
               </div>
               <div className="flex flex-wrap sm:flex-nowrap justify-end items-center gap-2">
                 <select
-                  className="h-8 px-2 w-[130px] truncate rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
+                  className="h-9 py-1 px-2 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
                   value={tournamentFilter_Id}
                   onChange={(e) => { setTournamentFilter_Id(e.target.value); setTournamentPage(1); }}
                 >
@@ -940,7 +940,7 @@ export function HorsesPage() {
                 </select>
 
                 <select
-                  className="h-8 px-2 w-[130px] truncate rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
+                  className="h-9 py-1 px-2 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
                   value={tournamentFilter_Schedule}
                   onChange={(e) => { setTournamentFilter_Schedule(e.target.value); setTournamentPage(1); }}
                 >
@@ -955,7 +955,7 @@ export function HorsesPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 z-10 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                   <input
                     placeholder="Tìm theo tên giải đấu..."
-                    className="w-full h-8 pr-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
+                    className="w-full h-9 py-1 pr-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
                     style={{ paddingLeft: '2.5rem' }}
                     value={tournamentSearch}
                     onChange={(e) => { setTournamentSearch(e.target.value); setTournamentPage(1); }}
@@ -1062,7 +1062,7 @@ export function HorsesPage() {
               </div>
               <div className="flex flex-wrap sm:flex-nowrap justify-end items-center gap-2">
                 <select
-                  className="h-8 px-2 w-[130px] truncate rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
+                  className="h-9 py-1 px-2 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
                   value={myRegFilter_HorseId}
                   onChange={(e) => { setMyRegFilter_HorseId(e.target.value); setRegistrationPage(1); }}
                 >
@@ -1073,7 +1073,7 @@ export function HorsesPage() {
                 </select>
 
                 <select
-                  className="h-8 px-2 w-[130px] truncate rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
+                  className="h-9 py-1 px-2 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
                   value={myRegFilter_TournamentId}
                   onChange={(e) => { setMyRegFilter_TournamentId(e.target.value); setRegistrationPage(1); }}
                 >
@@ -1087,7 +1087,7 @@ export function HorsesPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 z-10 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                   <input
                     placeholder="Tìm theo ngựa hoặc giải đấu..."
-                    className="w-full h-8 pr-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
+                    className="w-full h-9 py-1 pr-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
                     style={{ paddingLeft: '2.5rem' }}
                     value={regSearch}
                     onChange={(e) => { setRegSearch(e.target.value); setRegistrationPage(1); }}
@@ -1199,7 +1199,7 @@ export function HorsesPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 z-10 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                   <input
                     placeholder="Tìm theo tên kỵ sĩ..."
-                    className="w-full h-8 pr-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
+                    className="w-full h-9 py-1 pr-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
                     style={{ paddingLeft: '2.5rem' }}
                     value={jockeySearch}
                     onChange={(e) => { setJockeySearch(e.target.value); setJockeyPage(1); }}
@@ -1320,7 +1320,7 @@ export function HorsesPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 z-10 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                   <input
                     placeholder="Tìm theo kỵ sĩ hoặc giải đấu..."
-                    className="w-full h-8 pr-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
+                    className="w-full h-9 py-1 pr-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
                     style={{ paddingLeft: '2.5rem' }}
                     value={inviteSearch}
                     onChange={(e) => { setInviteSearch(e.target.value); setInvitationPage(1); }}

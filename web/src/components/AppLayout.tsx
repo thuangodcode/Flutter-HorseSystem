@@ -389,30 +389,7 @@ export function AppLayout() {
               </div>
             </button>
 
-            {/* Admin "view as" selector: allow admins to view app as other roles */}
-            {actualRole === 'ADMIN' && (
-              <div className="hidden md:flex items-center ml-2">
-                <label className="text-[10px] mr-2 text-muted">Xem như</label>
-                <select
-                  value={adminViewAs ?? ''}
-                  onChange={(e) => {
-                    const v = e.target.value || null
-                    try {
-                      if (v) localStorage.setItem('admin_view_as', v)
-                      else localStorage.removeItem('admin_view_as')
-                    } catch { }
-                    setAdminViewAs(v)
-                    // Go to dashboard to avoid landing on restricted pages unexpectedly
-                    navigate('/app/dashboard')
-                  }}
-                  className="h-9 px-2 rounded-lg border border-border bg-(--bg2) text-[12px] text-(--text)"
-                >
-                  <option value="">Chính</option>
-                  <option value="SPECTATOR">Khán giả</option>
-                  <option value="REFEREE">Trọng tài</option>
-                </select>
-              </div>
-            )}
+
 
             {/* Account Balance */}
             {actualRole === 'SPECTATOR' && (
