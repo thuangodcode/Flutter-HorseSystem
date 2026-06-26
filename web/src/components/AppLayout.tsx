@@ -200,16 +200,7 @@ export function AppLayout() {
     }
   }, [actualRole])
 
-  // Admin can "view as" another role (Spectator / Referee). Persist choice in localStorage.
-  const [adminViewAs, setAdminViewAs] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem('admin_view_as')
-    } catch {
-      return null
-    }
-  })
-
-  const effectiveRole = actualRole === 'ADMIN' && adminViewAs ? adminViewAs : actualRole
+  const effectiveRole = actualRole
   const navItems = getRoleNav(effectiveRole)
   const profileActive = location.pathname.startsWith('/app/profile')
 
