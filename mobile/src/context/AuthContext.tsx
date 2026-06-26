@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import * as SecureStore from 'expo-secure-store';
+import * as Storage from '../utils/storage';
 import { User, Session, Role } from '../types';
 import * as api from '../api';
 
@@ -23,8 +23,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadStoredUser = async () => {
     try {
-      const userStr = await SecureStore.getItemAsync('user');
-      const token = await SecureStore.getItemAsync('accessToken');
+      const userStr = await Storage.getItemAsync('user');
+      const token = await Storage.getItemAsync('accessToken');
       if (userStr && token) {
         setUser(JSON.parse(userStr));
       }
@@ -37,21 +37,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string, role?: Role) => {
     const session = await api.login({ email, password, role });
-    await SecureStore.setItemAsync('accessToken', session.token);
-    await SecureStore.setItemAsync('user', JSON.stringify(session.user));
+    await Storage.setItemAsync('accessToken', session.token);
+    await Storage.setItemAsync('user', JSON.stringify(session.user));
     setUser(session.user);
   };
 
   const register = async (name: string, email: string, password: string, role: Role) => {
     const session = await api.register({ name, email, password, role });
-    await SecureStore.setItemAsync('accessToken', session.token);
-    await SecureStore.setItemAsync('user', JSON.stringify(session.user));
+    await Storage.setItemAsync('accessToken', session.token);
+    await Storage.setItemAsync('user', JSON.stringify(session.user));
     setUser(session.user);
   };
 
   const logout = async () => {
-    await SecureStore.deleteItemAsync('accessToken');
-    await SecureStore.deleteItemAsync('user');
+    await Storage.deleteItemAsync('accessToken');
+    await Storage.deleteItemAsync('user');
     setUser(null);
   };
 

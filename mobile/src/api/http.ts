@@ -1,5 +1,5 @@
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import * as Storage from '../utils/storage';
 
 export const http = axios.create({
   baseURL: process.env.EXPO_PUBLIC_API_URL || 'https://managerhourse-be.onrender.com',
@@ -9,7 +9,7 @@ export const http = axios.create({
 });
 
 http.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync('accessToken');
+  const token = await Storage.getItemAsync('accessToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
