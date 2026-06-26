@@ -134,9 +134,13 @@ export function HorsesPage() {
 
   // Filters for My Registrations tab
   const [regSearch, setRegSearch] = useState<string>('')
+  const [myRegFilter_HorseId, setMyRegFilter_HorseId] = useState<string>('')
+  const [myRegFilter_TournamentId, setMyRegFilter_TournamentId] = useState<string>('')
 
   // Filter for Tournaments tab (Tab 2)
   const [tournamentSearch, setTournamentSearch] = useState<string>('')
+  const [tournamentFilter_Id, setTournamentFilter_Id] = useState<string>('')
+  const [tournamentFilter_Schedule, setTournamentFilter_Schedule] = useState<string>('')
 
   // Filter for Invitations tab
   const [inviteSearch, setInviteSearch] = useState<string>('')
@@ -624,8 +628,26 @@ export function HorsesPage() {
       const tournamentName = (tournaments.find(t => String(t.id || t._id) === tId)?.name || 'Giải đấu').toLowerCase();
       if (!horseName.includes(search) && !tournamentName.includes(search)) return false;
     }
+    
+    if (myRegFilter_HorseId && String(reg.horseId) !== myRegFilter_HorseId) return false;
+    
+    if (myRegFilter_TournamentId) {
+      const tId = getRegistrationTournamentId(reg);
+      if (tId !== myRegFilter_TournamentId) return false;
+    }
+    
     return true
   })
+
+  const myRegHorseOptions = useMemo(() => {
+    const horseIds = Array.from(new Set(registrations.map(r => String(r.horseId))));
+    return horseIds.map(id => horses.find(h => String(h.id || h._id) === id)).filter(Boolean) as Horse[];
+  }, [registrations, horses]);
+
+  const myRegTournamentOptions = useMemo(() => {
+    const tIds = Array.from(new Set(registrations.map(r => getRegistrationTournamentId(r))));
+    return tIds.map(id => tournaments.find(t => String(t.id || t._id) === id) || { id, name: registrations.find(r => getRegistrationTournamentId(r) === id)?.race?.name || 'Giải đấu' }).filter(Boolean) as Tournament[];
+  }, [registrations, tournaments]);
 
   // Filtered invitations for Invitations tab
   const filteredInvitations = invitations.filter(inv => {
@@ -642,6 +664,12 @@ export function HorsesPage() {
   const filteredTournaments = tournaments
     .filter(t => {
       if (tournamentSearch && !t.name.toLowerCase().includes(tournamentSearch.toLowerCase())) return false;
+      if (tournamentFilter_Id && String(t.id || t._id) !== tournamentFilter_Id) return false;
+      if (tournamentFilter_Schedule) {
+        const d = new Date(t.startDate);
+        const scheduleKey = `${d.getMonth() + 1}-${d.getFullYear()}`;
+        if (scheduleKey !== tournamentFilter_Schedule) return false;
+      }
       return true;
     })
     .sort((a, b) => {
@@ -649,6 +677,20 @@ export function HorsesPage() {
       const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
       return dateA - dateB;
     });
+
+  const tournamentOptionsTab2 = useMemo(() => {
+    return tournaments;
+  }, [tournaments]);
+
+  const scheduleOptionsTab2 = useMemo(() => {
+    const dates = tournaments.map(t => new Date(t.startDate));
+    const unique = Array.from(new Set(dates.map(d => `${d.getMonth() + 1}-${d.getFullYear()}`)));
+    return unique.sort((a, b) => {
+      const [mA, yA] = a.split('-');
+      const [mB, yB] = b.split('-');
+      return new Date(Number(yA), Number(mA) - 1).getTime() - new Date(Number(yB), Number(mB) - 1).getTime();
+    });
+  }, [tournaments]);
 
   // Cleaned up unused registrationsByTournament
 
@@ -876,8 +918,31 @@ export function HorsesPage() {
                 <div className="w-1.5 h-6 rounded bg-violet-500" />
                 <h3 className="text-lg font-black text-[color:var(--text)] tracking-tight">Danh Sách Giải Đấu Đang Mở</h3>
               </div>
-              <div className="flex flex-wrap justify-end items-center gap-3">
-                <div className="relative w-64">
+              <div className="flex flex-wrap sm:flex-nowrap justify-end items-center gap-2">
+                <select
+                  className="h-8 px-2 w-[130px] truncate rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
+                  value={tournamentFilter_Id}
+                  onChange={(e) => { setTournamentFilter_Id(e.target.value); setTournamentPage(1); }}
+                >
+                  <option value="" className="bg-slate-900 text-white">Tất cả giải đấu</option>
+                  {tournamentOptionsTab2.map(t => (
+                    <option key={String(t.id || t._id)} value={String(t.id || t._id)} className="bg-slate-900 text-white">{t.name}</option>
+                  ))}
+                </select>
+
+                <select
+                  className="h-8 px-2 w-[130px] truncate rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
+                  value={tournamentFilter_Schedule}
+                  onChange={(e) => { setTournamentFilter_Schedule(e.target.value); setTournamentPage(1); }}
+                >
+                  <option value="" className="bg-slate-900 text-white">Mọi lịch trình</option>
+                  {scheduleOptionsTab2.map(s => {
+                    const [m, y] = s.split('-');
+                    return <option key={s} value={s} className="bg-slate-900 text-white">Tháng {m}/{y}</option>
+                  })}
+                </select>
+                
+                <div className="relative w-48 sm:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 z-10 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                   <input
                     placeholder="Tìm theo tên giải đấu..."
@@ -986,8 +1051,30 @@ export function HorsesPage() {
                 <div className="w-1.5 h-6 rounded bg-violet-500" />
                 <h3 className="text-lg font-black text-[color:var(--text)] tracking-tight">Lịch Sử Đăng Ký Của Bạn</h3>
               </div>
-              <div className="flex flex-wrap justify-end items-center gap-3">
-                <div className="relative w-64">
+              <div className="flex flex-wrap sm:flex-nowrap justify-end items-center gap-2">
+                <select
+                  className="h-8 px-2 w-[130px] truncate rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
+                  value={myRegFilter_HorseId}
+                  onChange={(e) => { setMyRegFilter_HorseId(e.target.value); setRegistrationPage(1); }}
+                >
+                  <option value="" className="bg-slate-900 text-white">Tất cả ngựa</option>
+                  {myRegHorseOptions.map(h => (
+                    <option key={String(h.id || h._id)} value={String(h.id || h._id)} className="bg-slate-900 text-white">{h.name}</option>
+                  ))}
+                </select>
+
+                <select
+                  className="h-8 px-2 w-[130px] truncate rounded-xl border border-[rgba(255,255,255,0.08)] bg-[var(--surface-2)] text-xs font-semibold outline-none focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/10 transition-all text-white"
+                  value={myRegFilter_TournamentId}
+                  onChange={(e) => { setMyRegFilter_TournamentId(e.target.value); setRegistrationPage(1); }}
+                >
+                  <option value="" className="bg-slate-900 text-white">Tất cả giải đấu</option>
+                  {myRegTournamentOptions.map(t => (
+                    <option key={String(t.id || t._id)} value={String(t.id || t._id)} className="bg-slate-900 text-white">{t.name}</option>
+                  ))}
+                </select>
+
+                <div className="relative w-48 sm:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 z-10 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                   <input
                     placeholder="Tìm theo ngựa hoặc giải đấu..."
@@ -1720,9 +1807,9 @@ export function HorsesPage() {
                 value={inviteModalHorseId}
                 onChange={(e) => setInviteModalHorseId(e.target.value)}
               >
-                <option value="">— Chọn ngựa —</option>
+                <option value="" className="bg-slate-900 text-white">— Chọn ngựa —</option>
                 {horses.filter(h => h.status === 'APPROVED').map(h => (
-                  <option key={h.id} value={String(h.id || h._id)}>{h.name}</option>
+                  <option key={h.id} value={String(h.id || h._id)} className="bg-slate-900 text-white">{h.name}</option>
                 ))}
               </select>
             </div>
@@ -1742,9 +1829,9 @@ export function HorsesPage() {
                     value={inviteModalRaceId}
                     onChange={(e) => setInviteModalRaceId(e.target.value)}
                   >
-                    <option value="">— Chọn cuộc đua —</option>
+                    <option value="" className="bg-slate-900 text-white">— Chọn cuộc đua —</option>
                     {inviteModalRaces.map((r: any) => (
-                      <option key={r.raceId} value={r.raceId}>🏁 {r.raceName}</option>
+                      <option key={r.raceId} value={r.raceId} className="bg-slate-900 text-white">🏁 {r.raceName}</option>
                     ))}
                   </select>
                 )}
