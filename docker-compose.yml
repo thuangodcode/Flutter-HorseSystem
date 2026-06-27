@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  # 1. Giao diện Flutter Web (Lấy từ kho Docker Hub mà bạn vừa build thành công)
+  flutter-frontend:
+    # Thay 'tên_docker_hub_của_bạn' bằng username Docker Hub thật của bạn
+    image: tên_docker_hub_của_bạn/flutter-horse-app:latest
+    container_name: horse_frontend_container
+    ports:
+      - "8080:80" # Khi chạy, bạn mở trình duyệt gõ: localhost:8080 là ra app Flutter
+    restart: always
+    depends_on:
+      - node-backend
+
+  # 2. Backend Node.js (Nếu sau này bạn làm CI cho backend thì đổi thành image trên Docker Hub, còn hiện tại cấu hình build tại chỗ)
+  node-backend:
+    build:
+      context: ./web # Đường dẫn đến thư mục chứa backend Node.js của bạn
+      dockerfile: Dockerfile # (Bạn cần tạo 1 file Dockerfile bên trong thư mục web này nữa nhé)
+    container_name: horse_backend_container
+    ports:
+      - "5000:5000"
+    restart: always
+
+  # 3. AI Service (Chạy model public để lấy điểm 10)
+  ai-service:
+    build:
+      context: ./ai-service # Đường dẫn đến thư mục chứa code AI Python của bạn
+    container_name: horse_ai_container
+    ports:
+      - "8000:8000"
+    restart: always
